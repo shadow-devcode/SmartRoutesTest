@@ -76,8 +76,13 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
     { clave: 'ciudad', etiqueta: 'Ciudad' },
   ];
 
-  /** Valor activo de cada filtro de columna de pendientes. */
-  filtrosPendiente: Record<string, string> = {};
+  /**
+   * Valores activos de cada filtro de columna de pendientes.
+   *
+   * Es una LISTA por columna: se puede marcar más de un valor, como el
+   * autofiltro de Excel. Lista vacía = sin filtro (todos).
+   */
+  filtrosPendiente: Record<string, string[]> = {};
   /** Valores disponibles en cada columna con los demás filtros aplicados. */
   opcionesPendiente: Record<string, string[]> = {};
 
@@ -119,12 +124,12 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   ];
 
   /**
-   * Valor activo de cada filtro de columna. Arranca con cadena vacía en todas
-   * —no sin la clave— para que los desplegables del mapa muestren «Todos» de
-   * entrada: con la clave ausente el `select` no encuentra opción que case y se
-   * queda en blanco.
+   * Valores activos de cada filtro de columna de rutas. Una LISTA por columna:
+   * los paneles admiten marcar varios valores a la vez. Arranca con la lista
+   * vacía en todas —no sin la clave— para que los desplegables del mapa
+   * muestren «Todos» de entrada en lugar de quedarse en blanco.
    */
-  filtrosRuta: Record<string, string> = {};
+  filtrosRuta: Record<string, string[]> = {};
 
   /**
    * Filtros que se ofrecen en la vista de mapa. Son los mismos de la tabla
@@ -143,7 +148,7 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   /** True si hay filtro de día o de semana: cambia lo que cuenta el marcador. */
   get filtroTemporalActivo(): boolean {
     return Boolean(
-      (this.filtrosRuta['dia'] || '').trim() || (this.filtrosRuta['fecha'] || '').trim(),
+      (this.filtrosRuta['dia'] ?? []).length || (this.filtrosRuta['fecha'] ?? []).length,
     );
   }
 
@@ -232,17 +237,25 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
     this.cargarRutas();
   }
 
-  /** Un valor «Todos» (cadena vacía) por cada columna filtrable. */
-  private filtrosEnBlanco(): Record<string, string> {
-    const vacios: Record<string, string> = {};
-    for (const col of this.columnasRuta) vacios[col.clave] = '';
+  /** Una lista vacía («todos») por cada columna filtrable. */
+  private filtrosEnBlanco(): Record<string, string[]> {
+    const vacios: Record<string, string[]> = {};
+    for (const col of this.columnasRuta) vacios[col.clave] = [];
     return vacios;
   }
 
-  private filtrosPendienteEnBlanco(): Record<string, string> {
-    const vacios: Record<string, string> = {};
-    for (const col of this.columnasPendiente) vacios[col.clave] = '';
+  private filtrosPendienteEnBlanco(): Record<string, string[]> {
+    const vacios: Record<string, string[]> = {};
+    for (const col of this.columnasPendiente) vacios[col.clave] = [];
     return vacios;
+  }
+
+  /**
+   * Adaptador para los controles de un solo valor —los desplegables del mapa y
+   * los de provincia/ciudad—: leen y escriben la misma lista que los paneles.
+   */
+  valorUnico(filtros: Record<string, string[]>, clave: string): string {
+    return (filtros[clave] ?? [])[0] ?? '';
   }
 
   // ─── Rutas asignadas ──────────────────────────────────────────────────────
@@ -295,9 +308,9 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
     return filas.filter((f) => {
       for (const col of this.columnasRuta) {
         if (col.clave === exceptoClave) continue;
-        const valor = (this.filtrosRuta[col.clave] || '').trim();
-        if (!valor) continue;
-        if (String(f[col.clave] ?? '').trim() !== valor) return false;
+        const valores = this.filtrosRuta[col.clave] ?? [];
+        if (!valores.length) continue;
+        if (!valores.includes(String(f[col.clave] ?? '').trim())) return false;
       }
       return true;
     });
@@ -393,32 +406,54 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
       : this.columnaFiltradaPendiente(this.filtroAbierto);
   }
 
-  /** Valor activo del panel abierto, para marcar la opción seleccionada. */
+  /** ¿Está marcado este valor en el panel abierto? */
   valorPanel(opcion: string): boolean {
     if (!this.filtroAbierto) return false;
-    const actual =
+    const actuales =
       this.filtroTabla === 'rutas'
         ? this.filtrosRuta[this.filtroAbierto]
         : this.filtrosPendiente[this.filtroAbierto];
-    return actual === opcion;
+    return (actuales ?? []).includes(opcion);
   }
 
-  aplicarFiltro(clave: string, valor: string): void {
+  /**
+   * Marca o desmarca un valor del panel, que admite varios a la vez.
+   *
+   * El panel NO se cierra al marcar: elegir tres cadenas serían tres viajes de
+   * abrir y cerrar. Se cierra al pulsar fuera, con Escape o al hacer scroll.
+   */
+  alternarValor(clave: string, valor: string): void {
+    const filtros = this.filtroTabla === 'rutas' ? this.filtrosRuta : this.filtrosPendiente;
+    const actuales = filtros[clave] ?? [];
+    filtros[clave] = actuales.includes(valor)
+      ? actuales.filter((v) => v !== valor)
+      : [...actuales, valor];
+    this.aplicarFiltro(clave, filtros[clave]);
+  }
+
+  /** «(Todos)»: quita el filtro de esa columna. */
+  aplicarFiltro(clave: string, valores: string[]): void {
     if (this.filtroTabla === 'rutas') {
-      this.filtrosRuta[clave] = valor;
-      this.filtroAbierto = null;
-      this.desconectarScroll();
+      this.filtrosRuta[clave] = valores;
       this.recalcularOpcionesRuta();
+      if (this.rutasVista === 'mapa' && this.modoMapaRuta === 'recorrido') {
+        this.asegurarJornadaUnica();
+      }
       return;
     }
-    this.filtroAbierto = null;
-    this.desconectarScroll();
-    this.cambiarFiltroPendiente(clave, valor);
+    this.cambiarFiltroPendiente(clave, valores);
+  }
+
+  /** Quita el filtro de la columna del panel y lo cierra. */
+  quitarFiltroPanel(): void {
+    if (!this.filtroAbierto) return;
+    this.aplicarFiltro(this.filtroAbierto, []);
+    this.cerrarFiltro();
   }
 
   /** ¿Esta columna tiene filtro puesto? Para marcar su botón. */
   columnaFiltrada(clave: string): boolean {
-    return (this.filtrosRuta[clave] || '').trim().length > 0;
+    return (this.filtrosRuta[clave] ?? []).length > 0;
   }
 
   trackFila(index: number, f: FilaRuta): string {
@@ -538,10 +573,10 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   private asegurarJornadaUnica(): void {
     let cambio = false;
     for (const clave of ['fecha', 'dia']) {
-      if ((this.filtrosRuta[clave] || '').trim()) continue;
+      if ((this.filtrosRuta[clave] ?? []).length) continue;
       const primera = (this.opcionesRuta[clave] ?? [])[0];
       if (primera) {
-        this.filtrosRuta[clave] = primera;
+        this.filtrosRuta[clave] = [primera];
         cambio = true;
       }
     }
@@ -559,7 +594,7 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
    * en que interesa ver por dónde va su ruta y dónde hay hueco.
    */
   cambiarFiltroMapa(clave: string, valor: string): void {
-    this.filtrosRuta[clave] = valor;
+    this.filtrosRuta[clave] = valor ? [valor] : [];
     if (clave === 'mercadista' && valor.trim()) {
       this.modoMapaRuta = 'recorrido';
     }
@@ -596,7 +631,7 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
 
   /** ¿Hay algún filtro de columna activo? Para habilitar el botón «Limpiar». */
   get hayFiltrosRuta(): boolean {
-    return this.columnasRuta.some((c) => (this.filtrosRuta[c.clave] || '').trim().length > 0);
+    return this.columnasRuta.some((c) => (this.filtrosRuta[c.clave] ?? []).length > 0);
   }
 
   trackRuta(_index: number, p: PuntoRuta): string {
@@ -648,12 +683,14 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
     return puntos.filter((p) => {
       for (const col of this.columnasPendiente) {
         if (col.clave === exceptoClave) continue;
-        const valor = (this.filtrosPendiente[col.clave] || '').trim();
-        if (!valor) continue;
-        // Los días de visita son varios por punto: basta con que incluya el día.
+        const valores = this.filtrosPendiente[col.clave] ?? [];
+        if (!valores.length) continue;
+        // Los días de visita son varios por punto: basta con que tenga alguno
+        // de los días marcados.
         if (col.clave === 'dias_visita') {
-          if (!(p.dias_visita || []).includes(valor)) return false;
-        } else if (this.valorPendiente(p, col.clave) !== valor) {
+          const dias = p.dias_visita || [];
+          if (!valores.some((v) => dias.includes(v))) return false;
+        } else if (!valores.includes(this.valorPendiente(p, col.clave))) {
           return false;
         }
       }
@@ -690,8 +727,12 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   }
 
   /** Cambio de un filtro de pendientes, venga de arriba o de la cabecera. */
-  cambiarFiltroPendiente(clave: string, valor: string): void {
-    this.filtrosPendiente[clave] = valor;
+  cambiarFiltroPendiente(clave: string, valores: string[] | string): void {
+    this.filtrosPendiente[clave] = Array.isArray(valores)
+      ? valores
+      : valores
+        ? [valores]
+        : [];
     this.recalcularOpcionesPendiente();
     this.podarFiltrosPendiente();
   }
@@ -704,10 +745,12 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   private podarFiltrosPendiente(): void {
     let cambio = false;
     for (const col of this.columnasPendiente) {
-      const valor = (this.filtrosPendiente[col.clave] || '').trim();
-      if (!valor) continue;
-      if (!(this.opcionesPendiente[col.clave] ?? []).includes(valor)) {
-        this.filtrosPendiente[col.clave] = '';
+      const valores = this.filtrosPendiente[col.clave] ?? [];
+      if (!valores.length) continue;
+      const posibles = this.opcionesPendiente[col.clave] ?? [];
+      const validos = valores.filter((v) => posibles.includes(v));
+      if (validos.length !== valores.length) {
+        this.filtrosPendiente[col.clave] = validos;
         cambio = true;
       }
     }
@@ -715,7 +758,14 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   }
 
   columnaFiltradaPendiente(clave: string): boolean {
-    return (this.filtrosPendiente[clave] || '').trim().length > 0;
+    return (this.filtrosPendiente[clave] ?? []).length > 0;
+  }
+
+  /** Resumen del filtro de una columna, para el tooltip de su botón. */
+  resumenFiltro(filtros: Record<string, string[]>, clave: string): string {
+    const valores = filtros[clave] ?? [];
+    if (!valores.length) return '';
+    return valores.length <= 3 ? valores.join(', ') : `${valores.length} valores`;
   }
 
   /** Visitas del mes que sí están colocadas, sobre las que le tocan. */
@@ -754,7 +804,7 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
   /** ¿Hay algún filtro puesto en la tarjeta de pendientes? */
   get hayFiltrosPendiente(): boolean {
     return this.columnasPendiente.some(
-      (c) => (this.filtrosPendiente[c.clave] || '').trim().length > 0,
+      (c) => (this.filtrosPendiente[c.clave] ?? []).length > 0,
     );
   }
 

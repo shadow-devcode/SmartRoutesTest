@@ -184,10 +184,12 @@
               <option value="zona">Por zona</option>
               <option value="ciudad">Por ciudad</option>
               <option value="cadena">Por cadena</option>
+              <option value="canal">Por canal</option>
             </select>
           </label>
 
-          <!-- Canal: solo repartiendo por cadena y si el archivo lo trae -->
+          <!-- Canal: solo repartiendo por cadena, para acotar qué cadenas se
+               ofrecen. Repartiendo por canal se eligen abajo directamente. -->
           <label class="config-fila" *ngIf="tipoCarga === 'cadena' && hayCanales">
             <span class="config-fila__label">Canal</span>
             <select
@@ -203,13 +205,16 @@
 
 
           </div>
-        <!-- Cadenas: una o varias. Solo se planifican las marcadas. -->
-        <div class="cadenas" *ngIf="tipoCarga === 'cadena' && hayCanales">
+        <!-- Cadenas o canales, según el reparto: una o varias. Solo se
+             planifica lo marcado. -->
+        <div
+          class="cadenas"
+          *ngIf="(tipoCarga === 'cadena' || tipoCarga === 'canal') && hayCanales">
           <div class="cadenas__cabecera">
             <span class="config-fila__label">
-              Cadenas a planificar
+              {{ etiquetaAlcance }}
               <span class="cadenas__conteo" *ngIf="cadenasSeleccionadas.length">
-                · {{ cadenasSeleccionadas.length }} de {{ cadenasDisponibles.length }}
+                · {{ cadenasSeleccionadas.length }} de {{ opcionesAlcance.length }}
               </span>
             </span>
             <div class="cadenas__acciones">
@@ -217,7 +222,7 @@
                 type="button"
                 class="cadenas__accion"
                 (click)="marcarTodasLasCadenas()"
-                [disabled]="cadenasSeleccionadas.length === cadenasDisponibles.length">
+                [disabled]="cadenasSeleccionadas.length === opcionesAlcance.length">
                 Todas
               </button>
               <button
@@ -234,7 +239,7 @@
             <button
               type="button"
               class="cadena-chip"
-              *ngFor="let cadena of cadenasDisponibles"
+              *ngFor="let cadena of opcionesAlcance"
               [class.cadena-chip--on]="cadenaElegida(cadena)"
               [attr.aria-pressed]="cadenaElegida(cadena)"
               (click)="alternarCadena(cadena)">
@@ -246,8 +251,9 @@
           </div>
 
           <p class="cadenas__ayuda" *ngIf="faltaElegirCadenas">
-            Marca al menos una cadena. Solo se calcularán rutas para las cadenas
-            elegidas; los puntos de las demás quedan fuera de esta ejecución.
+            Marca al menos {{ tipoCarga === 'canal' ? 'un canal' : 'una cadena' }}.
+            Solo se calcularán rutas para lo elegido; el resto de los puntos queda
+            fuera de esta ejecución.
           </p>
         </div>
 
@@ -300,6 +306,10 @@
         <p class="config-alerta" *ngIf="tipoCarga === 'cadena' && !tieneColumnaCadena">
           ⚠️ El Excel cargado no trae la columna <strong>CADENA</strong>: el procesamiento se
           detendrá con un error. Añádela al final o elige otro tipo de carga.
+        </p>
+        <p class="config-alerta" *ngIf="tipoCarga === 'canal' && !tieneColumnaCanal">
+          ⚠️ El Excel cargado no trae la columna <strong>canal</strong>: el procesamiento se
+          detendrá con un error. Añádela (Moderno, TRADICIONAL…) o elige otro tipo de carga.
         </p>
 
         <p class="execute-note">

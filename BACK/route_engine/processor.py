@@ -37,6 +37,7 @@ from route_engine.fleet_packing import planificar_flota_por_capacidad, resumen_p
 from route_engine.load_grouping import (
     ETIQUETAS,
     TIPO_CADENA,
+    TIPO_CANAL,
     TIPO_ZONA,
     normalizar_tipo_carga,
     resumen_grupos,
@@ -604,11 +605,12 @@ def _procesar_minoristas(
     # Recorte por canal y cadenas: se hace aquí, antes de expandir frecuencias
     # y de dimensionar la flota, para que todo lo que viene después (plantilla,
     # rutas, pendientes, porcentajes) hable solo de lo que se pidió planificar.
-    if normalizar_tipo_carga(tipo_carga) == TIPO_CADENA and (canal or cadenas):
+    if normalizar_tipo_carga(tipo_carga) in (TIPO_CADENA, TIPO_CANAL) and (canal or cadenas):
         df, descartadas = filtrar_por_canal_y_cadenas(df, canal or "", cadenas or [])
+        canal_txt = ", ".join(canal) if isinstance(canal, (list, tuple)) else (canal or "todos")
         etiqueta = ", ".join(cadenas) if cadenas else "todas las cadenas"
         print(
-            f"      -> Alcance: canal '{canal or 'todos'}' · {etiqueta} "
+            f"      -> Alcance: canal '{canal_txt}' · {etiqueta} "
             f"-> {len(df)} ubicación(es); {descartadas} fuera del alcance"
         )
         if df.empty:
@@ -725,7 +727,7 @@ def _procesar_minoristas(
     )
     state.tipo_carga = tipo_carga_norm
     # Alcance de la ejecución, para que quede escrito en el Excel resultante.
-    state.canal = canal or ""
+    state.canal = (", ".join(canal) if isinstance(canal, (list, tuple)) else canal) or ""
     state.cadenas = list(cadenas or [])
     mercadistas_plan = state.mercadistas_plan
 

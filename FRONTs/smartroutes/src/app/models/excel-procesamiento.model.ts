@@ -97,8 +97,11 @@ export type MinutosJornada = 480 | 400;
  *   el Excel traiga una columna CADENA (CORAL, FAVORITA, ROSADO, SANTA MARIA,
  *   TIA, TRADICIONAL...). Es una regla estricta: quien empieza con una cadena
  *   no puede recibir puntos de ninguna otra.
+ * - `canal`  — la misma regla un escalón más arriba: cada mercaderista atiende
+ *   un solo canal (columna `canal`: Moderno, TRADICIONAL...). Quien lleva el
+ *   canal moderno puede visitar CORAL y TIA, pero no la tienda de barrio.
  */
-export type TipoCarga = 'zona' | 'ciudad' | 'cadena';
+export type TipoCarga = 'zona' | 'ciudad' | 'cadena' | 'canal';
 
 /** Resultado de la validación local del archivo antes de subirlo. */
 export interface ValidacionArchivo {

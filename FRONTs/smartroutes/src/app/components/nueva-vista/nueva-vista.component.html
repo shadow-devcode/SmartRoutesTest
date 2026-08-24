@@ -386,7 +386,12 @@
       <div class="card-header-flex">
         <h2>🗺️ Provincias por mercadista (% del total)</h2>
         <div class="card-filtro-inline">
-          <label for="filtro-provincia-resumen">Filtrar por Provincia:</label>
+          <label for="filtro-mercadista-resumen">Mercaderista:</label>
+          <select id="filtro-mercadista-resumen" [(ngModel)]="filtroMercadista" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option *ngFor="let m of mercadistas" [value]="m">{{ m }}</option>
+          </select>
+          <label for="filtro-provincia-resumen">Provincia:</label>
           <select id="filtro-provincia-resumen" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">
             <option value="">Todas las provincias</option>
             <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>

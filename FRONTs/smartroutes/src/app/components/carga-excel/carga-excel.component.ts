@@ -239,7 +239,12 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.tipoCarga = tipo;
     // El alcance por canal y cadenas es propio de "por cadena": al salir de ese
     // tipo se olvida, para no arrastrar un recorte que ya no se ve en pantalla.
-    if (tipo !== 'cadena') {
+    if (tipo !== 'cadena' && tipo !== 'canal') {
+      this.canal = '';
+      this.cadenasSeleccionadas = [];
+    } else {
+      // Al saltar entre "por cadena" y "por canal" cambian los valores que se
+      // marcan (cadenas frente a canales): lo elegido antes ya no aplica.
       this.canal = '';
       this.cadenasSeleccionadas = [];
     }
@@ -249,6 +254,19 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   /** Canales presentes en el archivo, en el orden en que llegan del servidor. */
   get canalesDisponibles(): string[] {
     return Object.keys(this.canales);
+  }
+
+  /**
+   * Lo que se ofrece marcar según el reparto: repartiendo por canal son los
+   * canales; por cadena, las cadenas del canal elegido. Es la misma mecánica de
+   * chips, cambia el nivel.
+   */
+  get opcionesAlcance(): string[] {
+    return this.tipoCarga === 'canal' ? this.canalesDisponibles : this.cadenasDisponibles;
+  }
+
+  get etiquetaAlcance(): string {
+    return this.tipoCarga === 'canal' ? 'Canales a planificar' : 'Cadenas a planificar';
   }
 
   /** Cadenas del canal elegido; sin canal, las de todo el archivo. */
@@ -281,7 +299,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   }
 
   marcarTodasLasCadenas(): void {
-    this.cadenasSeleccionadas = [...this.cadenasDisponibles];
+    this.cadenasSeleccionadas = [...this.opcionesAlcance];
     this.cdr.markForCheck();
   }
 
@@ -301,7 +319,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
    */
   get faltaElegirCadenas(): boolean {
     return (
-      this.tipoCarga === 'cadena' &&
+      (this.tipoCarga === 'cadena' || this.tipoCarga === 'canal') &&
       this.hayCanales &&
       this.cadenasSeleccionadas.length === 0
     );
@@ -310,6 +328,11 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   /** True si el Excel cargado trae la columna CADENA (necesaria para ese tipo). */
   get tieneColumnaCadena(): boolean {
     return this.columnas.some((c) => c.trim().toLowerCase().includes('cadena'));
+  }
+
+  /** True si el Excel trae la columna `canal` (necesaria para repartir por canal). */
+  get tieneColumnaCanal(): boolean {
+    return this.columnas.some((c) => c.trim().toLowerCase().includes('canal'));
   }
 
   seleccionarMinutosJornada(minutos: MinutosJornada): void {

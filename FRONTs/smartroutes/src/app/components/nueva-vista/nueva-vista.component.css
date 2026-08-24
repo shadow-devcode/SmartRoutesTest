@@ -312,7 +312,16 @@
 .card-filtro-inline {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+}
+
+/* Con dos filtros y el botón, la cabecera se queda sin sitio en pantallas
+   medianas: los desplegables se encogen antes que desbordar. */
+.card-filtro-inline select {
+  min-width: 0;
+  max-width: 14rem;
 }
 
 .card-filtro-inline label {

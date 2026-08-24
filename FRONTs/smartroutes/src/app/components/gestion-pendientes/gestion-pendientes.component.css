@@ -682,7 +682,27 @@
   border-radius: 8px;
 }
 
+/* Casilla de marcado: el panel admite varios valores a la vez. */
+.gp-filtro-check {
+  display: inline-block;
+  width: 1rem;
+  flex-shrink: 0;
+  color: var(--brand-to);
+  font-weight: 700;
+}
+
+.gp-filtro-panel__pista {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 .gp-filtro-opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   width: 100%;
   text-align: left;
   border: none;

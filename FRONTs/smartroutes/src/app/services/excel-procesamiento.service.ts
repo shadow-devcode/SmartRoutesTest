@@ -79,11 +79,14 @@ export class ExcelProcesamientoService {
       minutos_jornada_dia: minutosJornadaDia,
       tipo_carga: tipoCarga,
     };
-    // Alcance por canal y cadenas: solo se manda repartiendo por cadena, que es
-    // donde el formulario lo ofrece.
+    // Alcance: repartiendo por cadena se manda el canal y las cadenas; por
+    // canal, la lista de canales. En los demás repartos no se manda nada,
+    // porque el formulario tampoco lo ofrece.
     if (tipoCarga === 'cadena') {
       if (canal) body['canal'] = canal;
       if (cadenas.length) body['cadenas'] = cadenas;
+    } else if (tipoCarga === 'canal') {
+      if (cadenas.length) body['canales'] = cadenas;
     }
     if (displayName && displayName.trim().length > 0) {
       body['display_name'] = displayName.trim();

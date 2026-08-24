@@ -266,6 +266,14 @@ def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
             cadena_col = cname_real
             break
 
+    # Canal comercial (Moderno / TRADICIONAL). Lo usa el reparto "por canal",
+    # que aplica la misma barrera que el de cadena un escalón más arriba.
+    canal_col = None
+    for cname_lower, cname_real in columnas_lower.items():
+        if "canal" in cname_lower:
+            canal_col = cname_real
+            break
+
     # Ciudad declarada en el Excel (p. ej. "CIUDAD DEL PDV"). Tiene prioridad
     # sobre la ciudad deducida por geocodificación inversa: si el negocio la
     # escribe, es la que manda para agrupar por ciudad.
@@ -352,6 +360,11 @@ def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
             v = row.get(cadena_col)
             cadena_punto = "" if (v is None or pd.isna(v)) else str(v).strip().upper()
 
+        canal_punto = ""
+        if canal_col:
+            v = row.get(canal_col)
+            canal_punto = "" if (v is None or pd.isna(v)) else str(v).strip().upper()
+
         ciudad_punto = ""
         if ciudad_col:
             v = row.get(ciudad_col)
@@ -374,6 +387,7 @@ def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
             "provincia_punto": provincia_punto,
             "localidad_punto": localidad_punto,
             "cadena_punto": cadena_punto,
+            "canal_punto": canal_punto,
             "ciudad_punto": ciudad_punto,
             "frecuencia_mes": frecuencia_original,
         }
@@ -880,9 +894,22 @@ def resumen_canales(df) -> dict:
     }
 
 
-def filtrar_por_canal_y_cadenas(df, canal: str = "", cadenas=None):
+def _conjunto_normalizado(valor) -> set:
+    """Uno o varios valores de texto, en mayúsculas y sin espacios sobrantes."""
+    if valor is None:
+        return set()
+    if isinstance(valor, str):
+        valor = [valor]
+    return {str(v).strip().upper() for v in valor if str(v).strip()}
+
+
+def filtrar_por_canal_y_cadenas(df, canal="", cadenas=None):
     """
-    Deja en el DataFrame solo los puntos del canal y las cadenas elegidas.
+    Deja en el DataFrame solo los puntos de los canales y cadenas elegidos.
+
+    `canal` admite uno o varios: repartiendo por cadena se elige un canal y
+    dentro de él las cadenas; repartiendo por canal se eligen directamente los
+    canales que entran.
 
     Es un recorte del ALCANCE de la ejecución, no una regla de reparto: los
     puntos que quedan fuera no se procesan ni aparecen como pendientes, porque
@@ -891,17 +918,17 @@ def filtrar_por_canal_y_cadenas(df, canal: str = "", cadenas=None):
 
     Devuelve (df_filtrado, descartadas).
     """
-    seleccion = {str(c).strip().upper() for c in (cadenas or []) if str(c).strip()}
-    canal_norm = str(canal or "").strip().upper()
-    if not seleccion and not canal_norm:
+    canales = _conjunto_normalizado(canal)
+    seleccion = _conjunto_normalizado(cadenas)
+    if not canales and not seleccion:
         return df, 0
 
     col_canal = columna_canal(df)
     col_cadena = columna_cadena(df)
 
     mascara = pd.Series(True, index=df.index)
-    if canal_norm and col_canal is not None:
-        mascara &= df[col_canal].map(lambda v: _texto_celda(v).upper() == canal_norm)
+    if canales and col_canal is not None:
+        mascara &= df[col_canal].map(lambda v: _texto_celda(v).upper() in canales)
     if seleccion and col_cadena is not None:
         mascara &= df[col_cadena].map(lambda v: _texto_celda(v).upper() in seleccion)
 

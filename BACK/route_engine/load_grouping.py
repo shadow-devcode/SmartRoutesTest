@@ -13,6 +13,10 @@ persona, por muy cerca que estén y por mucho hueco que sobre.
             (columna CADENA del Excel: CORAL, FAVORITA, ROSADO, SANTA MARIA,
             TIA, TRADICIONAL...). Regla estricta pedida por negocio: si alguien
             empieza con TRADICIONAL, no puede tener puntos de ninguna otra.
+  canal   — un mercaderista atiende puntos de UN solo canal comercial (columna
+            `canal` del Excel: Moderno, TRADICIONAL...). Es la misma regla que
+            la de cadena pero un escalón más arriba: quien lleva el canal
+            moderno puede visitar CORAL y TIA, pero no la tienda de barrio.
 
 La geografía sigue aplicando SIEMPRE. Agrupar por cadena sin límite de distancia
 produciría un mercaderista con puntos de TIA en Quito y en Machala; lo que hace
@@ -24,13 +28,15 @@ from __future__ import annotations
 TIPO_ZONA = "zona"
 TIPO_CIUDAD = "ciudad"
 TIPO_CADENA = "cadena"
+TIPO_CANAL = "canal"
 
-TIPOS_CARGA = (TIPO_ZONA, TIPO_CIUDAD, TIPO_CADENA)
+TIPOS_CARGA = (TIPO_ZONA, TIPO_CIUDAD, TIPO_CADENA, TIPO_CANAL)
 
 ETIQUETAS = {
     TIPO_ZONA: "por zona geográfica",
     TIPO_CIUDAD: "por ciudad",
     TIPO_CADENA: "por cadena",
+    TIPO_CANAL: "por canal",
 }
 
 # Valor usado cuando la fila no trae el dato. No se mezcla con las demás: si
@@ -53,6 +59,8 @@ def clave_grupo(inst, tipo_carga: str) -> str | None:
         return str(inst.get("ciudad_punto") or "").strip().upper() or SIN_DATO
     if tipo_carga == TIPO_CADENA:
         return str(inst.get("cadena_punto") or "").strip().upper() or SIN_DATO
+    if tipo_carga == TIPO_CANAL:
+        return str(inst.get("canal_punto") or "").strip().upper() or SIN_DATO
     return None
 
 
@@ -80,7 +88,10 @@ def validar_datos_suficientes(visit_instances, tipo_carga: str) -> str | None:
     if tipo_carga == TIPO_ZONA or not visit_instances:
         return None
 
-    campo = "cadena_punto" if tipo_carga == TIPO_CADENA else "ciudad_punto"
+    campo = {
+        TIPO_CADENA: "cadena_punto",
+        TIPO_CANAL: "canal_punto",
+    }.get(tipo_carga, "ciudad_punto")
     # "SIN_PROVINCIA" es el relleno que deja el motor cuando no pudo deducir la
     # ubicación: cuenta como ausencia de dato, no como una ciudad. Sin esto,
     # repartir "por ciudad" sin geocodificación disponible metía los 4.817
@@ -99,6 +110,12 @@ def validar_datos_suficientes(visit_instances, tipo_carga: str) -> str | None:
             "El archivo no tiene la columna CADENA, necesaria para repartir por "
             "cadena. Añádela al final del Excel (valores como CORAL, FAVORITA, "
             "ROSADO, SANTA MARIA, TIA, TRADICIONAL) o elige otro tipo de carga."
+        )
+    if tipo_carga == TIPO_CANAL:
+        return (
+            "El archivo no tiene la columna `canal`, necesaria para repartir por "
+            "canal. Añádela al Excel (valores como Moderno o TRADICIONAL) o "
+            "elige otro tipo de carga."
         )
     return (
         "El archivo no tiene ciudad en ninguna fila y tampoco se pudo deducir de "

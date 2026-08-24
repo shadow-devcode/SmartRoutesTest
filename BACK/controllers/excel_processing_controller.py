@@ -37,7 +37,7 @@ JORNADAS_PERMITIDAS_MIN = (480, 400)
 
 # Tipos de carga aceptados. Se validan aquí para que un valor inventado no
 # acabe repartiendo el trabajo con un criterio que nadie eligió.
-TIPOS_CARGA_PERMITIDOS = ("zona", "ciudad", "cadena")
+TIPOS_CARGA_PERMITIDOS = ("zona", "ciudad", "cadena", "canal")
 
 
 def _parse_tipo_carga(valor) -> str | None:
@@ -214,11 +214,19 @@ def procesar_excel():
     )
     minutos_jornada = _parse_minutos_jornada(body.get("minutos_jornada_dia"))
     tipo_carga = _parse_tipo_carga(body.get("tipo_carga"))
-    # El alcance por canal/cadenas solo tiene sentido repartiendo por cadena:
-    # aceptarlo en los demás tipos recortaría el archivo sin que el formulario
-    # lo hubiera ofrecido.
-    canal = _parse_canal(body.get("canal")) if tipo_carga == "cadena" else ""
-    cadenas = _parse_cadenas(body.get("cadenas")) if tipo_carga == "cadena" else []
+    # El alcance solo se acepta en los repartos que lo ofrecen en pantalla:
+    # aceptarlo en los demás recortaría el archivo sin que nadie lo hubiera
+    # pedido.
+    if tipo_carga == "cadena":
+        canal = _parse_canal(body.get("canal"))
+        cadenas = _parse_cadenas(body.get("cadenas"))
+    elif tipo_carga == "canal":
+        # Repartiendo por canal se eligen los canales directamente: no hay un
+        # nivel de cadena por debajo que acotar.
+        canal = _parse_cadenas(body.get("canales"))
+        cadenas = []
+    else:
+        canal, cadenas = "", []
 
     output_target, register_ds, uid = _prepare_dataset_output()
 

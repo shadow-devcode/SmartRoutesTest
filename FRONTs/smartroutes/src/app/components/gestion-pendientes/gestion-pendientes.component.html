@@ -76,9 +76,11 @@
               type="button"
               class="gp-select gp-select-btn"
               [class.gp-select-btn--activo]="columnaFiltradaPendiente(f.clave)"
-              [title]="filtrosPendiente[f.clave] || 'Todos'"
+              [title]="resumenFiltro(filtrosPendiente, f.clave) || 'Todos'"
               (click)="alternarFiltro(f.clave, $event, 'pendientes')">
-              <span class="gp-select-btn__texto">{{ filtrosPendiente[f.clave] || 'Todos' }}</span>
+              <span class="gp-select-btn__texto">
+                {{ resumenFiltro(filtrosPendiente, f.clave) || 'Todos' }}
+              </span>
               <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
             </button>
           </div>
@@ -88,7 +90,7 @@
               <span class="gp-filtro-mapa__label">{{ f.etiqueta }}</span>
               <select
                 class="gp-select"
-                [ngModel]="filtrosPendiente[f.clave]"
+                [ngModel]="valorUnico(filtrosPendiente, f.clave)"
                 (ngModelChange)="cambiarFiltroPendiente(f.clave, $event)">
                 <option value="">Todos</option>
                 <option *ngFor="let v of opcionesPendiente[f.clave]" [value]="v">{{ v }}</option>
@@ -119,7 +121,7 @@
                       class="gp-filtro-btn"
                       [class.activo]="columnaFiltradaPendiente(col.clave)"
                       [title]="columnaFiltradaPendiente(col.clave)
-                        ? 'Filtrado por: ' + filtrosPendiente[col.clave]
+                        ? 'Filtrado por: ' + resumenFiltro(filtrosPendiente, col.clave)
                         : 'Filtrar por ' + col.etiqueta"
                       (click)="alternarFiltro(col.clave, $event, 'pendientes')">
                       ▾
@@ -270,7 +272,7 @@
                       class="gp-filtro-btn"
                       [class.activo]="columnaFiltrada(col.clave)"
                       [title]="columnaFiltrada(col.clave)
-                        ? 'Filtrado por: ' + filtrosRuta[col.clave]
+                        ? 'Filtrado por: ' + resumenFiltro(filtrosRuta, col.clave)
                         : 'Filtrar por ' + col.etiqueta"
                       (click)="alternarFiltro(col.clave, $event, 'rutas')">
                       ▾
@@ -316,7 +318,7 @@
             <span class="gp-filtro-mapa__label">{{ f.etiqueta }}</span>
             <select
               class="gp-select"
-              [ngModel]="filtrosRuta[f.clave]"
+              [ngModel]="valorUnico(filtrosRuta, f.clave)"
               (ngModelChange)="cambiarFiltroMapa(f.clave, $event)">
               <option
                 value=""
@@ -434,7 +436,10 @@
       [style.left.px]="filtroPos.x"
       [style.top.px]="filtroPos.y"
       (click)="$event.stopPropagation()">
-      <div class="gp-filtro-panel__titulo">{{ columnaPanel?.etiqueta }}</div>
+      <div class="gp-filtro-panel__titulo">
+        {{ columnaPanel?.etiqueta }}
+        <span class="gp-filtro-panel__pista">Puedes marcar varios</span>
+      </div>
 
       <input
         type="text"
@@ -448,7 +453,8 @@
             type="button"
             class="gp-filtro-opcion"
             [class.activa]="!panelFiltrado"
-            (click)="aplicarFiltro(filtroAbierto, '')">
+            (click)="aplicarFiltro(filtroAbierto, [])">
+            <span class="gp-filtro-check" aria-hidden="true">{{ panelFiltrado ? '' : '✓' }}</span>
             (Todos)
           </button>
         </li>
@@ -458,7 +464,8 @@
             class="gp-filtro-opcion"
             [class.activa]="valorPanel(v)"
             [title]="v"
-            (click)="aplicarFiltro(filtroAbierto, v)">
+            (click)="alternarValor(filtroAbierto, v)">
+            <span class="gp-filtro-check" aria-hidden="true">{{ valorPanel(v) ? '✓' : '' }}</span>
             {{ v }}
           </button>
         </li>
@@ -468,7 +475,7 @@
       <button
         type="button"
         class="btn btn-sm btn-muted gp-filtro-panel__quitar"
-        (click)="aplicarFiltro(filtroAbierto, '')"
+        (click)="quitarFiltroPanel()"
         [disabled]="!panelFiltrado">
         Quitar filtro
       </button>
