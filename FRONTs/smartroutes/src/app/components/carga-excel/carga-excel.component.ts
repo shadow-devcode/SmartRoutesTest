@@ -12,6 +12,7 @@ import { Subscription, finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ExcelProcesamientoService } from '../../services/excel-procesamiento.service';
 import {
+  CanalesArchivo,
   EstadoProcesamiento,
   EtapaCarga,
   ExcelPreviewResponse,
@@ -58,6 +59,17 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   // Cómo se reparte el trabajo entre mercaderistas. 'zona' es el criterio de
   // siempre; 'cadena' exige la columna CADENA en el Excel.
   tipoCarga: TipoCarga = 'zona';
+
+  /**
+   * Canales y cadenas del archivo cargado, tal como vienen en sus columnas
+   * `canal` y `CADENA`. Salen del propio Excel: si mañana hay una cadena nueva
+   * aparece sola, y nunca se ofrece una que este archivo no tiene.
+   */
+  canales: CanalesArchivo = {};
+  /** Canal elegido. Vacío = ninguno todavía. */
+  canal = '';
+  /** Cadenas elegidas dentro del canal. Se puede marcar una o varias. */
+  cadenasSeleccionadas: string[] = [];
 
   // ─── Datos del preview ─────────────────────────────────────────────────────
   columnas: string[] = [];
@@ -135,7 +147,9 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   }
 
   get puedeProcesar(): boolean {
-    return this.etapa === 'preview_listo';
+    // Repartiendo por cadena hay que decir QUÉ cadenas: son las que se van a
+    // planificar, y el resto del archivo queda fuera.
+    return this.etapa === 'preview_listo' && !this.faltaElegirCadenas;
   }
 
   // ─── Drag & Drop ───────────────────────────────────────────────────────────
@@ -189,6 +203,11 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     }
 
     this.columnas = resp.columnas;
+    this.canales = resp.canales ?? {};
+    // Con un solo canal no hay nada que elegir: se preselecciona.
+    const disponibles = Object.keys(this.canales);
+    this.canal = disponibles.length === 1 ? disponibles[0] : '';
+    this.cadenasSeleccionadas = [];
     this.filas = resp.filas;
     this.totalFilas = resp.total_filas;
     this.nombreArchivo = resp.nombre_archivo;
@@ -218,7 +237,74 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
 
   seleccionarTipoCarga(tipo: TipoCarga): void {
     this.tipoCarga = tipo;
+    // El alcance por canal y cadenas es propio de "por cadena": al salir de ese
+    // tipo se olvida, para no arrastrar un recorte que ya no se ve en pantalla.
+    if (tipo !== 'cadena') {
+      this.canal = '';
+      this.cadenasSeleccionadas = [];
+    }
     this.cdr.markForCheck();
+  }
+
+  /** Canales presentes en el archivo, en el orden en que llegan del servidor. */
+  get canalesDisponibles(): string[] {
+    return Object.keys(this.canales);
+  }
+
+  /** Cadenas del canal elegido; sin canal, las de todo el archivo. */
+  get cadenasDisponibles(): string[] {
+    if (this.canal) return this.canales[this.canal] ?? [];
+    const todas = new Set<string>();
+    for (const lista of Object.values(this.canales)) {
+      for (const cadena of lista) todas.add(cadena);
+    }
+    return [...todas].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  seleccionarCanal(canal: string): void {
+    this.canal = canal;
+    // Las cadenas dependen del canal: las que ya no pertenecen se sueltan.
+    const permitidas = new Set(this.cadenasDisponibles);
+    this.cadenasSeleccionadas = this.cadenasSeleccionadas.filter((c) => permitidas.has(c));
+    this.cdr.markForCheck();
+  }
+
+  cadenaElegida(cadena: string): boolean {
+    return this.cadenasSeleccionadas.includes(cadena);
+  }
+
+  alternarCadena(cadena: string): void {
+    this.cadenasSeleccionadas = this.cadenaElegida(cadena)
+      ? this.cadenasSeleccionadas.filter((c) => c !== cadena)
+      : [...this.cadenasSeleccionadas, cadena];
+    this.cdr.markForCheck();
+  }
+
+  marcarTodasLasCadenas(): void {
+    this.cadenasSeleccionadas = [...this.cadenasDisponibles];
+    this.cdr.markForCheck();
+  }
+
+  limpiarCadenas(): void {
+    this.cadenasSeleccionadas = [];
+    this.cdr.markForCheck();
+  }
+
+  /** True cuando el archivo trae canales/cadenas que ofrecer. */
+  get hayCanales(): boolean {
+    return this.canalesDisponibles.length > 0;
+  }
+
+  /**
+   * Falta elegir alcance: se repartió por cadena, el archivo trae cadenas y no
+   * se marcó ninguna. Sin esto se procesaría el archivo entero sin avisar.
+   */
+  get faltaElegirCadenas(): boolean {
+    return (
+      this.tipoCarga === 'cadena' &&
+      this.hayCanales &&
+      this.cadenasSeleccionadas.length === 0
+    );
   }
 
   /** True si el Excel cargado trae la columna CADENA (necesaria para ese tipo). */
@@ -246,6 +332,8 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
         this.modoDesplazamiento,
         this.minutosJornada,
         this.tipoCarga,
+        this.canal,
+        this.cadenasSeleccionadas,
       )
       .subscribe({
         next: (resp) => {
@@ -339,6 +427,9 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.etapa = 'sin_archivo';
     this.errorMensaje = '';
     this.columnas = [];
+    this.canales = {};
+    this.canal = '';
+    this.cadenasSeleccionadas = [];
     this.filas = [];
     this.totalFilas = 0;
     this.nombreArchivo = '';

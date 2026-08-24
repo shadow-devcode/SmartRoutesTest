@@ -528,6 +528,7 @@ def _postprocesar_horarios(horarios_df, visit_instances, state):
     # 6) Orden de columnas
     desired_order = [
         "Mercadista", "Día", "Orden Ruta", "Descripción", "Latitud", "Longitud",
+        "CANAL", "CADENA",
         "PROVINCIA", "CIUDAD", "CALLE",
         "Tiempo Servicio (min)", "Duración (hh:mm)", "Tiempo entre sucursal (min)",
         "kilometros entre sucurlas (km)", "Horario", "Fecha",
@@ -831,6 +832,83 @@ def build_horarios_excel_download_bytes(abs_path: str) -> BytesIO:
     return bio
 
 
+def _indice_canal_cadena(df):
+    """
+    Canal y cadena de cada punto, tal como vienen en el Excel de entrada.
+
+    Se indexa por coordenadas y por descripción: las coordenadas identifican el
+    local sin ambigüedad, y el nombre sirve de respaldo para las filas cuyas
+    coordenadas se corrigieron por el camino. Sin este índice habría que
+    arrastrar los dos campos por todo el motor —asignación, rescate, red de
+    seguridad— para acabar escribiéndolos igual al final.
+    """
+    from route_engine.excel_reader import columna_canal, columna_cadena
+
+    col_canal = columna_canal(df)
+    col_cadena = columna_cadena(df)
+    if col_canal is None and col_cadena is None:
+        return {}, {}
+
+    col_desc = None
+    for candidata in ("DESCRIPCION", "Descripción", "DESCRIPCIÓN", "Descripcion"):
+        if candidata in df.columns:
+            col_desc = candidata
+            break
+
+    por_coord, por_nombre = {}, {}
+    for _, fila in df.iterrows():
+        canal = str(fila.get(col_canal, "") or "").strip() if col_canal else ""
+        cadena = str(fila.get(col_cadena, "") or "").strip().upper() if col_cadena else ""
+        if not canal and not cadena:
+            continue
+        try:
+            clave = (round(float(fila.get("LATITUD")), 6), round(float(fila.get("LONGITUD")), 6))
+            por_coord.setdefault(clave, (canal, cadena))
+        except (TypeError, ValueError):
+            pass
+        if col_desc:
+            nombre = str(fila.get(col_desc, "") or "").strip().upper()
+            if nombre:
+                por_nombre.setdefault(nombre, (canal, cadena))
+    return por_coord, por_nombre
+
+
+def _agregar_canal_cadena(horarios_df, df):
+    """
+    Añade CANAL y CADENA a las filas de horarios, buscándolos por coordenadas y,
+    si no cuadran, por nombre del punto.
+
+    Si el Excel de entrada no trae esas columnas, el DataFrame sale intacto: los
+    archivos antiguos siguen generándose exactamente igual que antes.
+    """
+    if horarios_df.empty:
+        return horarios_df
+
+    por_coord, por_nombre = _indice_canal_cadena(df)
+    if not por_coord and not por_nombre:
+        return horarios_df
+
+    def _buscar(fila):
+        try:
+            clave = (
+                round(float(fila.get("Latitud")), 6),
+                round(float(fila.get("Longitud")), 6),
+            )
+        except (TypeError, ValueError):
+            clave = None
+        dato = por_coord.get(clave) if clave else None
+        if dato is None:
+            nombre = str(fila.get("Descripción", "") or "").strip().upper()
+            dato = por_nombre.get(nombre)
+        return dato or ("", "")
+
+    valores = horarios_df.apply(_buscar, axis=1)
+    horarios_df = horarios_df.copy()
+    horarios_df["CANAL"] = [v[0] for v in valores]
+    horarios_df["CADENA"] = [v[1] for v in valores]
+    return horarios_df
+
+
 def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
     """
     Genera el archivo Excel de salida con las hojas:
@@ -883,6 +961,11 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
         summary["PROVINCIA"] = provincia
         summary["CIUDAD"] = ciudad
         summary["CALLE"] = calle
+
+    # Canal y cadena de cada visita, tomados del Excel de entrada. Se añaden
+    # aquí, sobre el DataFrame ya montado: llevarlos por todo el motor solo para
+    # escribirlos al final no aportaría nada.
+    horarios_df = _agregar_canal_cadena(horarios_df, df)
 
     horarios_df = _postprocesar_horarios(horarios_df, visit_instances, state)
     horarios_df = drop_spurious_total_rows_horarios_df(horarios_df)
@@ -1147,6 +1230,8 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
             incluye_viaje=jornada_incluye_viaje(),
             tipo_ruta=getattr(state, "tipo_ruta", ""),
             tipo_carga=getattr(state, "tipo_carga", "zona"),
+            canal=getattr(state, "canal", ""),
+            cadenas=getattr(state, "cadenas", None),
             max_dia_minutos=cuota_dia(),
             max_mes_minutos=cuota_mes(),
             cuadrilla_fin_semana=len(mercadistas_fin_semana()),

@@ -109,6 +109,8 @@ export class GestionPendientesComponent implements OnInit, OnDestroy {
     { clave: 'dia', etiqueta: 'Día' },
     { clave: 'orden_ruta', etiqueta: 'Orden Ruta', numerica: true },
     { clave: 'descripcion', etiqueta: 'Descripción' },
+    { clave: 'canal', etiqueta: 'CANAL' },
+    { clave: 'cadena', etiqueta: 'CADENA' },
     { clave: 'provincia', etiqueta: 'PROVINCIA' },
     { clave: 'ciudad', etiqueta: 'CIUDAD' },
     { clave: 'tiempo_servicio', etiqueta: 'Tiempo Servicio (min)', numerica: true },

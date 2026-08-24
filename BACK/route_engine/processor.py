@@ -14,6 +14,7 @@ from route_engine.excel_reader import (
     corregir_coordenadas_df,
     crear_instancias_visita,
     determinar_provincias,
+    filtrar_por_canal_y_cadenas,
     inicializar_columnas,
     leer_excel_entrada,
 )
@@ -35,6 +36,7 @@ from route_engine.excel_writer import generar_excel_salida
 from route_engine.fleet_packing import planificar_flota_por_capacidad, resumen_plan
 from route_engine.load_grouping import (
     ETIQUETAS,
+    TIPO_CADENA,
     TIPO_ZONA,
     normalizar_tipo_carga,
     resumen_grupos,
@@ -510,6 +512,8 @@ def procesar_minoristas(
     incluir_tiempo_desplazamiento: Optional[bool] = None,
     minutos_jornada_dia: Optional[int] = None,
     tipo_carga: Optional[str] = None,
+    canal: Optional[str] = None,
+    cadenas: Optional[list] = None,
 ) -> None:
     """Funcion principal de procesamiento de rutas.
 
@@ -535,6 +539,12 @@ def procesar_minoristas(
             'ciudad' -> cada mercaderista atiende una sola ciudad
             'cadena' -> cada mercaderista atiende una sola cadena comercial
                         (columna CADENA del Excel)
+        canal: canal comercial al que se acota la ejecución (columna `canal`
+            del Excel: "Moderno", "TRADICIONAL"...). Vacío = todos.
+        cadenas: cadenas concretas dentro de ese canal. Vacío = todas las del
+            canal. Es un recorte del ALCANCE: los puntos de otras cadenas no se
+            planifican ni se reportan como pendientes, porque no se pidieron.
+            Solo se aplica con tipo_carga='cadena'.
 
     Ambos ajustes se aplican durante toda la ejecución y se restauran al
     terminar, también si el procesamiento falla o se cancela.
@@ -548,6 +558,8 @@ def procesar_minoristas(
             progress_callback=progress_callback,
             tipo_ruta=tipo_ruta,
             tipo_carga=tipo_carga,
+            canal=canal,
+            cadenas=cadenas,
         )
 
 
@@ -557,6 +569,8 @@ def _procesar_minoristas(
     progress_callback: Optional[ProgressCallback] = None,
     tipo_ruta: str = "tiempo_completo",
     tipo_carga: Optional[str] = None,
+    canal: Optional[str] = None,
+    cadenas: Optional[list] = None,
 ) -> None:
     """Cuerpo del procesamiento. Asume el modelo de jornada ya aplicado."""
 
@@ -586,6 +600,23 @@ def _procesar_minoristas(
     print("[1/6] Leyendo archivo de entrada...")
     df = leer_excel_entrada(input_file)
     print(f"      -> {len(df)} ubicaciones encontradas")
+
+    # Recorte por canal y cadenas: se hace aquí, antes de expandir frecuencias
+    # y de dimensionar la flota, para que todo lo que viene después (plantilla,
+    # rutas, pendientes, porcentajes) hable solo de lo que se pidió planificar.
+    if normalizar_tipo_carga(tipo_carga) == TIPO_CADENA and (canal or cadenas):
+        df, descartadas = filtrar_por_canal_y_cadenas(df, canal or "", cadenas or [])
+        etiqueta = ", ".join(cadenas) if cadenas else "todas las cadenas"
+        print(
+            f"      -> Alcance: canal '{canal or 'todos'}' · {etiqueta} "
+            f"-> {len(df)} ubicación(es); {descartadas} fuera del alcance"
+        )
+        if df.empty:
+            raise ValueError(
+                "Ninguna fila del archivo pertenece al canal y las cadenas "
+                "seleccionadas. Revisa la selección o elige otro alcance."
+            )
+        df = df.reset_index(drop=True)
     _notify(10, f"Se encontraron {len(df)} puntos de venta. Clasificando categorías...")
 
     # Asignar categoria
@@ -693,6 +724,9 @@ def _procesar_minoristas(
         propiedad_puntos=propiedad_puntos, tipo_carga=tipo_carga_norm,
     )
     state.tipo_carga = tipo_carga_norm
+    # Alcance de la ejecución, para que quede escrito en el Excel resultante.
+    state.canal = canal or ""
+    state.cadenas = list(cadenas or [])
     mercadistas_plan = state.mercadistas_plan
 
     # Inyectar puntos con coordenadas (0,0) en la lista separada Puntos_Sin_Coordenadas

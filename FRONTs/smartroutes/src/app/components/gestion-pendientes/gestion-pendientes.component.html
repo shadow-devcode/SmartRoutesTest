@@ -285,6 +285,8 @@
                 <td class="gp-nowrap">{{ f.dia }}</td>
                 <td class="gp-num">{{ f.orden_ruta }}</td>
                 <td class="gp-desc" [title]="f.descripcion">{{ f.descripcion }}</td>
+                <td class="gp-nowrap">{{ f.canal || '—' }}</td>
+                <td class="gp-nowrap">{{ f.cadena || '—' }}</td>
                 <td class="gp-loc" [title]="f.provincia">{{ f.provincia || '—' }}</td>
                 <td class="gp-loc" [title]="f.ciudad">{{ f.ciudad || '—' }}</td>
                 <td class="gp-num">{{ f.tiempo_servicio | number:'1.0-0' }}</td>

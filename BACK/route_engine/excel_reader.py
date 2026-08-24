@@ -814,3 +814,96 @@ def lookup_frecuencia_mes(
     if key[1] is None:
         return None
     return freq_index.get(key)
+
+
+# ---------------------------------------------------------------------------
+# CANAL Y CADENA
+# ---------------------------------------------------------------------------
+# El reparto "por cadena" se acota a un canal comercial (moderno o tradicional)
+# y a las cadenas que se elijan dentro de él. Las opciones NO están escritas en
+# el código: se leen del archivo que el usuario acaba de subir, así que una
+# cadena nueva aparece sola y nunca se ofrece una que ese archivo no tiene.
+
+
+def columna_canal(df) -> str | None:
+    """Columna de canal comercial del Excel ('canal', 'CANAL', 'Canal PDV'...)."""
+    for columna in df.columns:
+        if "canal" in str(columna).strip().lower():
+            return columna
+    return None
+
+
+def columna_cadena(df) -> str | None:
+    """Columna de cadena comercial ('CADENA', 'Cadena', 'CADENA COMERCIAL'...)."""
+    for columna in df.columns:
+        if "cadena" in str(columna).strip().lower():
+            return columna
+    return None
+
+
+def _texto_celda(valor) -> str:
+    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+        return ""
+    try:
+        if pd.isna(valor):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return str(valor).strip()
+
+
+def resumen_canales(df) -> dict:
+    """
+    Qué canales trae el archivo y qué cadenas hay dentro de cada uno.
+
+    Devuelve {canal: [cadenas ordenadas]}. Las filas sin canal se agrupan bajo
+    la clave vacía "" para que el front pueda ofrecerlas igualmente en vez de
+    esconderlas: un archivo sin columna `canal` pero con CADENA sigue siendo
+    utilizable, solo que sin ese primer nivel.
+    """
+    col_canal = columna_canal(df)
+    col_cadena = columna_cadena(df)
+    if col_cadena is None:
+        return {}
+
+    canales: dict = {}
+    for _, fila in df.iterrows():
+        cadena = _texto_celda(fila.get(col_cadena)).upper()
+        if not cadena:
+            continue
+        canal = _texto_celda(fila.get(col_canal)) if col_canal else ""
+        canales.setdefault(canal, set()).add(cadena)
+
+    return {
+        canal: sorted(cadenas)
+        for canal, cadenas in sorted(canales.items(), key=lambda kv: kv[0])
+    }
+
+
+def filtrar_por_canal_y_cadenas(df, canal: str = "", cadenas=None):
+    """
+    Deja en el DataFrame solo los puntos del canal y las cadenas elegidas.
+
+    Es un recorte del ALCANCE de la ejecución, no una regla de reparto: los
+    puntos que quedan fuera no se procesan ni aparecen como pendientes, porque
+    no se pidió planificarlos. Comparar en mayúsculas y sin espacios evita que
+    "Santa Maria" y "SANTA MARIA " cuenten como cadenas distintas.
+
+    Devuelve (df_filtrado, descartadas).
+    """
+    seleccion = {str(c).strip().upper() for c in (cadenas or []) if str(c).strip()}
+    canal_norm = str(canal or "").strip().upper()
+    if not seleccion and not canal_norm:
+        return df, 0
+
+    col_canal = columna_canal(df)
+    col_cadena = columna_cadena(df)
+
+    mascara = pd.Series(True, index=df.index)
+    if canal_norm and col_canal is not None:
+        mascara &= df[col_canal].map(lambda v: _texto_celda(v).upper() == canal_norm)
+    if seleccion and col_cadena is not None:
+        mascara &= df[col_cadena].map(lambda v: _texto_celda(v).upper() in seleccion)
+
+    descartadas = int((~mascara).sum())
+    return df[mascara].copy(), descartadas

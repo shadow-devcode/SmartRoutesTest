@@ -3,11 +3,22 @@ export interface FilaExcelPreview {
   [columna: string]: string | number | null;
 }
 
+/**
+ * Canales del archivo con las cadenas que hay dentro de cada uno, tal como
+ * vienen en las columnas `canal` y `CADENA`. La clave vacía agrupa las filas
+ * sin canal declarado.
+ */
+export interface CanalesArchivo {
+  [canal: string]: string[];
+}
+
 /** Respuesta del endpoint /api/preview-excel */
 export interface ExcelPreviewResponse {
   success: boolean;
   columnas: string[];
   filas: FilaExcelPreview[];
+  /** Canales y cadenas presentes en el archivo (solo si trae columna CADENA). */
+  canales?: CanalesArchivo;
   /** Número total de filas en el archivo (puede superar las filas del preview). */
   total_filas: number;
   nombre_archivo: string;

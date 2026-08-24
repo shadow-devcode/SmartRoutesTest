@@ -70,6 +70,8 @@ export class ExcelProcesamientoService {
     modoDesplazamiento: ModoDesplazamiento = 'sin_desplazamiento',
     minutosJornadaDia: MinutosJornada = 480,
     tipoCarga: TipoCarga = 'zona',
+    canal = '',
+    cadenas: string[] = [],
   ): Observable<IniciarProcesamientoResponse> {
     const body: Record<string, any> = {
       tipo_ruta: tipoRuta,
@@ -77,6 +79,12 @@ export class ExcelProcesamientoService {
       minutos_jornada_dia: minutosJornadaDia,
       tipo_carga: tipoCarga,
     };
+    // Alcance por canal y cadenas: solo se manda repartiendo por cadena, que es
+    // donde el formulario lo ofrece.
+    if (tipoCarga === 'cadena') {
+      if (canal) body['canal'] = canal;
+      if (cadenas.length) body['cadenas'] = cadenas;
+    }
     if (displayName && displayName.trim().length > 0) {
       body['display_name'] = displayName.trim();
     }
@@ -175,6 +183,7 @@ export class ExcelProcesamientoService {
       filas: [],
       total_filas: 0,
       nombre_archivo: '',
+      canales: {},
       error: mensaje,
     };
   }

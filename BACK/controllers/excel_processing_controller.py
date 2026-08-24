@@ -46,6 +46,31 @@ def _parse_tipo_carga(valor) -> str | None:
     return texto if texto in TIPOS_CARGA_PERMITIDOS else None
 
 
+def _parse_canal(valor) -> str:
+    """Canal comercial elegido en el formulario. Cadena vacía = todos."""
+    return str(valor or "").strip()[:120]
+
+
+def _parse_cadenas(valor) -> list:
+    """
+    Cadenas elegidas. Se aceptan una o varias; vacío = todas las del canal.
+
+    No se validan contra una lista fija: las cadenas salen del propio Excel, y
+    el motor descarta las que no aparezcan en el archivo. Se acota el tamaño
+    para que un cliente no pueda mandar una lista arbitrariamente larga.
+    """
+    if isinstance(valor, str):
+        valor = [valor]
+    if not isinstance(valor, (list, tuple)):
+        return []
+    limpias = []
+    for item in valor[:50]:
+        texto = str(item or "").strip()[:120]
+        if texto and texto not in limpias:
+            limpias.append(texto)
+    return limpias
+
+
 def _parse_minutos_jornada(valor) -> int | None:
     """Preset de jornada diaria del formulario. None = valor por defecto."""
     if valor is None:
@@ -137,12 +162,23 @@ def preview_excel():
 
         eps.set_pending_input_file(filepath)
 
+        # Canales y cadenas presentes en ESTE archivo: el formulario ofrece
+        # exactamente lo que hay dentro, sin listas escritas en el código.
+        from route_engine.excel_reader import resumen_canales
+
+        try:
+            canales = resumen_canales(df_preview)
+        except Exception as exc:  # un Excel raro no debe tumbar la vista previa
+            log_endpoint_error("POST /api/preview-excel:canales", exc)
+            canales = {}
+
         return jsonify({
             "success": True,
             "columnas": columnas,
             "filas": filas,
             "total_filas": len(df_preview),
             "nombre_archivo": filename,
+            "canales": canales,
         })
     except Exception as exc:
         log_endpoint_error("POST /api/preview-excel", exc)
@@ -178,6 +214,11 @@ def procesar_excel():
     )
     minutos_jornada = _parse_minutos_jornada(body.get("minutos_jornada_dia"))
     tipo_carga = _parse_tipo_carga(body.get("tipo_carga"))
+    # El alcance por canal/cadenas solo tiene sentido repartiendo por cadena:
+    # aceptarlo en los demás tipos recortaría el archivo sin que el formulario
+    # lo hubiera ofrecido.
+    canal = _parse_canal(body.get("canal")) if tipo_carga == "cadena" else ""
+    cadenas = _parse_cadenas(body.get("cadenas")) if tipo_carga == "cadena" else []
 
     output_target, register_ds, uid = _prepare_dataset_output()
 
@@ -193,6 +234,8 @@ def procesar_excel():
         incluir_tiempo_desplazamiento=incluir_desplazamiento,
         minutos_jornada_dia=minutos_jornada,
         tipo_carga=tipo_carga,
+        canal=canal,
+        cadenas=cadenas,
     )
 
     return jsonify({"success": True, "message": "Procesamiento iniciado correctamente."})

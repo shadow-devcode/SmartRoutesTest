@@ -41,6 +41,10 @@ export interface FilaRuta {
   /** Coordenadas de la visita, para agrupar los puntos del mapa. */
   latitud: number | null;
   longitud: number | null;
+  /** Canal comercial del punto (columna `canal` del Excel de entrada). */
+  canal: string;
+  /** Cadena comercial del punto (columna CADENA). */
+  cadena: string;
   provincia: string;
   ciudad: string;
   calle: string;

@@ -23,6 +23,8 @@ CLAVE_TIPO_CARGA = "tipo_carga"
 CLAVE_MAX_DIA = "max_minutos_dia"
 CLAVE_MAX_MES = "max_minutos_mes"
 CLAVE_CUADRILLA_FIN_SEMANA = "mercaderistas_fin_de_semana"
+CLAVE_CANAL = "canal"
+CLAVE_CADENAS = "cadenas"
 
 _COL_PARAMETRO = "Parámetro"
 _COL_VALOR = "Valor"
@@ -40,6 +42,8 @@ def build_config_procesamiento_df(
     max_mes_minutos: int,
     hora_fin_minutos: int,
     cuadrilla_fin_semana: int = 0,
+    canal: str = "",
+    cadenas=None,
 ) -> pd.DataFrame:
     """Hoja de metadatos: cómo se calculó este Excel."""
     modelo = (
@@ -66,6 +70,17 @@ def build_config_procesamiento_df(
             CLAVE_MAX_MES,
             str(int(max_mes_minutos)),
             "Cuota mensual por mercaderista (100% de ocupación).",
+        ),
+        (
+            CLAVE_CANAL,
+            str(canal or "todos"),
+            "Canal comercial al que se acotó la ejecución.",
+        ),
+        (
+            CLAVE_CADENAS,
+            ", ".join(cadenas) if cadenas else "todas",
+            "Cadenas planificadas. Los puntos de otras cadenas quedaron fuera "
+            "del alcance de esta ejecución.",
         ),
         (
             CLAVE_CUADRILLA_FIN_SEMANA,

@@ -411,6 +411,10 @@ def resumen_rutas(
                 # columna valen igual para la tabla y para el mapa.
                 "latitud": _coord(row.get("Latitud")),
                 "longitud": _coord(row.get("Longitud")),
+                # Canal y cadena solo existen en los Excels generados a partir
+                # de un archivo que los traía; en los antiguos van vacíos.
+                "canal": str(row.get("CANAL") or "").strip(),
+                "cadena": str(row.get("CADENA") or "").strip(),
                 "provincia": str(row.get("PROVINCIA") or "").strip(),
                 "ciudad": str(row.get("CIUDAD") or "").strip(),
                 "calle": str(row.get("CALLE") or "").strip(),

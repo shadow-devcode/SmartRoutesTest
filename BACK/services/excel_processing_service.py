@@ -94,6 +94,8 @@ def _process_file_background(
     incluir_tiempo_desplazamiento: bool | None = None,
     minutos_jornada_dia: int | None = None,
     tipo_carga: str | None = None,
+    canal: str | None = None,
+    cadenas: list | None = None,
 ) -> None:
     """Ejecuta el procesamiento completo en un hilo separado."""
     global _worker_thread
@@ -115,6 +117,8 @@ def _process_file_background(
             incluir_tiempo_desplazamiento=incluir_tiempo_desplazamiento,
             minutos_jornada_dia=minutos_jornada_dia,
             tipo_carga=tipo_carga,
+            canal=canal,
+            cadenas=cadenas,
         )
 
         processing_status["progress"] = 100
@@ -193,6 +197,8 @@ def launch_worker(
     incluir_tiempo_desplazamiento: bool | None = None,
     minutos_jornada_dia: int | None = None,
     tipo_carga: str | None = None,
+    canal: str | None = None,
+    cadenas: list | None = None,
 ) -> None:
     """Lanza el procesamiento en un hilo daemon. El estado se debe haber reseteado antes."""
     thread = threading.Thread(
@@ -207,6 +213,8 @@ def launch_worker(
             "incluir_tiempo_desplazamiento": incluir_tiempo_desplazamiento,
             "minutos_jornada_dia": minutos_jornada_dia,
             "tipo_carga": tipo_carga,
+            "canal": canal,
+            "cadenas": cadenas,
         },
         daemon=True,
     )

@@ -157,8 +157,11 @@
           Elige cómo se calcularán las rutas y ponle un nombre para reconocerlas después.
         </p>
 
-        <!-- Configuración: los cuatro desplegables en una fila. -->
-        <div class="config-form">
+        <!-- La configuración en tres bloques, en el orden en que se decide:
+             qué trabajo entra, cómo se llena la jornada y cómo se llamará. -->
+        <div class="config-grupo">
+          <h3 class="config-grupo__titulo">Qué trabajo entra</h3>
+          <div class="config-form">
           <label class="config-fila">
             <span class="config-fila__label">Asignación de visitas</span>
             <select
@@ -184,6 +187,75 @@
             </select>
           </label>
 
+          <!-- Canal: solo repartiendo por cadena y si el archivo lo trae -->
+          <label class="config-fila" *ngIf="tipoCarga === 'cadena' && hayCanales">
+            <span class="config-fila__label">Canal</span>
+            <select
+              class="config-select"
+              [ngModel]="canal"
+              (ngModelChange)="seleccionarCanal($event)">
+              <option value="">Todos los canales</option>
+              <option *ngFor="let c of canalesDisponibles" [value]="c">
+                {{ c || 'Sin canal' }}
+              </option>
+            </select>
+          </label>
+
+
+          </div>
+        <!-- Cadenas: una o varias. Solo se planifican las marcadas. -->
+        <div class="cadenas" *ngIf="tipoCarga === 'cadena' && hayCanales">
+          <div class="cadenas__cabecera">
+            <span class="config-fila__label">
+              Cadenas a planificar
+              <span class="cadenas__conteo" *ngIf="cadenasSeleccionadas.length">
+                · {{ cadenasSeleccionadas.length }} de {{ cadenasDisponibles.length }}
+              </span>
+            </span>
+            <div class="cadenas__acciones">
+              <button
+                type="button"
+                class="cadenas__accion"
+                (click)="marcarTodasLasCadenas()"
+                [disabled]="cadenasSeleccionadas.length === cadenasDisponibles.length">
+                Todas
+              </button>
+              <button
+                type="button"
+                class="cadenas__accion"
+                (click)="limpiarCadenas()"
+                [disabled]="cadenasSeleccionadas.length === 0">
+                Ninguna
+              </button>
+            </div>
+          </div>
+
+          <div class="cadenas__lista">
+            <button
+              type="button"
+              class="cadena-chip"
+              *ngFor="let cadena of cadenasDisponibles"
+              [class.cadena-chip--on]="cadenaElegida(cadena)"
+              [attr.aria-pressed]="cadenaElegida(cadena)"
+              (click)="alternarCadena(cadena)">
+              <span class="cadena-chip__marca" aria-hidden="true">
+                {{ cadenaElegida(cadena) ? '✓' : '' }}
+              </span>
+              {{ cadena }}
+            </button>
+          </div>
+
+          <p class="cadenas__ayuda" *ngIf="faltaElegirCadenas">
+            Marca al menos una cadena. Solo se calcularán rutas para las cadenas
+            elegidas; los puntos de las demás quedan fuera de esta ejecución.
+          </p>
+        </div>
+
+        </div>
+
+        <div class="config-grupo">
+          <h3 class="config-grupo__titulo">Cómo se llena la jornada</h3>
+          <div class="config-form">
           <label class="config-fila">
             <span class="config-fila__label">Qué consume la jornada</span>
             <select
@@ -206,8 +278,11 @@
             </select>
           </label>
 
+          </div>
         </div>
 
+        <div class="config-grupo">
+          <h3 class="config-grupo__titulo">Cómo se guardará</h3>
         <label class="config-fila config-nombre">
           <span class="config-fila__label">Nombre en el listado</span>
           <input
@@ -220,6 +295,8 @@
           />
         </label>
 
+        </div>
+
         <p class="config-alerta" *ngIf="tipoCarga === 'cadena' && !tieneColumnaCadena">
           ⚠️ El Excel cargado no trae la columna <strong>CADENA</strong>: el procesamiento se
           detendrá con un error. Añádela al final o elige otro tipo de carga.
@@ -230,7 +307,7 @@
           varios minutos. No cierres esta ventana.
         </p>
 
-        <button class="btn btn-execute" (click)="ejecutarProcesamiento()">
+        <button class="btn btn-execute" (click)="ejecutarProcesamiento()" [disabled]="!puedeProcesar">
           ▶&nbsp; Ejecutar procesamiento
         </button>
       </div>
