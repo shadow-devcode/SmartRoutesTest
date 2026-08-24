@@ -1,0 +1,538 @@
+<div class="admin-page">
+  <div class="admin-inner">
+    <header class="admin-hero">
+      <p class="admin-eyebrow">Smart Routes</p>
+      <h1 class="admin-title">Gestión de usuarios</h1>
+      <p class="admin-lead">
+        Crea y edita cuentas, asigna roles, enlaza mercadistas del Excel con usuarios y controla quién ve cada
+        ruta en el mapa.
+      </p>
+    </header>
+
+    <section id="crear-usuario" class="admin-card">
+      <div class="admin-card__head">
+        <div class="admin-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="admin-card__title">Crear usuario</h2>
+          <p class="admin-card__desc">
+            Crea cuentas con el rol adecuado. El nombre completo y el correo no pueden repetirse.
+          </p>
+        </div>
+      </div>
+      <form
+        novalidate
+        [formGroup]="createForm"
+        (ngSubmit)="submitCreate()"
+        class="form-grid admin-form"
+      >
+        <label>
+          <span class="admin-label">Nombre completo</span>
+          <input type="text" formControlName="full_name" autocomplete="name" />
+          @if (createForm.get('full_name')?.invalid && createForm.get('full_name')?.touched) {
+            <span class="field-error">El nombre es obligatorio.</span>
+          }
+        </label>
+        <label>
+          <span class="admin-label">Correo electrónico</span>
+          <input type="email" formControlName="email" autocomplete="off" />
+          @if (createForm.get('email')?.invalid && createForm.get('email')?.touched) {
+            <span class="field-error">Introduce un correo válido.</span>
+          }
+        </label>
+        <label>
+          <span class="admin-label">Contraseña</span>
+          <input type="password" formControlName="password" autocomplete="new-password" />
+          <ul class="pw-requisitos" aria-live="polite">
+            <li [class.ok]="pwHasMinLen">Al menos 8 caracteres</li>
+            <li [class.ok]="pwHasUpper">Una letra mayúscula (A-Z)</li>
+            <li [class.ok]="pwHasLower">Una letra minúscula (a-z)</li>
+            <li [class.ok]="pwHasSpecial">Un carácter especial (p. ej. ! # $ % &amp; *)</li>
+          </ul>
+          @if (createForm.get('password')?.invalid && createForm.get('password')?.touched) {
+            <span class="field-error">La contraseña no cumple los requisitos indicados.</span>
+          }
+        </label>
+        <label>
+          <span class="admin-label">Rol</span>
+          @if (auth.isAdmin()) {
+            <select formControlName="role">
+              <option value="USER">Usuario (ruta asignada en mapa)</option>
+              <option value="VISUALIZADOR">Visualizador (mapa completo, solo lectura)</option>
+              <option value="EDITOR">Editor (carga y edición de rutas)</option>
+              <option value="ADMIN">Administrador</option>
+            </select>
+          } @else {
+            <input type="hidden" formControlName="role" />
+            <p class="admin-hint-muted">Como editor solo puedes crear usuarios con rol Usuario.</p>
+          }
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-brand" [disabled]="savingCreate">
+            {{ savingCreate ? 'Creando…' : 'Crear usuario' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    @if (auth.isAdmin()) {
+      <section id="usuarios-por-editor-creador" class="admin-card">
+        <div class="admin-card__head">
+          <div class="admin-card__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="admin-card__title">Usuarios creados por editor</h2>
+            <p class="admin-card__desc">
+              Solo el administrador ve esta tabla. Elige un usuario con rol <strong>Editor</strong> para listar las
+              cuentas que dio de alta desde «Gestión de usuarios». Puedes editarlas o eliminarlas como en la lista
+              general.
+            </p>
+          </div>
+        </div>
+        <div class="admin-form admin-filter-editor-row">
+          <label class="admin-filter-editor-label">
+            <span class="admin-label">Editor</span>
+            <select
+              class="select-ruta select-ruta--light admin-select-wide"
+              name="filtro-editor-creador"
+              [(ngModel)]="editorFiltroCreadorId"
+              (ngModelChange)="cargarUsuariosCreadosPorEditor()"
+            >
+              <option [ngValue]="null">— Selecciona un editor —</option>
+              @for (e of editoresParaFiltroCreador; track e.id) {
+                <option [ngValue]="e.id">{{ etiquetaEditorFiltro(e) }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        @if (editorFiltroCreadorId === null) {
+          <p class="admin-hint-muted">Selecciona un editor para cargar su listado de altas.</p>
+        } @else if (loadingUsuariosPorEditor) {
+          <div class="admin-state">
+            <div class="admin-spinner" aria-hidden="true"></div>
+            <p>Cargando usuarios…</p>
+          </div>
+        } @else if (usuariosCreadosPorEditor.length === 0) {
+          <div class="admin-empty">
+            <p>
+              Este editor no tiene cuentas registradas como creadas por él, o aún no existía el registro de alta
+              cuando se crearon. Las nuevas altas que haga el editor sí quedarán aquí.
+            </p>
+          </div>
+        } @else {
+          <div class="table-wrap table-theme-purple">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Rol</th>
+                  <th>Activo</th>
+                  <th>Alta</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of usuariosCreadosPorEditor; track u.id) {
+                  <tr [class.inactive]="!u.is_active">
+                    <td>{{ u.id }}</td>
+                    <td>{{ u.full_name || '—' }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>
+                      <span class="pill" [class.admin]="u.role === 'ADMIN'">{{ etiquetaRol(u.role) }}</span>
+                    </td>
+                    <td>{{ u.is_active ? 'Sí' : 'No' }}</td>
+                    <td class="admin-cell-muted">{{ u.created_at ?? '—' }}</td>
+                    <td class="row-actions">
+                      <button type="button" class="btn btn-sm btn-table-light" (click)="openEdit(u)">Editar</button>
+                      <button
+                        type="button"
+                        class="btn btn-sm danger btn-table-danger"
+                        [disabled]="deletingId === u.id || tieneRutaAsignada(u)"
+                        [attr.title]="
+                          tieneRutaAsignada(u)
+                            ? 'Quita primero la ruta en «Asignación de Usuario»'
+                            : null
+                        "
+                        (click)="openDeleteConfirm(u)"
+                      >
+                        {{ deletingId === u.id ? '…' : 'Eliminar' }}
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+
+    <section id="asignacion" class="admin-card">
+      <div class="admin-card__head">
+        <div class="admin-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="admin-card__title">Asignación de usuario</h2>
+          <p class="admin-card__desc">
+            Enlaza cada mercadista del Excel con un usuario; al guardar, la columna Mercadista pasa al nombre del
+            usuario. Descarga aquí el archivo tal como está en el servidor.
+          </p>
+        </div>
+      </div>
+      @if (excelContextoAsignacion; as exc) {
+        @if (exc.display_name) {
+          <div class="admin-excel-context-banner" role="status">
+            <span class="admin-excel-context-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="3" y1="15" x2="21" y2="15" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+                <line x1="15" y1="3" x2="15" y2="21" />
+              </svg>
+            </span>
+            <span class="admin-excel-context-text">
+              <span class="admin-excel-context-label">Excel que estás modificando</span>
+              <span class="admin-excel-context-value">{{ exc.display_name }}</span>
+            </span>
+          </div>
+        } @else if (exc.dataset_id != null) {
+          <div class="admin-excel-context-banner admin-excel-context-banner--warn" role="status">
+            <span class="admin-excel-context-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
+            <span class="admin-excel-context-text">
+              <span class="admin-excel-context-label">Excel que estás modificando</span>
+              <span class="admin-excel-context-value">Nombre no disponible en el sistema</span>
+            </span>
+          </div>
+        } @else if (!loadingAsignacion) {
+          <div class="admin-excel-context-banner admin-excel-context-banner--warn" role="status">
+            <span class="admin-excel-context-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
+            <span class="admin-excel-context-text">
+              <span class="admin-excel-context-value">
+                No hay un Excel de rutas activo (admin) o asignado a tu editor. Revisa «Excels / Rutas».
+              </span>
+            </span>
+          </div>
+        }
+      }
+      @if (loadingAsignacion) {
+        <div class="admin-state">
+          <div class="admin-spinner" aria-hidden="true"></div>
+          <p>Cargando mercadistas…</p>
+        </div>
+      } @else if (asignacionRows.length === 0) {
+        <div class="admin-empty">
+          <p>No hay mercadistas en el Excel o falta el archivo en el servidor.</p>
+        </div>
+      } @else {
+        <div class="table-wrap table-theme-purple">
+          <table class="users-table merca-table">
+            <thead>
+              <tr>
+                <th>Mercadista (Excel)</th>
+                <th>Usuario registrado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of asignacionRows; track row.mercadista) {
+                <tr>
+                  <td class="merca-nombre">{{ row.mercadista }}</td>
+                  <td>
+                    <select
+                      class="select-ruta select-ruta--light"
+                      [name]="'merc-' + row.mercadista"
+                      [(ngModel)]="row.user_id"
+                      [disabled]="guardandoMercadista === row.mercadista"
+                    >
+                      <option [ngValue]="null">— Sin asignar —</option>
+                      @for (u of usuariosParaRuta; track u.id) {
+                        <option [ngValue]="u.id">{{ etiquetaUsuario(u) }}</option>
+                      }
+                    </select>
+                  </td>
+                  <td class="row-actions">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-brand"
+                      [disabled]="guardandoMercadista === row.mercadista"
+                      (click)="guardarAsignacionMercadista(row)"
+                    >
+                      {{ guardandoMercadista === row.mercadista ? 'Guardando…' : 'Guardar' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="admin-asignacion-footer">
+          <button
+            type="button"
+            class="btn btn-muted"
+            [disabled]="downloadingHorariosExcel"
+            (click)="descargarExcelHorariosActualizado()"
+          >
+            {{ downloadingHorariosExcel ? 'Descargando…' : 'Descargar Excel actualizado' }}
+          </button>
+          <p class="admin-hint-muted">
+            Mismo formato que «Descargar Excel con rutas»: hoja Horarios_Detalle con filtros en cabecera, fila TOTAL
+            (SUBTOTAL) y el resto de hojas del libro; nombres de usuario ya en «Mercadista».
+          </p>
+        </div>
+      }
+    </section>
+
+    <section id="usuarios-registrados" class="admin-card">
+      <div class="admin-card__head">
+        <div class="admin-card__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="admin-card__title">Usuarios registrados</h2>
+          <p class="admin-card__desc">Edita datos, rol o estado. Para eliminar, primero quita la ruta si el usuario la tiene asignada.</p>
+        </div>
+      </div>
+      @if (loadingList) {
+        <div class="admin-state">
+          <div class="admin-spinner" aria-hidden="true"></div>
+          <p>Cargando usuarios…</p>
+        </div>
+      } @else if (users.length === 0) {
+        <div class="admin-empty">
+          <p>No hay usuarios en el sistema.</p>
+        </div>
+      } @else {
+        <div class="table-wrap table-theme-purple">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Activo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (u of users; track u.id) {
+                <tr [class.inactive]="!u.is_active">
+                  <td>{{ u.id }}</td>
+                  <td>{{ u.full_name || '—' }}</td>
+                  <td>{{ u.email }}</td>
+                  <td>
+                    <span class="pill" [class.admin]="u.role === 'ADMIN'">{{ etiquetaRol(u.role) }}</span>
+                  </td>
+                  <td>{{ u.is_active ? 'Sí' : 'No' }}</td>
+                  <td class="row-actions">
+                    <button type="button" class="btn btn-sm btn-table-light" (click)="openEdit(u)">
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm danger btn-table-danger"
+                      [disabled]="deletingId === u.id || tieneRutaAsignada(u)"
+                      [attr.title]="
+                        tieneRutaAsignada(u)
+                          ? 'Quita primero la ruta en «Asignación de Usuario»'
+                          : null
+                      "
+                      (click)="openDeleteConfirm(u)"
+                    >
+                      {{ deletingId === u.id ? '…' : 'Eliminar' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </div>
+
+  @if (pendingDelete) {
+    <div class="modal-backdrop modal-backdrop-elevated" (click)="closeDeleteConfirm()"></div>
+    <div
+      class="modal modal-surface modal-confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="delete-confirm-title"
+      aria-describedby="delete-confirm-desc"
+    >
+      <div class="modal-icon modal-icon--danger" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+      </div>
+      <h2 id="delete-confirm-title">Eliminar usuario</h2>
+      <p id="delete-confirm-desc" class="confirm-body">
+        ¿Eliminar definitivamente a
+        <strong class="confirm-email">{{ pendingDelete.email }}</strong>? Esta acción no se puede deshacer.
+      </p>
+      <div class="form-actions confirm-actions">
+        <button type="button" class="btn btn-muted" (click)="closeDeleteConfirm()">Cancelar</button>
+        <button type="button" class="btn solid-danger" (click)="confirmDeleteExecute()">Eliminar</button>
+      </div>
+    </div>
+  }
+
+  @if (editingUser) {
+    <div class="modal-backdrop" (click)="closeEdit()"></div>
+    <div class="modal modal-surface" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <h2 id="edit-title">Editar usuario</h2>
+      <form novalidate [formGroup]="editForm" (ngSubmit)="submitEdit()" class="form-grid admin-form">
+        <label>
+          <span class="admin-label">Nombre completo</span>
+          <input type="text" formControlName="full_name" />
+        </label>
+        <label>
+          <span class="admin-label">Correo</span>
+          <input type="email" formControlName="email" />
+        </label>
+        <label>
+          <span class="admin-label">Nueva contraseña (opcional)</span>
+          <input type="password" formControlName="password" autocomplete="new-password" />
+          <span class="admin-hint">
+            Déjala en blanco para no cambiarla. Si la cambias: mínimo 8 caracteres, con
+            mayúscula, minúscula y un carácter especial.
+          </span>
+          @if (editForm.get('password')?.invalid && editForm.get('password')?.touched) {
+            <span class="field-error">La contraseña no cumple los requisitos indicados.</span>
+          }
+        </label>
+        <label>
+          <span class="admin-label">Rol</span>
+          @if (esVistaEditor) {
+            @if (editingUser!.role === 'VISUALIZADOR') {
+              <p class="admin-hint-muted">
+                Este usuario es <strong>visualizador</strong>. El rol solo lo puede cambiar un administrador.
+              </p>
+            } @else {
+              <p class="admin-hint-muted">Rol fijo: <strong>usuario</strong> (no puedes asignar visualizador ni otros roles).</p>
+            }
+            <input type="hidden" formControlName="role" />
+          } @else {
+            <select formControlName="role">
+              <option value="USER">Usuario</option>
+              <option value="VISUALIZADOR">Visualizador</option>
+              @if (auth.isAdmin()) {
+                <option value="EDITOR">Editor</option>
+                <option value="ADMIN">Administrador</option>
+              }
+            </select>
+          }
+        </label>
+        <label
+          class="check"
+          [attr.title]="
+            bloquearDesactivarPorRuta()
+              ? 'Quita primero la ruta en «Asignación de Usuario» para poder desactivar'
+              : null
+          "
+        >
+          <input type="checkbox" formControlName="is_active" (change)="onIsActiveChange()" />
+          <span>Usuario activo</span>
+        </label>
+        @if (bloquearDesactivarPorRuta()) {
+          <p class="admin-hint-muted">
+            Con ruta asignada no se puede desactivar hasta quitar la ruta en «Asignación de Usuario».
+          </p>
+        }
+        <div class="form-actions">
+          <button type="button" class="btn btn-muted" (click)="closeEdit()">Cancelar</button>
+          <button type="submit" class="btn btn-brand" [disabled]="savingEdit">
+            {{ savingEdit ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div
+    class="toast-stack"
+    role="region"
+    aria-label="Notificaciones"
+    aria-live="polite"
+    aria-atomic="false"
+  >
+    @for (t of toasts; track t.id) {
+      <div
+        class="toast"
+        [class.toast--ok]="t.variant === 'success'"
+        [class.toast--err]="t.variant === 'error'"
+        role="status"
+      >
+        <span class="toast-icon" aria-hidden="true">
+          @if (t.variant === 'success') {
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+              <path
+                d="M8 12.5l2.5 2.5L16 9"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+              <path
+                d="M12 8v5M12 16.2h.01"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          }
+        </span>
+        <p class="toast-text">{{ t.message }}</p>
+        <button
+          type="button"
+          class="toast-dismiss"
+          (click)="dismissToast(t.id)"
+          aria-label="Cerrar notificación"
+        >
+          ×
+        </button>
+      </div>
+    }
+  </div>
+</div>

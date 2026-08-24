@@ -1,0 +1,25 @@
+# API Flask
+Flask>=3.0.0
+flask-cors>=4.0.0
+Werkzeug>=3.0.0
+
+# Base de datos
+SQLAlchemy>=2.0.0
+PyMySQL>=1.1.0
+cryptography>=41.0.0
+
+# Autenticación y seguridad
+PyJWT>=2.8.0
+bcrypt>=4.1.0
+python-dotenv>=1.0.0
+
+# Validación
+pydantic>=2.5.0
+email-validator>=2.0.0
+
+# Excel (existente)
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Utilidades
+requests>=2.31.0

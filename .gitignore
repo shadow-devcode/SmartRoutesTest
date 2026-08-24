@@ -1,0 +1,39 @@
+# ─── Dependencias e instalaciones ──────────────────────────────────────────
+venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# ─── Salidas de compilación ────────────────────────────────────────────────
+dist/
+.angular/
+/tmp/
+/out-tsc/
+
+# ─── Secretos ──────────────────────────────────────────────────────────────
+# El .env real (contraseña de BD, JWT_SECRET_KEY) y el environment con el token
+# de Mapbox. En el repo van sus plantillas: .env.example y
+# environment.local.example.ts.
+.env
+.env.local
+src/environments/environment.local.ts
+
+# ─── Datos y salidas del motor ─────────────────────────────────────────────
+# Excels de entrada y los ruteros generados: son datos del negocio, cambian en
+# cada ejecución y no son código.
+data/
+BACK/datasets/
+BACK/uploads/*.xlsx
+BACK/uploads/*.xls
+
+# ─── Registros y temporales ────────────────────────────────────────────────
+*.log
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# ─── Ajustes locales del editor / Claude Code ──────────────────────────────
+.claude/settings.local.json
+.vscode/*
+!.vscode/settings.json
+.idea/

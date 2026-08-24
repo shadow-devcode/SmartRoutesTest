@@ -1,0 +1,657 @@
+<div class="sidebar">
+  <!-- Header -->
+  <div class="sidebar-header">
+    <h2>🗺️ Smart Routes</h2>
+    <p class="subtitle">Sistema de Rutas Inteligentes</p>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="stats-container" *ngIf="estadisticas && !errorApi">
+    <div class="stat-card">
+      <div class="stat-value">{{ (hayFiltroProvincias ? mercadistasVisibles.length : (mercadistas.length || estadisticas.total_mercadistas)) }}</div>
+      <div class="stat-label">{{ soloUnaRutaAsignada ? 'Tu ruta' : 'Mercadistas' }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalUbicaciones  }}</div>
+      <div class="stat-label">Ubicaciones</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalKilometrosRuta | number:'1.0-2' }} Km</div>
+      <div class="stat-label">Kilometros en Ruta</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalTiempoTrabajo | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo de Trabajo</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalTiempoEntreSucursales | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo entre Sucursales</div>
+    </div>
+    <div class="stat-card" [class.stat-card-alerta]="alertaTiempoServicioBajo">
+      <div class="stat-value">{{ totalTiempoTotal | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo Total de Trabajo</div>
+    </div>
+  </div>
+
+  <!-- Alerta tiempo total bajo -->
+  <div class="alerta-tiempo-servicio" *ngIf="alertaTiempoServicioBajo && !errorApi">
+    <span class="alerta-icon">⚠️</span>
+    <span>Tiempo total de trabajo por debajo del mínimo ({{ totalTiempoTotal | number:'1.0-0' }} &lt; {{ umbralTiempoServicio | number:'1.0-0' }} min)</span>
+  </div>
+
+  <!-- Error Estado -->
+  <!-- USER sin ruta asignada (lista vacía con Excel en servidor) -->
+  <div class="sin-datos-state" *ngIf="errorApi && sinDatos && sinRutaAsignada">
+    <div class="sin-datos-icon">👤</div>
+    <h3>No tienes una ruta asignada</h3>
+    <p>Un administrador debe asignarte un mercadista en la sección «Asignación de usuario» de Gestión de usuarios.</p>
+  </div>
+
+  <!-- Sin Excel cargado o sin datos visibles para el rol -->
+  <div class="sin-datos-state" *ngIf="errorApi && sinDatos && !sinRutaAsignada">
+    <div class="sin-datos-icon">📂</div>
+    <h3>No hay rutas generadas</h3>
+    <ng-container *ngIf="auth.isAdmin()">
+      <p>Carga un archivo Excel con las ubicaciones para generar las rutas optimizadas.</p>
+      <a routerLink="/carga-excel" class="btn-cargar-excel">➕ Cargar Excel</a>
+    </ng-container>
+    <ng-container *ngIf="auth.isEditor() && !auth.isAdmin()">
+      <p>
+        Espere a que un administrador le asigne un rutero (Excel de rutas) y lo vincule a su usuario en
+        «Excels / Rutas».
+      </p>
+    </ng-container>
+    <ng-container *ngIf="auth.isVisualizador() && !auth.isAdmin() && !auth.isEditor()">
+      <p>
+        Espere a que un administrador le asigne un rutero (Excel) en «Excels / Rutas», en la sección
+        «Excel por usuario (Editor / Visualizador)», vinculado a su cuenta.
+      </p>
+    </ng-container>
+    <p *ngIf="!auth.isAdmin() && !auth.isEditor() && !auth.isVisualizador()" class="sin-datos-user-hint">
+      Si necesitas datos en el mapa, pide a un administrador que cargue el Excel en el sistema.
+    </p>
+  </div>
+
+  <!-- Error de conexión real -->
+  <div class="error-state" *ngIf="errorApi && !sinDatos">
+    <div class="error-icon">⚠️</div>
+    <h3>No se pudo conectar</h3>
+    <p>Asegúrate de que la API está ejecutándose en <code>{{ apiUrlBase }}</code></p>
+    <p class="error-hint">Si la API corre en otra PC o puerto, edita <code>src/environments/environment.ts</code> y cambia <code>apiUrl</code>.</p>
+    <button class="btn-retry" (click)="reintentar()">
+      🔄 Reintentar
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <p>Cargando datos...</p>
+  </div>
+
+  <!-- Filtros: semana y día -->
+  <div class="filters-stack" *ngIf="!errorApi && !cargando">
+    <article class="filter-card">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Período</span>
+        <h3 class="filter-card__title">Semana</h3>
+        <p class="filter-card__desc">Acota el mapa y el detalle a una semana del período.</p>
+      </header>
+      <div class="chips-row chips-row--wrap" role="group" aria-label="Filtrar por semana">
+        <button
+          type="button"
+          *ngFor="let op of semanasPeriodo"
+          class="filter-chip"
+          [class.filter-chip--active]="semanaActual === op.value"
+          (click)="seleccionarSemana(op.value)">
+          {{ op.label }}
+        </button>
+      </div>
+    </article>
+
+    <article class="filter-card">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Vista</span>
+        <h3 class="filter-card__title">Día de la ruta</h3>
+        <p class="filter-card__desc" *ngIf="mercadistaActual">Mostrar solo las visitas de un día.</p>
+        <p class="filter-card__desc filter-card__desc--muted" *ngIf="!mercadistaActual">Selecciona un mercadista para combinar día y mapa.</p>
+      </header>
+      <div class="chips-row chips-row--wrap" role="group" aria-label="Filtrar por día">
+        <button type="button" class="filter-chip" [class.filter-chip--active]="diaActual === ''" (click)="seleccionarDia('')">Todos los días</button>
+        <button
+          type="button"
+          *ngFor="let dia of diasSemana"
+          class="filter-chip filter-chip--day"
+          [class.filter-chip--active]="diaActual === dia"
+          (click)="seleccionarDia(dia)">
+          {{ dia }}
+        </button>
+      </div>
+    </article>
+
+    <article class="filter-card filter-card--provincias" *ngIf="provinciasDisponibles.length > 0 && !soloUnaRutaAsignada">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Territorio</span>
+        <h3 class="filter-card__title">Provincia</h3>
+        <p class="filter-card__desc">
+          Elige una provincia en el desplegable para acotar la lista de mercadistas, o «Todas las provincias» para verlos todos.
+        </p>
+      </header>
+      <div
+        class="provincias-filter-field provincias-filter-custom"
+        [class.provincias-filter-custom--open]="provinciasDropdownAbierto"
+        #provinciasDdRoot>
+        <span class="provincias-filter-label-text" id="provincias-dd-label">Filtrar por provincia</span>
+        <button
+          type="button"
+          class="provincias-filter-trigger"
+          [class.provincias-filter-trigger--open]="provinciasDropdownAbierto"
+          (click)="toggleProvinciasDropdown($event)"
+          [attr.aria-expanded]="provinciasDropdownAbierto"
+          aria-haspopup="listbox"
+          aria-labelledby="provincias-dd-label"
+          aria-label="Abrir lista de provincias">
+          <span class="provincias-filter-trigger__text">{{ etiquetaProvinciaFiltro }}</span>
+          <span class="provincias-filter-trigger__chevron" aria-hidden="true"></span>
+        </button>
+        <div
+          class="provincias-filter-panel"
+          *ngIf="provinciasDropdownAbierto"
+          role="listbox"
+          aria-labelledby="provincias-dd-label">
+          <button
+            type="button"
+            role="option"
+            class="provincias-filter-option"
+            [class.provincias-filter-option--active]="!provinciaFiltroSelect"
+            (click)="seleccionarProvinciaDropdown('')">
+            Todas las provincias
+          </button>
+          <button
+            type="button"
+            role="option"
+            *ngFor="let prov of provinciasDisponibles"
+            class="provincias-filter-option"
+            [class.provincias-filter-option--active]="provinciaFiltroSelect === prov"
+            (click)="seleccionarProvinciaDropdown(prov)">
+            {{ prov }}
+          </button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Lista de mercadistas / tu ruta -->
+  <div class="section section--routes" *ngIf="!errorApi && !cargando">
+    <article class="filter-card filter-card--routes">
+      <header class="filter-card__head filter-card__head--routes">
+        <div>
+          <span class="filter-card__eyebrow">Rutas</span>
+          <h3 class="filter-card__title">{{ soloUnaRutaAsignada ? 'Tu ruta' : 'Mercadistas' }}</h3>
+        </div>
+      </header>
+      <div class="scope-banner" *ngIf="soloUnaRutaAsignada" role="status">
+        <span class="scope-banner__dot" aria-hidden="true"></span>
+        <span>Solo ves la ruta asignada a tu cuenta.</span>
+      </div>
+
+    <div class="mercadistas-list">
+      <div
+        *ngFor="let mercadista of mercadistasVisibles"
+        class="mercadista-item"
+        [class.active]="mercadistaActual === mercadista"
+        [class.solo-tu-ruta]="soloUnaRutaAsignada"
+        [attr.aria-expanded]="mercadistaActual === mercadista">
+
+        <div
+          class="mercadista-header"
+          (click)="onMercadistaHeaderClick(mercadista)"
+          [class.mercadista-header--solo]="soloUnaRutaAsignada"
+          [attr.role]="soloUnaRutaAsignada ? null : 'button'"
+          [attr.tabindex]="soloUnaRutaAsignada ? null : 0"
+          (keydown)="onMercadistaHeaderKeydown($event, mercadista)">
+          <div
+            class="color-indicator"
+            [style.background-color]="getColorMercadista(mercadista)">
+          </div>
+          <div class="mercadista-header__text">
+            <span class="mercadista-nombre">{{ mercadista }}</span>
+            <span class="mercadista-hint" *ngIf="!soloUnaRutaAsignada && mercadistaActual !== mercadista">Clic para cambiar de mercadista</span>
+            <span class="mercadista-hint mercadista-hint--on" *ngIf="mercadistaActual === mercadista">Visitas por día</span>
+          </div>
+          <button
+            type="button"
+            class="mercadista-chevron-btn"
+            *ngIf="!soloUnaRutaAsignada"
+            (click)="onMercadistaChevronClick(mercadista, $event)"
+            [attr.aria-expanded]="mercadistaActual === mercadista"
+            [attr.aria-label]="mercadistaActual === mercadista ? 'Cerrar ruta' : 'Abrir ruta'">
+            <span class="chevron" [class.chevron--open]="mercadistaActual === mercadista" aria-hidden="true"></span>
+          </button>
+          <span *ngIf="soloUnaRutaAsignada" class="chevron chevron--open" aria-hidden="true"></span>
+        </div>
+
+        <!-- Detalle expandido -->
+        <div class="mercadista-detalle" *ngIf="mercadistaActual === mercadista && detalleActual">
+          <!-- Editar orden de ruta del día (arrastrar y soltar o flechas) -->
+          <div class="ruta-editable" *ngIf="puedeEditarOrdenRuta && diaActual">
+            <div class="ruta-editable-header">
+              <strong>📋 Ruta del día: {{ diaActual }}</strong>
+              <span class="badge">{{ getUbicacionesDia(diaActual).length }} visitas</span>
+            </div>
+            <p class="ruta-editable-hint">
+              <span class="hint-drag">⋮⋮ Arrastra</span> cada visita para reordenar, o usa las flechas ↑↓.
+            </p>
+            <div
+              class="ubicaciones-list ubicaciones-list-drag"
+              cdkDropList
+              [cdkDropListData]="getUbicacionesDia(diaActual)"
+              (cdkDropListDropped)="dropRuta(diaActual, $event)">
+              <div
+                *ngFor="let ubicacion of getUbicacionesDia(diaActual); let i = index"
+                class="ubicacion-item ubicacion-item-editable"
+                cdkDrag>
+                <div class="ubicacion-drag-handle" cdkDragHandle title="Arrastra para reordenar">
+                  <span class="drag-icon">⋮⋮</span>
+                </div>
+                <div class="ubicacion-orden">{{ ubicacion.orden }}</div>
+                <div class="ubicacion-info ubicacion-info--clickable"
+                  (click)="onUbicacionVisitaClick(ubicacion)"
+                  title="Ver este punto en el mapa">
+                  <div class="ubicacion-nombre">{{ ubicacion.descripcion }}</div>
+                  <div class="ubicacion-direccion"
+                    *ngIf="ubicacion.provincia || ubicacion.ciudad || ubicacion.calle"
+                    [title]="(ubicacion.calle || '') + (ubicacion.calle && (ubicacion.ciudad || ubicacion.provincia) ? ', ' : '') + (ubicacion.ciudad || '') + (ubicacion.ciudad && ubicacion.provincia ? ', ' : '') + (ubicacion.provincia || '')">
+                    <svg class="ubicacion-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                    <span class="ubicacion-direccion__text">
+                      <span *ngIf="ubicacion.calle">{{ ubicacion.calle }}</span>
+                      <span *ngIf="ubicacion.ciudad">{{ ubicacion.calle ? ', ' : '' }}{{ ubicacion.ciudad }}</span>
+                      <span *ngIf="ubicacion.provincia">{{ (ubicacion.ciudad || ubicacion.calle) ? ', ' : '' }}{{ ubicacion.provincia }}</span>
+                    </span>
+                  </div>
+                  <div class="ubicacion-meta-row">
+                    <span class="ubicacion-pill" [title]="'Horario: ' + ubicacion.horario">
+                      <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                      {{ ubicacion.horario }}
+                    </span>
+                    <span class="ubicacion-pill" [title]="ubicacion.tiempo_servicio + ' minutos de servicio'">
+                      <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"/></svg>
+                      {{ ubicacion.tiempo_servicio }}m
+                    </span>
+                    <button
+                      type="button"
+                      class="btn-mover-visita btn-mover-visita--inline"
+                      *ngIf="!soloLectura && auth.canEditMapaRutas()"
+                      (click)="abrirModalMover(ubicacion, diaActual); $event.stopPropagation()"
+                      title="Mover a otro día del mismo mercadista o enviar a pendientes">
+                      → Mover
+                    </button>
+                  </div>
+                </div>
+                <div class="ubicacion-reorden">
+                  <button type="button" class="btn-reorden" (click)="moverArriba(diaActual, i); $event.stopPropagation()" [disabled]="i === 0" title="Subir">↑</button>
+                  <button type="button" class="btn-reorden" (click)="moverAbajo(diaActual, i); $event.stopPropagation()" [disabled]="i === getUbicacionesDia(diaActual).length - 1" title="Bajar">↓</button>
+                </div>
+              </div>
+            </div>
+            <div class="ruta-guardar">
+              <button type="button" class="btn-guardar-orden" (click)="guardarOrdenRuta()" [disabled]="guardandoOrden || !puedeGuardarOrdenRuta" title="Guarda el orden en el Excel del servidor">
+                {{ guardandoOrden ? 'Guardando...' : '💾 Guardar orden en el servidor' }}
+              </button>
+              <p class="mensaje-guardar" *ngIf="mensajeGuardarOrden">{{ mensajeGuardarOrden }}</p>
+            </div>
+          </div>
+
+          <div class="dias-detalle" *ngIf="mostrarBloqueDiasSoloLectura">
+            <ng-container *ngFor="let dia of getDiasKeys()">
+            <div
+              *ngIf="!(puedeEditarOrdenRuta && dia === diaActual)"
+              class="dia-detalle">
+              <div class="dia-header">
+                <span class="dia-header__dia">{{ dia }}</span>
+                <span class="dia-header__count">{{ getUbicacionesDia(dia).length }} visitas</span>
+              </div>
+
+              <div class="ubicaciones-list">
+                <div
+                  *ngFor="let ubicacion of getUbicacionesDia(dia)"
+                  class="ubicacion-item">
+                  <div class="ubicacion-orden">{{ ubicacion.orden }}</div>
+                  <div class="ubicacion-info ubicacion-info--clickable"
+                    (click)="onUbicacionVisitaClick(ubicacion)"
+                    title="Ver este punto en el mapa">
+                    <div class="ubicacion-nombre">{{ ubicacion.descripcion }}</div>
+                    <div class="ubicacion-direccion" *ngIf="ubicacion.provincia || ubicacion.ciudad || ubicacion.calle">
+                      <svg class="ubicacion-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                      <span class="ubicacion-direccion__text">
+                        <span *ngIf="ubicacion.calle">{{ ubicacion.calle }}</span>
+                        <span *ngIf="ubicacion.ciudad">{{ ubicacion.calle ? ', ' : '' }}{{ ubicacion.ciudad }}</span>
+                        <span *ngIf="ubicacion.provincia">{{ (ubicacion.ciudad || ubicacion.calle) ? ', ' : '' }}{{ ubicacion.provincia }}</span>
+                      </span>
+                    </div>
+                    <div class="ubicacion-meta-row">
+                      <span class="ubicacion-pill">
+                        <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ ubicacion.horario }}
+                      </span>
+                      <span class="ubicacion-pill">
+                        <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"/></svg>
+                        {{ ubicacion.tiempo_servicio }}m
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+    </article>
+  </div>
+
+  <!-- Sección Pendientes (visitas que el motor no pudo asignar) -->
+  <div class="section section--pendientes" *ngIf="!errorApi && !cargando && !soloLectura && auth.canEditMapaRutas()">
+    <article class="filter-card filter-card--pendientes" [class.filter-card--collapsed]="!panelPendientesAbierto">
+      <header class="filter-card__head filter-card__head--pendientes" (click)="togglePanelPendientes()" role="button" [attr.aria-expanded]="panelPendientesAbierto">
+        <div class="pendientes-head__main">
+          <span class="filter-card__eyebrow">Asignación manual</span>
+          <h3 class="filter-card__title">
+            📌 Pendientes
+            <span class="pendientes-badge" [class.pendientes-badge--zero]="totalPendientes === 0">{{ totalPendientes }}</span>
+          </h3>
+          <p class="filter-card__desc" *ngIf="panelPendientesAbierto && totalPendientes === 0">No hay visitas pendientes en este momento.</p>
+        </div>
+        <span class="chevron" [class.chevron--open]="panelPendientesAbierto" aria-hidden="true"></span>
+      </header>
+
+      <div class="pendientes-content" *ngIf="panelPendientesAbierto">
+        <div class="pendientes-toolbar" *ngIf="totalPendientes > 0">
+          <div class="pendientes-filters-row">
+            <label class="pendientes-filter">
+              <span class="pendientes-filter__label">Buscar por nombre</span>
+              <!-- Mismo desplegable que Provincia y Ciudad -->
+              <select
+                class="pendientes-filter__control"
+                [(ngModel)]="pendienteFiltroNombre"
+                [disabled]="nombresPendientes.length === 0">
+                <option value="">Todos</option>
+                <option *ngFor="let n of nombresPendientes" [value]="n">{{ n }}</option>
+              </select>
+            </label>
+            <button type="button" class="btn-refrescar-pendientes" (click)="cargarPendientes()" [disabled]="cargandoPendientes" title="Recargar lista">
+              {{ cargandoPendientes ? '…' : '↻' }}
+            </button>
+          </div>
+
+          <div class="pendientes-filters-row">
+            <label class="pendientes-filter">
+              <span class="pendientes-filter__label">Provincia</span>
+              <select
+                class="pendientes-filter__control"
+                [ngModel]="pendienteFiltroProvincia"
+                (ngModelChange)="onPendienteFiltroProvinciaChange($event)"
+                [disabled]="provinciasPendientes.length === 0">
+                <option value="">Todas</option>
+                <option *ngFor="let prov of provinciasPendientes" [value]="prov">{{ prov }}</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="pendientes-filters-row">
+            <label class="pendientes-filter">
+              <span class="pendientes-filter__label">Ciudad</span>
+              <select
+                class="pendientes-filter__control"
+                [ngModel]="pendienteFiltroCiudad"
+                (ngModelChange)="onPendienteFiltroCiudadChange($event)"
+                [disabled]="ciudadesPendientes.length === 0">
+                <option value="">Todas</option>
+                <option *ngFor="let c of ciudadesPendientes" [value]="c">{{ c }}</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            class="btn-limpiar-pendientes-filtros"
+            *ngIf="hayFiltroPendientes"
+            (click)="limpiarFiltrosPendientes()"
+            title="Quitar los filtros del panel de pendientes">
+            ↺ Limpiar filtros
+          </button>
+        </div>
+
+        <div class="pendientes-loading" *ngIf="cargandoPendientes && pendientes.length === 0">Cargando…</div>
+
+        <!-- Una tarjeta por punto de venta, con las visitas que le faltan -->
+        <div class="pendientes-list" *ngIf="pendientesAgrupados.length > 0">
+          <div
+            *ngFor="let g of pendientesAgrupados"
+            class="pendiente-item"
+            [class.pendiente-item--active]="grupoActivo(g)"
+            (click)="seleccionarPendiente(g.primera)"
+            role="button"
+            tabindex="0">
+            <div class="pendiente-item__icon" aria-hidden="true">📌</div>
+            <div class="pendiente-item__body">
+              <div class="pendiente-item__title" [attr.title]="g.primera.descripcion">{{ g.primera.descripcion }}</div>
+              <div class="pendiente-item__meta">
+                <span class="pendiente-pill pendiente-pill--freq">{{ etiquetaPendientesGrupo(g) }}</span>
+                <span class="pendiente-pill" *ngIf="g.primera.provincia">{{ g.primera.provincia }}</span>
+                <span class="pendiente-pill" *ngIf="g.primera.ciudad">{{ g.primera.ciudad }}</span>
+                <span class="pendiente-pill pendiente-pill--time" *ngIf="g.primera.tiempo_servicio">{{ g.primera.tiempo_servicio }}m</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn-asignar-pendiente"
+              (click)="abrirModalAsignarPendiente(g.primera); $event.stopPropagation()"
+              [disabled]="mercadistas.length === 0"
+              title="Asignar una visita de este punto a un mercadista">
+              ➕ Asignar
+            </button>
+          </div>
+        </div>
+
+        <p class="pendientes-empty" *ngIf="!cargandoPendientes && pendientesAgrupados.length === 0 && totalPendientes > 0">
+          Ninguna pendiente coincide con el filtro de semana.
+        </p>
+      </div>
+    </article>
+  </div>
+
+  <!-- Restablecer filtros -->
+  <div class="actions" *ngIf="!errorApi && ((soloUnaRutaAsignada && (diaActual !== null || (semanaActual && semanaActual.trim()))) || (!soloUnaRutaAsignada && (mercadistaActual || diaActual !== null || semanaActual || hayFiltroProvincias)))">
+    <button type="button" class="btn-clear" (click)="limpiarFiltros()">
+      <span class="btn-clear__icon" aria-hidden="true">↺</span>
+      Restablecer filtros
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="sidebar-footer">
+    <p *ngIf="soloUnaRutaAsignada">Filtra por semana y día sobre tu ruta asignada.</p>
+    <p *ngIf="!soloUnaRutaAsignada">Combina semana, día y mercadista para enfocar el mapa.</p>
+  </div>
+</div>
+
+<!-- Modal: Mover visita — tarjeta flotante arrastrable desde su header -->
+<aside
+  class="modal-mover-panel-fixed"
+  *ngIf="mostrarModalMover"
+  role="dialog"
+  aria-modal="false"
+  aria-labelledby="modal-mover-titulo"
+  cdkDrag
+  cdkDragBoundary="body">
+
+  <div class="modal-mover-header" cdkDragHandle>
+    <h3 id="modal-mover-titulo">
+      {{ modoAsignarPendiente ? 'Asignar visita pendiente' : 'Mover punto de venta' }}
+    </h3>
+    <button type="button" class="modal-close" (click)="cerrarModalMover()" title="Cerrar" aria-label="Cerrar">×</button>
+  </div>
+
+  <div class="modal-mover-body" *ngIf="visitaSeleccionadaParaMover || pendienteSeleccionadaParaAsignar">
+    <div class="modal-mover-hero">
+      <span class="modal-mover-eyebrow">
+        {{ modoAsignarPendiente ? 'Pendiente seleccionada' : 'Punto seleccionado' }}
+      </span>
+      <p class="modal-visita-nombre" *ngIf="!modoAsignarPendiente && visitaSeleccionadaParaMover">
+        {{ visitaSeleccionadaParaMover.ubicacion.descripcion }}
+      </p>
+      <p class="modal-visita-nombre" *ngIf="modoAsignarPendiente && pendienteSeleccionadaParaAsignar">
+        {{ pendienteSeleccionadaParaAsignar.descripcion }}
+        <span class="pendiente-pill pendiente-pill--freq modal-visita-freq" *ngIf="pendienteSeleccionadaParaAsignar.frecuencia_mes">
+          {{ etiquetaFrecuenciaMes(pendienteSeleccionadaParaAsignar.frecuencia_mes) }}
+        </span>
+      </p>
+    </div>
+    <p class="modal-visita-hint" *ngIf="!modoAsignarPendiente">
+      Solo puedes mover la visita a otro día o semana del mismo mercadista. Para cambiar de mercadista, envíala a pendientes (una visita o todas las del punto).
+    </p>
+    <p class="modal-visita-hint" *ngIf="modoAsignarPendiente">
+      Elige mercadista, día y semana. Si el punto ya tiene visitas en ruta, solo puedes asignarlo a ese mismo mercadista. Si el día supera 480 min combinados, se te avisará antes de guardar.
+    </p>
+    <div class="modal-mover-callout" *ngIf="modoAsignarPendiente && pendienteSeleccionadaParaAsignar?.mercadista_obligatorio" role="note">
+      <span class="modal-mover-callout__dot" aria-hidden="true"></span>
+      <span>Este punto ya pertenece a <strong>{{ etiquetaMercadista(pendienteSeleccionadaParaAsignar!.mercadista_obligatorio!) }}</strong>.</span>
+    </div>
+    <div class="modal-mover-callout" *ngIf="!modoAsignarPendiente && esMoverMismoMercadista" role="note">
+      <span class="modal-mover-callout__dot" aria-hidden="true"></span>
+      <span>Mismo mercadista: la visita pasará al día que elijas.</span>
+    </div>
+    <div class="modal-mover-fields">
+      <div class="modal-field">
+        <label class="modal-field__label" for="mover-destino-semana">Semana destino</label>
+        <select id="mover-destino-semana"
+          [(ngModel)]="moverDestinoSemana"
+          (ngModelChange)="onMoverDestinoChange()"
+          class="modal-field__control">
+          <option *ngFor="let s of semanasParaMover" [value]="s.value">{{ s.label }}</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label class="modal-field__label" for="mover-destino-mercadista">Mercadista destino</label>
+        <select id="mover-destino-mercadista"
+          [(ngModel)]="moverDestinoMercadista"
+          (ngModelChange)="onMoverDestinoChange()"
+          class="modal-field__control">
+          <option *ngFor="let m of mercadistasDestinoModal" [value]="m">{{ etiquetaMercadista(m) }}</option>
+        </select>
+        <p class="modal-field__hint" *ngIf="!modoAsignarPendiente">
+          No se puede elegir otro mercadista; usa «Mover a pendientes» para reasignar el punto.
+        </p>
+      </div>
+      <div class="modal-field">
+        <label class="modal-field__label" for="mover-destino-dia">Día destino</label>
+        <select id="mover-destino-dia"
+          [(ngModel)]="moverDestinoDia"
+          (ngModelChange)="onMoverDestinoChange()"
+          class="modal-field__control">
+          <option *ngFor="let d of diasParaMover" [value]="d">{{ d }}</option>
+        </select>
+      </div>
+      <div class="modal-field modal-field--orden">
+        <label class="modal-field__label" for="mover-destino-orden">Posición en la ruta</label>
+        <p class="modal-field__hint">1 = primera visita del día en destino</p>
+        <input
+          id="mover-destino-orden"
+          type="number"
+          [(ngModel)]="moverDestinoOrden"
+          min="1"
+          max="99"
+          class="modal-field__control modal-field__control--num" />
+      </div>
+    </div>
+    <p class="mensaje-mover mensaje-mover--error" *ngIf="mensajeMover" role="alert">{{ mensajeMover }}</p>
+  </div>
+
+  <div class="modal-mover-footer">
+    <!-- Acciones secundarias: enviar el punto a la bandeja de pendientes -->
+    <div class="modal-mover-acciones modal-mover-acciones--secundarias" *ngIf="!modoAsignarPendiente">
+      <button
+        type="button"
+        class="btn-mover-pendientes"
+        (click)="confirmarMoverAPendientes(false)"
+        [disabled]="guardandoMover"
+        title="Quita esta visita de la ruta y la deja en pendientes">
+        {{ guardandoMover ? 'Enviando…' : 'Mover a pendientes' }}
+      </button>
+      <button
+        type="button"
+        class="btn-mover-pendientes"
+        (click)="confirmarMoverAPendientes(true)"
+        [disabled]="guardandoMover"
+        title="Quita todas las visitas de este punto de venta de la ruta">
+        Todas las visitas del punto
+      </button>
+    </div>
+
+    <!-- Acciones principales: cancelar o confirmar el movimiento -->
+    <div class="modal-mover-acciones modal-mover-acciones--principales">
+      <button type="button" class="btn-cancelar-mover" (click)="cerrarModalMover()">Cancelar</button>
+      <button
+        type="button"
+        class="btn-confirmar-mover"
+        (click)="confirmarMoverVisita()"
+        [disabled]="guardandoMover || !moverDestinoMercadista">
+        <ng-container *ngIf="!modoAsignarPendiente">
+          {{ guardandoMover ? 'Moviendo…' : 'Mover visita' }}
+        </ng-container>
+        <ng-container *ngIf="modoAsignarPendiente">
+          {{ guardandoMover ? 'Asignando…' : 'Asignar pendiente' }}
+        </ng-container>
+      </button>
+    </div>
+  </div>
+
+</aside>
+
+<!-- Ventana flotante: confirmar mover a pendientes (una visita o todas las del punto) -->
+<div
+  class="confirm-overlay"
+  *ngIf="confirmMoverPendientes"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="confirm-pendientes-titulo"
+  (click)="cancelarMoverPendientes()">
+  <div class="confirm-card" (click)="$event.stopPropagation()">
+    <div class="confirm-card__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    </div>
+    <h3 id="confirm-pendientes-titulo" class="confirm-card__title">
+      {{ confirmMoverPendientes!.todas ? 'Mover todas las visitas del punto' : 'Mover visita a pendientes' }}
+    </h3>
+    <p class="confirm-card__text">
+      <ng-container *ngIf="confirmMoverPendientes!.todas; else unaVisita">
+        <ng-container *ngIf="confirmMoverPendientes!.total > 0; else sinConteo">
+          Se moverán <strong>{{ confirmMoverPendientes!.total }}</strong> visita(s) del punto
+          «{{ confirmMoverPendientes!.descripcion }}» a pendientes (todas las semanas).
+        </ng-container>
+        <ng-template #sinConteo>
+          Se moverán <strong>todas</strong> las visitas de «{{ confirmMoverPendientes!.descripcion }}»
+          a pendientes (todas las semanas).
+        </ng-template>
+      </ng-container>
+      <ng-template #unaVisita>
+        Se moverá <strong>esta visita</strong> de «{{ confirmMoverPendientes!.descripcion }}»
+        ({{ confirmMoverPendientes!.dia }}, {{ confirmMoverPendientes!.semana }}) a pendientes.
+      </ng-template>
+    </p>
+    <p class="confirm-card__hint">Luego podrás asignarla al mercadista que corresponda.</p>
+    <div class="confirm-card__actions">
+      <button type="button" class="btn-cancelar-mover" (click)="cancelarMoverPendientes()">Cancelar</button>
+      <button type="button" class="btn-confirmar-mover" (click)="aceptarMoverPendientes()" [disabled]="guardandoMover">
+        {{ confirmMoverPendientes!.todas ? 'Sí, mover todas' : 'Sí, mover a pendientes' }}
+      </button>
+    </div>
+  </div>
+</div>
+

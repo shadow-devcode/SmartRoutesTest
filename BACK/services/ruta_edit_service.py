@@ -1,0 +1,697 @@
+"""
+Edición interactiva de rutas:
+  - Reordenar visitas dentro de un día
+  - Mover una visita a otro día/semana del MISMO mercadista
+  - Mover visita(s) a la hoja Pendientes_Sin_Asignar
+  - Asignar una visita pendiente a una ruta destino
+
+Toda escritura al Excel pasa por _guardar_excel_horarios_pendientes (o
+ExcelWriter directo) para conservar formato y la hoja de pendientes.
+"""
+from __future__ import annotations
+
+from typing import Optional
+
+import pandas as pd
+
+from route_engine.excel_writer import (
+    _recalcular_ruta,
+    drop_spurious_total_rows_horarios_df,
+    format_horarios_detalle_worksheet,
+)
+from route_engine.geo import parse_coordenada_a_float
+from services.pendientes_service import (
+    PENDIENTES_COLS,
+    PENDIENTES_SHEET,
+    index_frecuencia_mes_desde_excel,
+    leer_hoja_pendientes,
+    resolver_excel_maestro_frecuencia,
+)
+from utils.dataset_config import cuota_dia_del_dataset, incluye_viaje_del_dataset
+from utils.excel_cache import invalidate_excel_cache, read_excel_cached
+from utils.excel_lock import with_excel_file_lock
+from utils.route_helpers import a_numero, clave_pendiente, clave_ub
+
+
+# ---------------------------------------------------------------------------
+# Excepciones de negocio específicas de edición de rutas
+# ---------------------------------------------------------------------------
+
+
+class RutaEditError(Exception):
+    """Error de edición de ruta. Lleva status_code para el controller."""
+
+    def __init__(self, message: str, status_code: int = 400, payload: dict | None = None):
+        self.message = message
+        self.status_code = status_code
+        self.payload = payload or {}
+        super().__init__(message)
+
+
+# ---------------------------------------------------------------------------
+# Helpers privados
+# ---------------------------------------------------------------------------
+
+
+def _mapa_mercadista_por_punto(df_horarios) -> dict:
+    m: dict = {}
+    if df_horarios is None or df_horarios.empty:
+        return m
+    for _, row in df_horarios.iterrows():
+        k = clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud"))
+        merc = str(row.get("Mercadista", "") if pd.notna(row.get("Mercadista")) else "").strip()
+        if merc and k not in m:
+            m[k] = merc
+    return m
+
+
+def _validar_mercadista_punto(dest_merc: str, desc, lat, lon, df_horarios):
+    """Valida que `dest_merc` sea el mercadista permitido para este punto de venta."""
+    obligatorio = _mapa_mercadista_por_punto(df_horarios).get(clave_ub(desc, lat, lon))
+    if obligatorio and str(obligatorio).strip() != str(dest_merc or "").strip():
+        return (
+            False,
+            obligatorio,
+            (
+                f"Este punto de venta ya está asignado a «{obligatorio}». "
+                "Todas sus visitas deben permanecer con el mismo mercadista."
+            ),
+        )
+    return True, obligatorio, ""
+
+
+def _fila_horarios_a_pendiente(row, motivo: str, freq_index: dict | None = None) -> dict:
+    """Convierte una fila de Horarios_Detalle al esquema de Pendientes_Sin_Asignar."""
+    semana_v = row.get("Fecha", "")
+    semana_str = "" if (semana_v is None or pd.isna(semana_v)) else str(semana_v).strip()
+    try:
+        t_serv = float(row.get("Tiempo Servicio (min)") or 0)
+    except (TypeError, ValueError):
+        t_serv = 0.0
+    prov = row.get("PROVINCIA", "") if "PROVINCIA" in row.index else row.get("Provincia", "")
+    prov = "" if (prov is None or pd.isna(prov)) else str(prov).strip()
+    desc = str(row.get("Descripción", "") or "").strip()
+    lat = parse_coordenada_a_float(row.get("Latitud"))
+    lon = parse_coordenada_a_float(row.get("Longitud"))
+    from route_engine.excel_reader import lookup_frecuencia_mes
+
+    frec_mes = lookup_frecuencia_mes(freq_index or {}, desc, lat, lon)
+    ciudad_val = ""
+    if "CIUDAD" in row.index:
+        v = row.get("CIUDAD")
+        ciudad_val = "" if (v is None or pd.isna(v)) else str(v).strip()
+    calle_val = ""
+    if "CALLE" in row.index:
+        v = row.get("CALLE")
+        calle_val = "" if (v is None or pd.isna(v)) else str(v).strip()
+    fila = {
+        "Descripción": desc,
+        "Latitud": lat,
+        "Longitud": lon,
+        "Semana": semana_str,
+        "Tiempo Servicio (min)": t_serv,
+        "Provincia": prov,
+        "Ciudad": ciudad_val,
+        "Calle": calle_val,
+        "Mercadista origen": str(row.get("Mercadista", "") or "").strip(),
+        "Día origen": str(row.get("Día", "") or "").strip(),
+        "Motivo": motivo,
+    }
+    if frec_mes is not None:
+        fila["Frecuencia mes"] = frec_mes
+    return fila
+
+
+def _agregar_pendiente(df_pend: pd.DataFrame, pend_dict: dict) -> pd.DataFrame:
+    """Añade SIEMPRE una fila a pendientes, sin deduplicar.
+
+    Mover una visita agendada a pendientes es una conversión 1:1: se quita una
+    fila de Horarios_Detalle y debe quedar exactamente una fila pendiente que la
+    represente. Deduplicar por (punto+semana) haría DESAPARECER la visita cuando
+    el punto ya tiene otra pendiente en esa misma semana (p. ej. frecuencia ≥ 2),
+    rompiendo la regla «agendadas + pendientes == frecuencia». Cada visita
+    pendiente es independiente y se asigna por separado.
+    """
+    nueva = pd.DataFrame([pend_dict])
+    nueva = nueva[[c for c in PENDIENTES_COLS if c in nueva.columns]]
+    if df_pend is None or df_pend.empty:
+        return nueva
+    return pd.concat([df_pend, nueva], ignore_index=True)
+
+
+def _agregar_pendiente_sin_duplicar(df_pend: pd.DataFrame, pend_dict: dict) -> pd.DataFrame:
+    """Añade una fila a pendientes si no existe ya la misma clave (punto+semana)."""
+    clave = clave_pendiente(
+        pend_dict.get("Descripción"),
+        pend_dict.get("Latitud"),
+        pend_dict.get("Longitud"),
+        pend_dict.get("Semana"),
+    )
+    if not df_pend.empty:
+        for i in df_pend.index:
+            row = df_pend.loc[i]
+            k = clave_pendiente(
+                row.get("Descripción"),
+                row.get("Latitud"),
+                row.get("Longitud"),
+                row.get("Semana"),
+            )
+            if k == clave:
+                return df_pend
+    nueva = pd.DataFrame([pend_dict])
+    nueva = nueva[[c for c in PENDIENTES_COLS if c in nueva.columns]]
+    if df_pend.empty:
+        return nueva
+    return pd.concat([df_pend, nueva], ignore_index=True)
+
+
+# Prefijos que Excel/Calc interpretan como inicio de fórmula al abrir el
+# archivo (incluye DDE vía "=cmd|..." y fórmulas que arrancan con +/-/@).
+_FORMULA_TRIGGER_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _neutralizar_formula(valor):
+    """Antepone una comilla simple a strings que Excel podría ejecutar como
+    fórmula al abrir el archivo (mitigación estándar de CSV/Excel injection
+    para valores que llegan desde el body del request, p.ej. descripción o
+    provincia de una visita)."""
+    if isinstance(valor, str) and valor.startswith(_FORMULA_TRIGGER_PREFIXES):
+        return "'" + valor
+    return valor
+
+
+def _sanitizar_df_para_excel(df: pd.DataFrame) -> pd.DataFrame:
+    """Aplica `_neutralizar_formula` a todas las columnas de texto de `df`
+    antes de escribirlo a disco, para que ninguna celda quede como fórmula
+    ejecutable al abrirse en Excel/LibreOffice."""
+    if df is None or df.empty:
+        return df
+    df = df.copy()
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].map(_neutralizar_formula)
+    return df
+
+
+def _guardar_horarios_pendientes(hp: str, df_horarios: pd.DataFrame, df_pend: pd.DataFrame) -> None:
+    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+        _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+        try:
+            format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
+        except Exception:
+            pass
+        _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name=PENDIENTES_SHEET, index=False)
+    invalidate_excel_cache(hp)
+
+
+def _guardar_horarios(hp: str, df_horarios: pd.DataFrame) -> None:
+    """Persiste solo Horarios_Detalle. Sanitiza igual que la variante con
+    pendientes: día/semana/mercadista destino llegan del body del request y
+    sin esto quedarían como fórmula ejecutable al abrir el Excel."""
+    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+        _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+        try:
+            format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
+        except Exception:
+            pass
+    invalidate_excel_cache(hp)
+
+
+def _mask_grupo(df: pd.DataFrame, mercadista: str, dia: str, fecha: str) -> pd.Series:
+    """Máscara booleana de las filas del grupo (mercadista, día, semana/fecha)."""
+    return (
+        (df["Mercadista"].astype(str).str.strip() == mercadista)
+        & (df["Día"].astype(str).str.strip() == dia)
+        & (df["Fecha"].astype(str).str.strip() == fecha)
+    )
+
+
+def _renumerar_y_recalcular_grupos(
+    df: pd.DataFrame, grupos: set, incluye_viaje: bool | None = None
+) -> pd.DataFrame:
+    """Renumera orden y recalcula tiempos/horarios en los grupos (merc, día, fecha) indicados.
+
+    `incluye_viaje` es el modelo de jornada del Excel que se está editando: si
+    se generó "sin tiempo de desplazamiento", el recálculo no puede volver a
+    meter el trayecto en el horario.
+    """
+    if not grupos:
+        return df
+    for merc, dia, fecha in grupos:
+        idxs = df.index[_mask_grupo(df, merc, dia, fecha)].tolist()
+        if not idxs:
+            continue
+        idxs_sorted = sorted(idxs, key=lambda i: df.at[i, "Orden Ruta"])
+        for pos, idx in enumerate(idxs_sorted):
+            df.at[idx, "Orden Ruta"] = pos + 1
+    sort_cols = [c for c in ["Mercadista", "Día", "Fecha", "Orden Ruta"] if c in df.columns]
+    if sort_cols:
+        df = df.sort_values(by=sort_cols)
+    recalc_keys = list(grupos)
+    partes = []
+    mask_any = pd.Series(False, index=df.index)
+    for merc, dia, fecha in recalc_keys:
+        m = _mask_grupo(df, merc, dia, fecha)
+        if m.any():
+            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje))
+            mask_any = mask_any | m
+    if partes:
+        df_resto = df.loc[~mask_any].copy()
+        df = pd.concat([df_resto] + partes, ignore_index=True)
+        if sort_cols:
+            df = df.sort_values(by=sort_cols).reset_index(drop=True)
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Casos de uso (cada uno corresponde a un endpoint)
+# ---------------------------------------------------------------------------
+
+
+@with_excel_file_lock("hp")
+def actualizar_orden_ruta(
+    hp: str,
+    *,
+    mercadista: str,
+    semana: str,
+    dia: str,
+    ubicaciones: list[dict],
+) -> dict:
+    """Reordena visitas y recalcula tiempo entre sucursales, km y horarios."""
+    df = read_excel_cached(hp, "Horarios_Detalle")
+    df = drop_spurious_total_rows_horarios_df(df)
+    idx_rows = df.index[_mask_grupo(df, mercadista, dia, semana)].tolist()
+    if len(idx_rows) != len(ubicaciones):
+        raise RutaEditError(
+            f"El número de visitas no coincide "
+            f"(Excel: {len(idx_rows)}, enviadas: {len(ubicaciones)})",
+            status_code=400,
+        )
+
+    orden_por_clave: dict = {}
+    for u in ubicaciones:
+        k = clave_ub(u.get("descripcion"), u.get("latitud"), u.get("longitud"))
+        orden_por_clave[k] = int(u.get("orden", 0))
+
+    for i in idx_rows:
+        row = df.loc[i]
+        desc = row.get("Descripción")
+        lat = row.get("Latitud")
+        lon = row.get("Longitud")
+        k = clave_ub(desc, lat, lon)
+        if k in orden_por_clave:
+            df.at[i, "Orden Ruta"] = orden_por_clave[k]
+
+    ordenado_idx = sorted(idx_rows, key=lambda i: df.at[i, "Orden Ruta"])
+    grupo = df.loc[ordenado_idx].copy()
+
+    for col in ("Latitud", "Longitud"):
+        if col in grupo.columns:
+            grupo[col] = grupo[col].apply(a_numero)
+
+    grupo_recalc = _recalcular_ruta(grupo, incluye_viaje_del_dataset(hp))
+    col_tiempo = "Tiempo entre sucursal (min)"
+    col_km = "kilometros entre sucurlas (km)"
+    col_horario = "Horario"
+    for pos, idx in enumerate(ordenado_idx):
+        df.at[idx, col_tiempo] = grupo_recalc.iloc[pos][col_tiempo]
+        df.at[idx, col_km] = grupo_recalc.iloc[pos][col_km]
+        df.at[idx, col_horario] = grupo_recalc.iloc[pos][col_horario]
+
+    sort_cols = [c for c in ["Mercadista", "Día", "Fecha", "Orden Ruta"] if c in df.columns]
+    if sort_cols:
+        df = df.sort_values(by=sort_cols)
+
+    _guardar_horarios(hp, df)
+
+    return {
+        "success": True,
+        "message": "Orden actualizado; tiempo entre sucursales, km y horarios recalculados.",
+    }
+
+
+@with_excel_file_lock("hp")
+def mover_a_pendientes(
+    hp: str,
+    *,
+    semana: str,
+    mercadista_origen: str,
+    dia_origen: str,
+    todas_las_visitas: bool,
+    visita: dict,
+) -> dict:
+    """Quita visita(s) de Horarios_Detalle y las pasa a Pendientes_Sin_Asignar."""
+    clave_punto = clave_ub(
+        visita.get("descripcion"),
+        visita.get("latitud"),
+        visita.get("longitud"),
+    )
+
+    df = read_excel_cached(hp, "Horarios_Detalle")
+    df = drop_spurious_total_rows_horarios_df(df)
+    df_pend = leer_hoja_pendientes(hp)
+
+    if todas_las_visitas:
+        idx_mover = []
+        grupos_afectados: set = set()
+        for i in df.index:
+            row = df.loc[i]
+            if clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud")) == clave_punto:
+                idx_mover.append(i)
+                grupos_afectados.add(
+                    (
+                        str(row.get("Mercadista", "")).strip(),
+                        str(row.get("Día", "")).strip(),
+                        str(row.get("Fecha", "")).strip(),
+                    )
+                )
+        motivo = "movido a pendientes (todas las visitas del punto para cambiar mercadista)"
+    else:
+        mask_orig = _mask_grupo(df, mercadista_origen, dia_origen, semana)
+        idx_mover = []
+        for i in df.index[mask_orig].tolist():
+            row = df.loc[i]
+            if clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud")) == clave_punto:
+                idx_mover.append(i)
+        grupos_afectados = {(mercadista_origen, dia_origen, semana)}
+        motivo = "movido a pendientes manualmente"
+
+    if not idx_mover:
+        raise RutaEditError(
+            "No se encontró la visita en la ruta indicada", status_code=404
+        )
+
+    maestro = resolver_excel_maestro_frecuencia()
+    freq_index = index_frecuencia_mes_desde_excel(maestro) if maestro else {}
+
+    for i in sorted(idx_mover, reverse=True):
+        pend_dict = _fila_horarios_a_pendiente(df.loc[i], motivo, freq_index)
+        # Siempre añadir (sin dedup): cada visita movida es independiente y debe
+        # quedar registrada, aunque el punto ya tenga otra pendiente esa semana.
+        df_pend = _agregar_pendiente(df_pend, pend_dict)
+        df = df.drop(i).reset_index(drop=True)
+
+    df = _renumerar_y_recalcular_grupos(
+        df, grupos_afectados, incluye_viaje_del_dataset(hp)
+    )
+    _guardar_horarios_pendientes(hp, df, df_pend)
+
+    n = len(idx_mover)
+    return {
+        "success": True,
+        "message": (
+            f"{n} visita(s) del punto movida(s) a pendientes."
+            if todas_las_visitas
+            else "Visita movida a pendientes."
+        ),
+        "visitas_movidas": n,
+    }
+
+
+@with_excel_file_lock("hp")
+def mover_visita(
+    hp: str,
+    *,
+    semana: str,
+    semana_destino: str,
+    mercadista_origen: str,
+    dia_origen: str,
+    mercadista_destino: str,
+    dia_destino: str,
+    orden_destino: int,
+    visita: dict,
+) -> dict:
+    """Mueve una visita a otro día/semana del MISMO mercadista. Recalcula origen y destino."""
+    if str(mercadista_origen).strip() != str(mercadista_destino).strip():
+        raise RutaEditError(
+            "No se puede mover una visita a otro mercadista directamente. "
+            "Mueve la visita (o todas las visitas del punto) a «Pendientes» "
+            "y asígnala al nuevo mercadista desde allí.",
+            status_code=403,
+            payload={"codigo": "CAMBIO_MERCADISTA_PROHIBIDO"},
+        )
+
+    df = read_excel_cached(hp, "Horarios_Detalle")
+    df = drop_spurious_total_rows_horarios_df(df)
+    idx_orig_list = df.index[_mask_grupo(df, mercadista_origen, dia_origen, semana)].tolist()
+    clave_visita = clave_ub(visita.get("descripcion"), visita.get("latitud"), visita.get("longitud"))
+
+    idx_move = None
+    for i in idx_orig_list:
+        row = df.loc[i]
+        k = clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud"))
+        if k == clave_visita:
+            idx_move = i
+            break
+    if idx_move is None:
+        raise RutaEditError(
+            "No se encontró la visita en la ruta de origen", status_code=404
+        )
+
+    row_to_move = df.loc[idx_move].copy()
+    df = df.drop(idx_move).reset_index(drop=True)
+
+    idx_orig_resto = df.index[_mask_grupo(df, mercadista_origen, dia_origen, semana)].tolist()
+    idx_orig_resto_sorted = sorted(idx_orig_resto, key=lambda i: df.at[i, "Orden Ruta"])
+    for pos, idx in enumerate(idx_orig_resto_sorted):
+        df.at[idx, "Orden Ruta"] = pos + 1
+
+    row_to_move["Mercadista"] = mercadista_destino
+    row_to_move["Día"] = dia_destino
+    row_to_move["Fecha"] = semana_destino
+
+    dest_indices = df.index[_mask_grupo(df, mercadista_destino, dia_destino, semana_destino)].tolist()
+    dest_df = df.loc[dest_indices].sort_values("Orden Ruta").copy() if dest_indices else pd.DataFrame()
+    dest_list = dest_df.to_dict("records") if not dest_df.empty else []
+    pos_insert = max(0, min(orden_destino - 1, len(dest_list)))
+    dest_list.insert(pos_insert, row_to_move.to_dict())
+    for i, r in enumerate(dest_list):
+        r["Orden Ruta"] = i + 1
+
+    df_resto = df.drop(dest_indices).reset_index(drop=True) if dest_indices else df
+    cols = list(df_resto.columns)
+    dest_new_df = pd.DataFrame(dest_list)
+    dest_new_df = dest_new_df[[c for c in cols if c in dest_new_df.columns]]
+    df = pd.concat([df_resto, dest_new_df], ignore_index=True)
+
+    for col in ("Latitud", "Longitud"):
+        if col in df.columns:
+            df[col] = df[col].apply(a_numero)
+
+    sort_cols = [c for c in ["Mercadista", "Día", "Fecha", "Orden Ruta"] if c in df.columns]
+
+    # Recalcular solo los grupos afectados (compatible con pandas 3.x que ya no
+    # incluye las columnas de agrupación en el DataFrame que recibe apply()).
+    grupos_afectados = {
+        (mercadista_origen, dia_origen, semana),
+        (mercadista_destino, dia_destino, semana_destino),
+    }
+    partes: list = []
+    mask_any = pd.Series(False, index=df.index)
+    for merc, dia, fecha in grupos_afectados:
+        m = _mask_grupo(df, merc, dia, fecha)
+        if m.any():
+            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje_del_dataset(hp)))
+            mask_any = mask_any | m
+    if partes:
+        df_resto = df.loc[~mask_any].copy()
+        df = pd.concat([df_resto] + partes, ignore_index=True)
+    if sort_cols:
+        df = df.sort_values(by=sort_cols)
+
+    _guardar_horarios(hp, df)
+
+    return {
+        "success": True,
+        "message": "Visita movida; rutas de origen y destino actualizadas con nuevos horarios y tiempos.",
+    }
+
+
+@with_excel_file_lock("hp")
+def asignar_pendiente(
+    hp: str,
+    *,
+    mercadista_destino: str,
+    dia_destino: str,
+    semana_destino: str,
+    orden_destino: int,
+    forzar: bool,
+    desc_v: str,
+    lat_v: Optional[float],
+    lon_v: Optional[float],
+    semana_visita: str,
+    tiempo_servicio_fallback: float,
+    provincia_fallback: str,
+) -> dict:
+    """Inserta una visita pendiente en una ruta destino, recalcula y persiste."""
+    df = read_excel_cached(hp, "Horarios_Detalle")
+    df = drop_spurious_total_rows_horarios_df(df)
+    df_pend = leer_hoja_pendientes(hp)
+
+    ok_merc, merc_oblig, msg_merc = _validar_mercadista_punto(
+        mercadista_destino, desc_v, lat_v, lon_v, df
+    )
+    if not ok_merc:
+        raise RutaEditError(
+            msg_merc,
+            status_code=403,
+            payload={
+                "codigo": "MERCADISTA_PUNTO_BLOQUEADO",
+                "mercadista_obligatorio": merc_oblig,
+            },
+        )
+
+    # Localizar la fila pendiente exacta
+    clave = clave_pendiente(desc_v, lat_v, lon_v, semana_visita or semana_destino)
+    idx_pend = None
+    for i in df_pend.index:
+        row = df_pend.loc[i]
+        k = clave_pendiente(
+            row.get("Descripción"),
+            row.get("Latitud"),
+            row.get("Longitud"),
+            row.get("Semana"),
+        )
+        if k == clave:
+            idx_pend = i
+            break
+
+    if idx_pend is None:
+        # No bloquear si la pendiente no se encuentra: el usuario podría estar
+        # asignando una visita pasada por payload manual.
+        pendiente_row = {
+            "Descripción": desc_v,
+            "Latitud": lat_v,
+            "Longitud": lon_v,
+            "Semana": semana_visita or semana_destino,
+            "Tiempo Servicio (min)": tiempo_servicio_fallback,
+            "Provincia": provincia_fallback,
+            "Mercadista origen": "",
+            "Día origen": "",
+            "Motivo": "",
+        }
+    else:
+        pendiente_row = df_pend.loc[idx_pend].to_dict()
+
+    cols_horarios = list(df.columns)
+    nueva_fila: dict = {c: None for c in cols_horarios}
+    if "Mercadista" in nueva_fila:
+        nueva_fila["Mercadista"] = mercadista_destino
+    if "Día" in nueva_fila:
+        nueva_fila["Día"] = dia_destino
+    if "Fecha" in nueva_fila:
+        nueva_fila["Fecha"] = semana_destino
+    if "Descripción" in nueva_fila:
+        nueva_fila["Descripción"] = pendiente_row.get("Descripción", desc_v)
+    if "Latitud" in nueva_fila:
+        nueva_fila["Latitud"] = lat_v
+    if "Longitud" in nueva_fila:
+        nueva_fila["Longitud"] = lon_v
+    if "Tiempo Servicio (min)" in nueva_fila:
+        try:
+            nueva_fila["Tiempo Servicio (min)"] = float(
+                pendiente_row.get("Tiempo Servicio (min)") or 0
+            )
+        except (TypeError, ValueError):
+            nueva_fila["Tiempo Servicio (min)"] = 0.0
+    if "PROVINCIA" in nueva_fila and pendiente_row.get("Provincia"):
+        nueva_fila["PROVINCIA"] = pendiente_row.get("Provincia")
+    if "CIUDAD" in nueva_fila:
+        nueva_fila["CIUDAD"] = pendiente_row.get("Ciudad") or ""
+    if "CALLE" in nueva_fila:
+        nueva_fila["CALLE"] = pendiente_row.get("Calle") or ""
+    if "Duración (hh:mm)" in nueva_fila:
+        from route_engine.scheduling import format_duracion
+        try:
+            t_dur = float(pendiente_row.get("Tiempo Servicio (min)") or 0)
+        except (TypeError, ValueError):
+            t_dur = 0.0
+        nueva_fila["Duración (hh:mm)"] = format_duracion(t_dur)
+    if "Tiempo entre sucursal (min)" in nueva_fila:
+        nueva_fila["Tiempo entre sucursal (min)"] = 0
+    if "kilometros entre sucurlas (km)" in nueva_fila:
+        nueva_fila["kilometros entre sucurlas (km)"] = 0
+    if "Horario" in nueva_fila:
+        nueva_fila["Horario"] = ""
+    if "Orden Ruta" in nueva_fila:
+        nueva_fila["Orden Ruta"] = 0
+
+    dest_indices = df.index[_mask_grupo(df, mercadista_destino, dia_destino, semana_destino)].tolist()
+    dest_df = (
+        df.loc[dest_indices].sort_values("Orden Ruta").copy()
+        if dest_indices
+        else pd.DataFrame(columns=cols_horarios)
+    )
+    dest_list = dest_df.to_dict("records") if not dest_df.empty else []
+    pos_insert = (
+        len(dest_list)
+        if orden_destino <= 0
+        else max(0, min(orden_destino - 1, len(dest_list)))
+    )
+    dest_list.insert(pos_insert, nueva_fila)
+    for i, r in enumerate(dest_list):
+        r["Orden Ruta"] = i + 1
+
+    df_resto = df.drop(dest_indices).reset_index(drop=True) if dest_indices else df.copy()
+    dest_new_df = pd.DataFrame(dest_list)
+    dest_new_df = dest_new_df[[c for c in cols_horarios if c in dest_new_df.columns]]
+
+    for col in ("Latitud", "Longitud"):
+        if col in dest_new_df.columns:
+            dest_new_df[col] = dest_new_df[col].apply(a_numero)
+    dest_recalc = _recalcular_ruta(dest_new_df, incluye_viaje_del_dataset(hp))
+
+    # Validar el tope diario con los tiempos recalculados. La cuota sale del
+    # propio Excel (480 o 400 min/día según el preset con el que se generó).
+    tope_dia = cuota_dia_del_dataset(hp)
+    servicio_total = travel_total = combinado = 0.0
+    col_serv = "Tiempo Servicio (min)"
+    col_travel = "Tiempo entre sucursal (min)"
+    if col_serv in dest_recalc.columns and col_travel in dest_recalc.columns:
+        servicio_total = float(pd.to_numeric(dest_recalc[col_serv], errors="coerce").fillna(0).sum())
+        travel_total = float(pd.to_numeric(dest_recalc[col_travel], errors="coerce").fillna(0).sum())
+        combinado = servicio_total + travel_total
+        if combinado > tope_dia and not forzar:
+            raise RutaEditError(
+                (
+                    f"El día {dia_destino} de {mercadista_destino} ({semana_destino}) "
+                    f"quedaría con {combinado:.0f} min combinados "
+                    f"(servicio {servicio_total:.0f} + viaje {travel_total:.0f}), "
+                    f"por encima del tope de {tope_dia} min. "
+                    "Reenvía con 'forzar': true para asignar de todas formas."
+                ),
+                status_code=409,
+                payload={
+                    "tope_excedido": True,
+                    "limite_min": tope_dia,
+                    "servicio_total_min": round(servicio_total, 1),
+                    "travel_total_min": round(travel_total, 1),
+                    "combinado_total_min": round(combinado, 1),
+                    "exceso_min": round(combinado - tope_dia, 1),
+                },
+            )
+
+    df = pd.concat([df_resto, dest_recalc], ignore_index=True)
+    sort_cols = [c for c in ["Mercadista", "Día", "Fecha", "Orden Ruta"] if c in df.columns]
+    if sort_cols:
+        df = df.sort_values(by=sort_cols).reset_index(drop=True)
+
+    if idx_pend is not None:
+        df_pend = df_pend.drop(idx_pend).reset_index(drop=True)
+
+    _guardar_horarios_pendientes(hp, df, df_pend)
+
+    resp: dict = {
+        "success": True,
+        "message": (
+            f"Visita asignada a {mercadista_destino} / {dia_destino} / {semana_destino} "
+            f"en la posición {pos_insert + 1}."
+        ),
+    }
+    if forzar and combinado:
+        resp["advertencia"] = (
+            f"Asignada forzando el tope: combinado {combinado:.0f} min "
+            f"(servicio {servicio_total:.0f} + viaje {travel_total:.0f}), "
+            f"sobrepasa {tope_dia} min."
+        )
+    return resp

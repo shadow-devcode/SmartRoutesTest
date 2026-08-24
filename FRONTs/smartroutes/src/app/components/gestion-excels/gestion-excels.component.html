@@ -1,0 +1,289 @@
+<div class="ge-page">
+  <div class="ge-inner">
+    <header class="ge-hero">
+      <p class="ge-eyebrow">Smart Routes</p>
+      <h1 class="ge-title">Gestión de Excels y rutas</h1>
+      <p class="ge-lead">
+        Elige qué archivo procesado está <strong>activo</strong> para la vista global (admin y usuarios sin dataset
+        propio). Los <strong>editores</strong> y <strong>visualizadores</strong> usan el Excel que les asignes en la
+        tabla de abajo. Puedes eliminar Excels que ya no necesites (debe quedar al menos uno).
+      </p>
+      <div class="ge-actions-top">
+        <a routerLink="/carga-excel" class="btn btn-brand">Cargar nuevo Excel</a>
+        <a routerLink="/rutas" class="btn btn-muted">Ir al mapa</a>
+        <button type="button" class="btn btn-muted" (click)="load()" [disabled]="loading">
+          {{ loading ? 'Actualizando…' : 'Actualizar lista' }}
+        </button>
+      </div>
+    </header>
+
+    @if (errorMsg) {
+      <div class="ge-alert ge-alert--error" role="alert">{{ errorMsg }}</div>
+    }
+    @if (successMsg) {
+      <div class="ge-alert ge-alert--ok" role="status">{{ successMsg }}</div>
+    }
+
+    <section class="ge-card">
+      @if (loading && datasets.length === 0) {
+        <p class="ge-state">Cargando…</p>
+      } @else if (datasets.length === 0) {
+        <p class="ge-state">No hay datasets registrados. Procesa un Excel desde «Cargar Excel».</p>
+      } @else {
+        <div class="ge-table-wrap">
+          <table class="ge-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Estado</th>
+                <th>Archivo principal</th>
+                <th>Comparativa</th>
+                <th>Creado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (d of datasets; track d.id) {
+                <tr [class.ge-row-active]="d.is_active">
+                  <td class="ge-name">{{ d.display_name }}</td>
+                  <td>
+                    @if (d.is_active) {
+                      <span class="ge-pill ge-pill--active">Activo</span>
+                    } @else {
+                      <span class="ge-pill">Inactivo</span>
+                    }
+                  </td>
+                  <td>
+                    @if (d.horarios_exists) {
+                      <span class="ge-ok">Disponible</span>
+                    } @else {
+                      <span class="ge-missing">Falta en disco</span>
+                    }
+                  </td>
+                  <td>
+                    @if (d.comparativa_exists) {
+                      <span class="ge-ok">Sí</span>
+                    } @else {
+                      <span class="ge-muted">—</span>
+                    }
+                  </td>
+                  <td class="ge-muted">{{ d.created_at ?? '—' }}</td>
+                  <td class="ge-actions">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-brand"
+                      [disabled]="d.is_active || !d.horarios_exists || activatingId !== null"
+                      (click)="activar(d)"
+                    >
+                      {{ activatingId === d.id ? 'Activando…' : 'Usar en mapa' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-muted"
+                      [disabled]="!d.horarios_exists || descargandoId !== null"
+                      [title]="d.horarios_exists
+                        ? 'Descargar el Excel de rutas de este rutero'
+                        : 'Este rutero no tiene archivo en disco'"
+                      (click)="descargar(d)"
+                    >
+                      {{ descargandoId === d.id ? 'Descargando…' : '⬇ Descargar' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger"
+                      [disabled]="datasets.length <= 1 || deletingId !== null"
+                      (click)="confirmarEliminar(d)"
+                    >
+                      {{ deletingId === d.id ? 'Eliminando…' : 'Eliminar' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="ge-card ge-card--secondary">
+      <h2 class="ge-section-title">Excel por usuario (Editor / Visualizador)</h2>
+      <p class="ge-section-lead">
+        Cada editor y visualizador ve y edita (si aplica) solo el archivo de rutas que elijas aquí. Los nombres
+        coinciden con la tabla anterior. Si no hay ningún usuario con estos roles, créalos en «Gestión de usuarios».
+      </p>
+      @if (loading && staffRows.length === 0 && datasets.length === 0) {
+        <p class="ge-state">Cargando…</p>
+      } @else if (staffRows.length === 0) {
+        <p class="ge-state ge-state--muted">
+          No hay usuarios con rol Editor o Visualizador. Puedes crearlos en Gestión de usuarios y volver aquí para
+          asignarles un Excel.
+        </p>
+      } @else {
+        <div class="ge-table-wrap">
+          <table class="ge-table ge-table--assign">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Excel asignado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of staffRows; track row.userId) {
+                <tr>
+                  <td class="ge-name">{{ row.full_name?.trim() || '—' }}</td>
+                  <td>{{ row.email }}</td>
+                  <td>
+                    <span class="ge-pill ge-pill--role">{{ etiquetaRolStaff(row.role) }}</span>
+                  </td>
+                  <td>
+                    <select class="ge-select" name="ds-{{ row.userId }}" [(ngModel)]="row.draftDatasetId">
+                      <option [ngValue]="null">— Sin Excel asignado —</option>
+                      @if (row.orphanDatasetId !== null) {
+                        <option [ngValue]="row.orphanDatasetId">
+                          Dataset #{{ row.orphanDatasetId }} (ya no está en la lista)
+                        </option>
+                      }
+                      @for (d of datasets; track d.id) {
+                        <option [ngValue]="d.id">
+                          {{ d.display_name }}
+                          @if (!d.horarios_exists) {
+                            (falta archivo)
+                          }
+                        </option>
+                      }
+                    </select>
+                  </td>
+                  <td class="ge-actions">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-brand"
+                      [disabled]="!filaStaffTieneCambios(row) || savingStaffUserId !== null"
+                      (click)="guardarExcelStaff(row)"
+                    >
+                      {{ savingStaffUserId === row.userId ? 'Guardando…' : 'Guardar' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="ge-card ge-card--secondary">
+      <h2 class="ge-section-title">Puntos sin coordenadas</h2>
+      <p class="ge-section-lead">
+        Puntos de venta con coordenadas inválidas o en cero. Edita la latitud y longitud para geocodificarlos
+        y moverlos a la lista de Pendientes donde podrás asignarlos a un mercadista.
+      </p>
+
+      @if (puntosError && !editandoPunto) {
+        <div class="ge-alert ge-alert--error" role="alert">{{ puntosError }}</div>
+      }
+      @if (puntosSuccess) {
+        <div class="ge-alert ge-alert--ok" role="status">{{ puntosSuccess }}</div>
+      }
+
+      @if (loadingPuntos) {
+        <p class="ge-state">Cargando puntos…</p>
+      } @else if (puntosSinCoords.length === 0) {
+        <p class="ge-state ge-state--muted">No hay puntos con coordenadas inválidas. ✓</p>
+      } @else {
+        <p class="ge-section-lead">{{ puntosSinCoords.length }} punto(s) requieren coordenadas válidas.</p>
+        <div class="ge-table-wrap">
+          <table class="ge-table ge-table--puntos">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Latitud</th>
+                <th>Longitud</th>
+                <th>Semana</th>
+                <th>Tiempo (min)</th>
+                <th>Provincia / Ciudad</th>
+                <th>Motivo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of puntosSinCoords; track p.descripcion) {
+                <tr>
+                  <td class="ge-name">{{ p.descripcion }}</td>
+                  <td class="ge-muted">{{ p.latitud ?? '—' }}</td>
+                  <td class="ge-muted">{{ p.longitud ?? '—' }}</td>
+                  <td class="ge-muted">{{ p.semana || '—' }}</td>
+                  <td class="ge-muted">{{ p.tiempo_servicio ?? '—' }}</td>
+                  <td class="ge-muted">{{ (p.provincia || p.ciudad) ? (p.provincia + (p.ciudad ? ' / ' + p.ciudad : '')) : '—' }}</td>
+                  <td><span class="ge-pill ge-pill--warn">{{ p.motivo }}</span></td>
+                  <td class="ge-actions">
+                    <button type="button" class="btn btn-sm btn-brand" (click)="abrirEditar(p)">
+                      Editar coords
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    @if (editandoPunto) {
+      <div class="ge-modal-backdrop" (click)="cerrarModal()"></div>
+      <div class="ge-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h2 class="ge-modal-title" id="modal-title">Corregir coordenadas</h2>
+
+        <div class="ge-modal-field">
+          <span class="ge-label">Descripción</span>
+          <p class="ge-modal-readonly">{{ editandoPunto.descripcion }}</p>
+        </div>
+        <div class="ge-modal-field">
+          <span class="ge-label">Frecuencia mes</span>
+          <p class="ge-modal-readonly">{{ editandoPunto.frecuencia_mes ?? '—' }}</p>
+        </div>
+        <div class="ge-modal-row">
+          <div class="ge-modal-field">
+            <label class="ge-label" for="edit-lat">Latitud</label>
+            <input
+              id="edit-lat"
+              class="ge-input"
+              type="number"
+              step="any"
+              placeholder="-3.269160"
+              [(ngModel)]="editLat"
+              name="editLat"
+            />
+          </div>
+          <div class="ge-modal-field">
+            <label class="ge-label" for="edit-lon">Longitud</label>
+            <input
+              id="edit-lon"
+              class="ge-input"
+              type="number"
+              step="any"
+              placeholder="-79.96927"
+              [(ngModel)]="editLon"
+              name="editLon"
+            />
+          </div>
+        </div>
+
+        @if (puntosError) {
+          <div class="ge-alert ge-alert--error" role="alert">{{ puntosError }}</div>
+        }
+
+        <div class="ge-modal-actions">
+          <button type="button" class="btn btn-muted" (click)="cerrarModal()" [disabled]="guardandoPunto">
+            Cancelar
+          </button>
+          <button type="button" class="btn btn-brand" (click)="guardarCoordenadas()" [disabled]="guardandoPunto">
+            {{ guardandoPunto ? 'Guardando…' : 'Guardar y mover a Pendientes' }}
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

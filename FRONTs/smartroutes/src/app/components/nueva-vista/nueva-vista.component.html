@@ -1,0 +1,723 @@
+<div class="nueva-vista-container">
+  <header class="vista-header">
+    <h1>📊 Dashboard de Estadísticas</h1>
+    <p class="subtitle">Vista general de las rutas y mercadistas</p>
+  </header>
+
+  <div class="vista-content">
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="cargando">
+      <div class="spinner"></div>
+      <p>Cargando estadísticas...</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid" *ngIf="!cargando && estadisticas">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <h3>Total Mercadistas</h3>
+          <p class="stat-value">{{ estadisticas.total_mercadistas }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📍</div>
+        <div class="stat-content">
+          <h3>Total Ubicaciones</h3>
+          <p class="stat-value">{{ estadisticas.total_ubicaciones }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-content">
+          <h3>Días Activos</h3>
+          <p class="stat-value">{{ getCantidadDiasActivos() }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-content">
+          <h3>Desplazamiento Promedio</h3>
+          <p class="stat-value">{{ estadisticas.tiempo_promedio_servicio || 0 }} min</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-content">
+          <h3>Tiempo Total de Trabajo</h3>
+          <p class="stat-value">{{ ((estadisticas.total_tiempo_trabajo_min || 0) + (estadisticas.total_tiempo_entre_sucursales_min || 0)) | number:'1.0-0' }} min</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Card -->
+    <div class="navigation-card">
+      <h2>Navegación</h2>
+      <div class="nav-buttons">
+        <a routerLink="/rutas" class="nav-button">
+          <span class="nav-icon">🗺️</span>
+          <span>Ver Mapa de Rutas</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Filtros Dashboard -->
+    <div class="filtros-card" *ngIf="!cargando">
+      <h2>🔍 Filtros</h2>
+      <div class="filtros-row">
+        <div class="filtro-group">
+          <label for="filtro-mercadista">Mercadista</label>
+          <select id="filtro-mercadista" [(ngModel)]="filtroMercadista" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option *ngFor="let m of mercadistas" [value]="m">{{ m }}</option>
+          </select>
+        </div>
+        <div class="filtro-group">
+          <label for="filtro-provincia">Provincia</label>
+          <select id="filtro-provincia" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todas</option>
+            <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
+          </select>
+        </div>
+        <div class="filtro-group" *ngIf="mostrarSelectorSemana">
+          <label for="filtro-semana">Semana</label>
+          <select id="filtro-semana" [(ngModel)]="semanaSeleccionada">
+            <option value="semana 1">Semana 1</option>
+            <option value="semana 2">Semana 2</option>
+            <option value="semana 3">Semana 3</option>
+            <option value="semana 4">Semana 4</option>
+          </select>
+        </div>
+        <div class="filtro-group">
+          <label for="filtro-desglose">Desglose</label>
+          <select id="filtro-desglose" [(ngModel)]="modoDesglose">
+            <option value="mes">Resumen por mes</option>
+            <option value="resumen">Resumen por semanas</option>
+            <option value="dias">Puntos por día</option>
+          </select>
+        </div>
+        <button type="button" class="btn-limpiar" (click)="limpiarFiltros()">Limpiar filtros</button>
+      </div>
+    </div>
+
+    <!-- Frecuencia de Puntos -->
+    <div class="data-card" *ngIf="!cargando">
+      <h2>📍 Frecuencia de puntos por mercadista</h2>
+      <p class="card-desc">Puntos únicos que visita cada mercadista y cuántas veces los visita en las 4 semanas.</p>
+      <div class="table-loading" *ngIf="cargandoFiltros">Cargando...</div>
+      <div class="table-wrapper" *ngIf="!cargandoFiltros && frecuenciaPuntos.length">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Mercadista</th>
+              <th>Punto único</th>
+              <th>Tiempo servicio original (min)</th>
+              <th>Frecuencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let fp of frecuenciaPuntos">
+              <td>{{ fp.mercadista }}</td>
+              <td>{{ fp.punto }}</td>
+              <td>{{ fp.tiempo_servicio_original ?? '—' }}</td>
+              <td>{{ fp.frecuencia }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th colspan="3">Total visitas (suma de frecuencias en 4 semanas)</th>
+              <th>{{ totalVisitasFrecuencia }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="empty-msg" *ngIf="!cargandoFiltros && !frecuenciaPuntos.length">No hay datos. Ejecuta el procesamiento
+        del Excel primero.</p>
+    </div>
+
+    <!-- Puntos de Visita Pendientes -->
+    <div class="data-card" *ngIf="!cargando">
+      <h2>📌 Puntos de visita pendientes</h2>
+      <p class="card-desc">Puntos de visita de la lista de pendientes agrupados por nombre, con su tiempo de servicio y
+        frecuencia.</p>
+
+      <!-- Filtro de búsqueda inline -->
+      <div class="pendientes-filtro">
+        <label for="filtro-punto-visita">Buscar punto de visita:</label>
+        <input id="filtro-punto-visita" type="text" placeholder="Escriba para filtrar…" [(ngModel)]="filtroPuntoVisita"
+          (ngModelChange)="aplicarFiltroPuntoVisita()" class="input-filtro-punto" />
+      </div>
+
+      <div class="table-loading" *ngIf="cargandoPendientes">Cargando pendientes...</div>
+
+      <div class="table-wrapper" *ngIf="!cargandoPendientes && pendientesFiltrados.length">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSortPendientes('punto')"
+                  [class.sort-btn--active]="sortPendientesCol === 'punto'"
+                  [attr.aria-label]="'Ordenar por Punto de visita ' + (sortPendientesCol === 'punto' && sortPendientesDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Punto de visita
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortPendientesCol === 'punto' ? (sortPendientesDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSortPendientes('tiempo_servicio')"
+                  [class.sort-btn--active]="sortPendientesCol === 'tiempo_servicio'"
+                  [attr.aria-label]="'Ordenar por Tiempo de servicio ' + (sortPendientesCol === 'tiempo_servicio' && sortPendientesDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Tiempo de servicio (min)
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortPendientesCol === 'tiempo_servicio' ? (sortPendientesDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSortPendientes('frecuencia')"
+                  [class.sort-btn--active]="sortPendientesCol === 'frecuencia'"
+                  [attr.aria-label]="'Ordenar por Frecuencia ' + (sortPendientesCol === 'frecuencia' && sortPendientesDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Frecuencia
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortPendientesCol === 'frecuencia' ? (sortPendientesDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pv of pendientesSorted">
+              <td>{{ pv.punto_visita }}</td>
+              <td>{{ pv.tiempo_servicio }}</td>
+              <td>{{ pv.frecuencia }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th>Total visitas pendientes: {{ totalVisitasPendientes }}</th>
+              <th>{{ totalPendientesTiempo }}</th>
+              <th>{{ totalPendientesFrecuencia }}</th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="empty-msg" *ngIf="!cargandoPendientes && !pendientesFiltrados.length">No hay puntos de visita
+        pendientes.</p>
+    </div>
+
+    <!-- Puntos sin coordenadas -->
+    <div class="data-card" *ngIf="!cargando">
+      <h2>
+        ⚠️ Puntos sin coordenadas
+        @if (puntosSinCoords.length > 0) {
+          <span class="nv-badge-count">{{ puntosSinCoords.length }}</span>
+        }
+      </h2>
+      <p class="card-desc">
+        @if (auth.canAccessGestionExcels()) {
+          Puntos de venta con coordenadas inválidas o en cero. Corrígelos en
+          <a routerLink="/gestion-excels" class="nv-link">Gestión de Excels</a>
+          para geocodificarlos y moverlos a Pendientes.
+        } @else {
+          Puntos de venta con coordenadas inválidas o en cero. Solicita a un
+          administrador que los corrija para geocodificarlos y moverlos a Pendientes.
+        }
+      </p>
+
+      <div class="pendientes-filtro" *ngIf="puntosSinCoords.length > 0">
+        <label for="filtro-pts-coords">Buscar punto:</label>
+        <input id="filtro-pts-coords" type="text" placeholder="Escriba para filtrar…"
+          [(ngModel)]="filtroPuntosSinCoords"
+          (ngModelChange)="aplicarFiltroPuntosSinCoords()"
+          class="input-filtro-punto" />
+      </div>
+
+      <div class="table-loading" *ngIf="cargandoPuntosSinCoords">Cargando...</div>
+
+      @if (!cargandoPuntosSinCoords && puntosSinCoordsFiltrados.length > 0) {
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>
+                  <button type="button" class="sort-btn" (click)="toggleSortPuntos('descripcion')"
+                    [class.sort-btn--active]="sortPuntosCol === 'descripcion'">
+                    Descripción
+                    <span class="sort-icon">{{ sortPuntosCol === 'descripcion' ? (sortPuntosDir === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                  </button>
+                </th>
+                <th>Latitud</th>
+                <th>Longitud</th>
+                <th>
+                  <button type="button" class="sort-btn" (click)="toggleSortPuntos('semana')"
+                    [class.sort-btn--active]="sortPuntosCol === 'semana'">
+                    Semana
+                    <span class="sort-icon">{{ sortPuntosCol === 'semana' ? (sortPuntosDir === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="sort-btn" (click)="toggleSortPuntos('provincia')"
+                    [class.sort-btn--active]="sortPuntosCol === 'provincia'">
+                    Provincia / Ciudad
+                    <span class="sort-icon">{{ sortPuntosCol === 'provincia' ? (sortPuntosDir === 'asc' ? '↑' : '↓') : '↕' }}</span>
+                  </button>
+                </th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of puntosSinCoordsSorted; track p.descripcion) {
+                <tr>
+                  <td>{{ p.descripcion }}</td>
+                  <td class="nv-td-muted">{{ p.latitud ?? '—' }}</td>
+                  <td class="nv-td-muted">{{ p.longitud ?? '—' }}</td>
+                  <td class="nv-td-muted">{{ p.semana || '—' }}</td>
+                  <td class="nv-td-muted">
+                    {{ (p.provincia || p.ciudad) ? (p.provincia + (p.ciudad ? ' / ' + p.ciudad : '')) : '—' }}
+                  </td>
+                  <td><span class="nv-badge-motivo">{{ p.motivo }}</span></td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <th>Total: {{ puntosSinCoordsFiltrados.length }} punto(s)</th>
+                <th colspan="5"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+
+      <p class="empty-msg" *ngIf="!cargandoPuntosSinCoords && puntosSinCoords.length === 0">
+        ✓ No hay puntos con coordenadas inválidas.
+      </p>
+    </div>
+
+    <!-- Resumen por mes -->
+    <div class="data-card" *ngIf="!cargando && modoDesglose === 'mes'">
+      <div class="card-header-flex">
+        <h2>📅 Resumen del mes completo</h2>
+        <div class="card-filtro-inline">
+          <label for="filtro-provincia-mes">Filtrar por Provincia:</label>
+          <select id="filtro-provincia-mes" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todas las provincias</option>
+            <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
+          </select>
+        </div>
+      </div>
+      <p class="card-desc">Ocupación de la jornada por provincia: el porcentaje es sobre la capacidad mensual del
+        mercadista (9.600 min = 8 h × 5 días × 4 semanas) e incluye tanto el tiempo en el punto de venta como el
+        desplazamiento entre puntos. Pasa el cursor sobre los minutos para ver el desglose. Incluye el total de
+        visitas realizadas en el mes (suma de las 4 semanas).</p>
+      <div class="table-loading" *ngIf="cargandoFiltros">Cargando...</div>
+      <div class="table-wrapper" *ngIf="!cargandoFiltros && provinciasPorcentaje.length">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
+                  [class.sort-btn--active]="sortCol === 'mercadista'"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Mercadista
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
+                  [class.sort-btn--active]="sortCol === 'provincia'"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Provincia
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('porcentaje')"
+                  [class.sort-btn--active]="sortCol === 'porcentaje'"
+                  [attr.aria-label]="'Ordenar por Porcentaje ' + (sortCol === 'porcentaje' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Porcentaje
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'porcentaje' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('minutos')"
+                  [class.sort-btn--active]="sortCol === 'minutos'"
+                  [attr.aria-label]="'Ordenar por Minutos ' + (sortCol === 'minutos' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Minutos/mes
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'minutos' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>Mes (visitas totales)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pp of provinciasSorted">
+              <td>{{ pp.mercadista }}</td>
+              <td>{{ pp.provincia }}</td>
+              <td>{{ pp.porcentaje }}%</td>
+              <td [title]="(pp.minutos_servicio ?? 0) + ' min en punto de venta + ' + (pp.minutos_viaje ?? 0) + ' min de desplazamiento'">{{ pp.minutos }}</td>
+              <td>
+                {{ (pp.semana1_puntos ?? 0) + (pp.semana2_puntos ?? 0) + (pp.semana3_puntos ?? 0) + (pp.semana4_puntos
+                ?? 0) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="empty-msg" *ngIf="!cargandoFiltros && !provinciasPorcentaje.length">
+        No hay datos. Ejecuta el procesamiento del Excel primero.
+      </p>
+    </div>
+
+    <!-- Provincias por mercadista (% del total) - vista RESUMEN -->
+    <div class="data-card" *ngIf="!cargando && modoDesglose === 'resumen'">
+      <div class="card-header-flex">
+        <h2>🗺️ Provincias por mercadista (% del total)</h2>
+        <div class="card-filtro-inline">
+          <label for="filtro-provincia-resumen">Filtrar por Provincia:</label>
+          <select id="filtro-provincia-resumen" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todas las provincias</option>
+            <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
+          </select>
+          <button type="button" class="btn-unir-action" (click)="abrirModalUnir()">
+            ⚡ Forzar unión de mercaderistas
+          </button>
+        </div>
+      </div>
+      <p class="card-desc">
+        Tiempo de servicio por provincia. 9600 min = 100% (4 semanas × 5 días × 8h).
+        En cada columna Semana 1..4 se muestra el <strong>número de visitas</strong> y
+        entre paréntesis el <strong>% del tope semanal</strong> (2400 min = 100%).
+      </p>
+      <div class="table-loading" *ngIf="cargandoFiltros">Cargando...</div>
+      <div class="table-wrapper" *ngIf="!cargandoFiltros && provinciasPorcentaje.length">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
+                  [class.sort-btn--active]="sortCol === 'mercadista'"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Mercadista
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
+                  [class.sort-btn--active]="sortCol === 'provincia'"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Provincia
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('porcentaje')"
+                  [class.sort-btn--active]="sortCol === 'porcentaje'"
+                  [attr.aria-label]="'Ordenar por Porcentaje ' + (sortCol === 'porcentaje' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Porcentaje/mes
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'porcentaje' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('minutos')"
+                  [class.sort-btn--active]="sortCol === 'minutos'"
+                  [attr.aria-label]="'Ordenar por Minutos ' + (sortCol === 'minutos' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Minutos/mes
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'minutos' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('semana1')"
+                  [class.sort-btn--active]="sortCol === 'semana1'"
+                  [attr.aria-label]="'Ordenar por Semana 1 ' + (sortCol === 'semana1' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Semana 1
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'semana1' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('semana2')"
+                  [class.sort-btn--active]="sortCol === 'semana2'"
+                  [attr.aria-label]="'Ordenar por Semana 2 ' + (sortCol === 'semana2' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Semana 2
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'semana2' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('semana3')"
+                  [class.sort-btn--active]="sortCol === 'semana3'"
+                  [attr.aria-label]="'Ordenar por Semana 3 ' + (sortCol === 'semana3' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Semana 3
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'semana3' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('semana4')"
+                  [class.sort-btn--active]="sortCol === 'semana4'"
+                  [attr.aria-label]="'Ordenar por Semana 4 ' + (sortCol === 'semana4' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Semana 4
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'semana4' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pp of provinciasSorted">
+              <td>{{ pp.mercadista }}</td>
+              <td>{{ pp.provincia }}</td>
+              <td>{{ pp.porcentaje }}%</td>
+              <td [title]="(pp.minutos_servicio ?? 0) + ' min en punto de venta + ' + (pp.minutos_viaje ?? 0) + ' min de desplazamiento'">{{ pp.minutos }}</td>
+              <td [title]="(pp.semana1_minutos ?? 0) + ' min'">{{ pp.semana1_puntos ?? 0 }} ({{ pp.semana1_porcentaje ??
+                0 }}%)</td>
+              <td [title]="(pp.semana2_minutos ?? 0) + ' min'">{{ pp.semana2_puntos ?? 0 }} ({{ pp.semana2_porcentaje ??
+                0 }}%)</td>
+              <td [title]="(pp.semana3_minutos ?? 0) + ' min'">{{ pp.semana3_puntos ?? 0 }} ({{ pp.semana3_porcentaje ??
+                0 }}%)</td>
+              <td [title]="(pp.semana4_minutos ?? 0) + ' min'">{{ pp.semana4_puntos ?? 0 }} ({{ pp.semana4_porcentaje ??
+                0 }}%)</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <th class="col-total">
+                {{ totalesResumenProvincias.mercadistas | number }}
+                {{ totalesResumenProvincias.mercadistas === 1 ? 'mercadista' : 'mercadistas' }}
+              </th>
+              <th>{{ filtroProvincia || 'Todas las provincias' }}</th>
+              <th>—</th>
+              <th>{{ totalesResumenProvincias.minutos | number }}</th>
+              <th *ngFor="let visitas of totalesResumenProvincias.semanas">
+                {{ visitas | number }}
+              </th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="empty-msg" *ngIf="!cargandoFiltros && !provinciasPorcentaje.length">
+        No hay datos. Ejecuta el procesamiento del Excel primero.
+      </p>
+    </div>
+
+    <!-- Puntos por día - vista DETALLE (usa misma data y filtros, solo cambia el desglose) -->
+    <div class="data-card" *ngIf="!cargando && modoDesglose === 'dias' && provinciasPorcentaje.length">
+      <div class="card-header-flex">
+        <h2>📆 Puntos por día ({{ semanaSeleccionada | titlecase }})</h2>
+        <div class="card-filtro-inline">
+          <label for="filtro-provincia-dias">Filtrar por Provincia:</label>
+          <select id="filtro-provincia-dias" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">
+            <option value="">Todas las provincias</option>
+            <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
+          </select>
+        </div>
+      </div>
+      <p class="card-desc">Puntos visitados por día de la semana, para la semana seleccionada.</p>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
+                  [class.sort-btn--active]="sortCol === 'mercadista'"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Mercadista
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
+                  [class.sort-btn--active]="sortCol === 'provincia'"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  Provincia
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                  </span>
+                </button>
+              </th>
+              <!-- Sábado y domingo solo aparecen si hay cuadrilla de fin de
+                   semana; si no, la tabla se ve igual que siempre. -->
+              <th *ngFor="let d of diasConRutas">{{ d }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pp of provinciasSorted">
+              <td>{{ pp.mercadista }}</td>
+              <td>{{ pp.provincia }}</td>
+              <td *ngFor="let d of diasConRutas">
+                {{ pp.dias_por_semana?.[semanaSeleccionada]?.puntos_por_dia?.[d] || 0 }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="info-section" *ngIf="!cargando && estadisticas">
+      <h2>Información General</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <strong>Días de la semana activos:</strong>
+          <p>{{ getDiasActivosString() }}</p>
+        </div>
+        <div class="info-item" *ngIf="estadisticas.total_por_dia">
+          <strong>Ubicaciones por día:</strong>
+          <ul style="margin-top: 8px; padding-left: 20px;">
+            <li *ngFor="let dia of getDiasKeys()" style="margin: 4px 0;">
+              {{ dia }}: {{ estadisticas.total_por_dia[dia] }} ubicaciones
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Forzar Unión de Mercaderistas -->
+<div class="modal-backdrop" *ngIf="mostrarModalUnir" (click)="cerrarModalUnir()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>⚡ Forzar Unión de Mercaderistas</h3>
+      <button type="button" class="btn-close" (click)="cerrarModalUnir()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-intro">
+        Selecciona el mercaderista cuyas rutas deseas transferir (origen) y el mercaderista que absorberá el trabajo (destino).
+      </p>
+      <div class="modal-provincia-badge" *ngIf="filtroProvincia">
+        📍 <strong>Provincia filtrada:</strong> {{ filtroProvincia }}
+      </div>
+
+      <div class="unir-grid">
+        <div class="unir-field">
+          <label for="merc-origen-select">Mercaderista a transferir (Origen):</label>
+          <select id="merc-origen-select" [(ngModel)]="mercOrigen" (ngModelChange)="onCambioSeleccionUnir()" class="select-unir">
+            <option value="">-- Seleccionar Origen --</option>
+            <option *ngFor="let m of mercadistasModal" [value]="m">
+              {{ m }} ({{ getCargaPorcentual(m) }}%)
+            </option>
+          </select>
+          <span class="field-hint" *ngIf="mercOrigen">Carga actual: {{ getCargaPorcentual(mercOrigen) }}%</span>
+        </div>
+
+        <div class="unir-arrow">➔</div>
+
+        <div class="unir-field">
+          <label for="merc-destino-select">Mercaderista que absorberá (Destino):</label>
+          <select id="merc-destino-select" [(ngModel)]="mercDestino" (ngModelChange)="onCambioSeleccionUnir()" class="select-unir">
+            <option value="">-- Seleccionar Destino --</option>
+            <option *ngFor="let m of mercadistasModal" [value]="m" [disabled]="m === mercOrigen">
+              {{ m }} ({{ getCargaPorcentual(m) }}%)
+            </option>
+          </select>
+          <span class="field-hint" *ngIf="mercDestino">Carga actual: {{ getCargaPorcentual(mercDestino) }}%</span>
+        </div>
+      </div>
+
+      <!-- Preview de carga resultante -->
+      <div class="unir-preview-card" *ngIf="mercOrigen && mercDestino && mercOrigen !== mercDestino">
+        <h4>📊 Proyección de Carga Resultante</h4>
+        <div class="preview-metric">
+          <span class="metric-label">Carga total calculada para {{ mercDestino }}:</span>
+          <span class="metric-val" [class.val-warning]="getCargaProyectada() > 100">
+            {{ getCargaProyectada() }}%
+          </span>
+        </div>
+        <p class="preview-note" *ngIf="getCargaProyectada() <= 100">
+          ✅ La suma de trabajo equivale a <strong>{{ getCargaProyectada() }}%</strong> y se mantiene dentro de los límites esperados.
+        </p>
+        <p class="preview-note warning-text" *ngIf="getCargaProyectada() > 100">
+          ⚠️ La carga proyectada supera el 100% ({{ getCargaProyectada() }}%). La unión se rechazará: no cabe en la jornada de un solo mercaderista.
+        </p>
+      </div>
+
+      <!-- Bloqueo por reglas de rutas inteligentes (409) -->
+      <div class="alert alert-danger" *ngIf="unirBloqueo">
+        <strong>⛔ Esta unión rompe las reglas de rutas inteligentes</strong>
+        <ul class="bloqueo-lista">
+          <li *ngIf="(unirBloqueo.dispersion_km ?? 0) > (unirBloqueo.limite_dispersion_km ?? 0)">
+            Los puntos de ambos quedarían repartidos en
+            <strong>{{ unirBloqueo.dispersion_km }} km</strong>
+            (máximo {{ unirBloqueo.limite_dispersion_km }} km).
+            Una sola persona no puede cubrir esa distancia a diario.
+          </li>
+          <li *ngIf="(unirBloqueo.exceso_min ?? 0) > 0">
+            La carga mensual sería de
+            <strong>{{ unirBloqueo.combinado_total_min }} min</strong>
+            combinados ({{ unirBloqueo.servicio_total_min }} en punto de venta +
+            {{ unirBloqueo.travel_total_min }} de desplazamiento),
+            <strong>{{ unirBloqueo.exceso_min }} min por encima</strong>
+            de los {{ unirBloqueo.limite_mes_min }} min de un mercaderista.
+          </li>
+        </ul>
+        <p class="bloqueo-nota">
+          Si aun así quieres unirlos, las visitas que no quepan en la jornada quedarán
+          en <strong>Pendientes sin asignar</strong> en vez de forzarse dentro de días
+          de más de 8 horas.
+        </p>
+      </div>
+
+      <!-- Mensajes de Estado -->
+      <div class="alert alert-danger" *ngIf="unirMensajeError">
+        ⚠️ {{ unirMensajeError }}
+      </div>
+      <div class="alert alert-success" *ngIf="unirMensajeExito">
+        ✅ {{ unirMensajeExito }}
+      </div>
+      <div class="alert alert-warning" *ngIf="unirMensajeAviso">
+        ⚠️ {{ unirMensajeAviso }}
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="cerrarModalUnir()" [disabled]="unificandoMercs">
+        Cancelar
+      </button>
+      <button
+        *ngIf="unirBloqueo?.puede_forzar"
+        type="button"
+        class="btn btn-danger btn-forzar-unir"
+        (click)="forzarUnirMercadistas()"
+        [disabled]="unificandoMercs">
+        {{ unificandoMercs ? '⏳ Uniendo rutas…' : '⚠️ Unir de todas formas' }}
+      </button>
+      <button
+        *ngIf="!unirBloqueo"
+        type="button"
+        class="btn btn-primary btn-confirm-unir"
+        (click)="confirmarUnirMercadistas()"
+        [disabled]="!mercOrigen || !mercDestino || mercOrigen === mercDestino || unificandoMercs">
+        {{ unificandoMercs ? '⏳ Uniendo rutas…' : '⚡ Confirmar y Unir Mercaderistas' }}
+      </button>
+    </div>
+  </div>
+</div>

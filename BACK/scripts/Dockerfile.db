@@ -1,0 +1,6 @@
+# Imagen MySQL con el script de instalación de Smart Routes incluido.
+# Permite levantar la base de datos sin necesitar el repo: el script se
+# ejecuta automáticamente en el primer arranque (volumen de datos vacío).
+FROM mysql:8.4
+
+COPY install_full_db.sql /docker-entrypoint-initdb.d/01-install.sql

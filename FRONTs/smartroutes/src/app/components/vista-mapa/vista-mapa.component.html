@@ -1,0 +1,153 @@
+<div class="app-container" [class.modo-comparacion]="modoComparacion">
+  <!-- ═══════════════ Panel IZQUIERDO (origen) ═══════════════ -->
+  <aside class="sidebar-panel">
+    <app-lista-mercadistas
+      (mercadistaSeleccionado)="onMercadistaSeleccionado($event)"
+      (diaSeleccionado)="onDiaSeleccionado($event)"
+      (semanaSeleccionada)="onSemanaSeleccionada($event)"
+      (todosFiltrosLimpiados)="onLimpiarFiltros()"
+      (mapaRecargarSolicitado)="recargarAmbosMapas()"
+      (moverModalAbiertoChange)="onMoverModalAbiertoChange($event)"
+      (pendienteSeleccionada)="onPendienteSeleccionada($event)"
+      (ubicacionVisitaSeleccionada)="onUbicacionVisitaSeleccionada($event)">
+    </app-lista-mercadistas>
+  </aside>
+
+  <!-- Mapa IZQUIERDO -->
+  <main class="main-panel">
+    <div class="map-header">
+      <div class="header-content">
+        <h1>
+          <span *ngIf="modoComparacion" class="panel-tag panel-tag--origen">Origen</span>
+          📍 Mapa de Rutas
+        </h1>
+        <div class="header-actions">
+          <div class="filter-info" *ngIf="filtroActivo">
+            <span class="filter-badge">{{ filtroActivo }}</span>
+            <span class="ubicaciones-count">{{ ubicaciones.length }} ubicaciones</span>
+          </div>
+          <div class="filter-info" *ngIf="!filtroActivo">
+            <span class="ubicaciones-count">{{ ubicaciones.length }} ubicaciones totales</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="leyenda-dias">
+        <span class="leyenda-dias-label">Ruta por día:</span>
+        <span *ngFor="let dia of diasLeyenda" class="leyenda-item" [style.background-color]="getColorDia(dia)">{{ dia }}</span>
+      </div>
+
+      <div class="tabs-menu">
+        <button
+          class="tab-button"
+          [class.active]="modoVista === 'linea'"
+          (click)="cambiarModoVista('linea')"
+          title="Vista Línea Recta">
+          📏 <span class="tab-text">Vista Línea Recta</span>
+        </button>
+        <button
+          class="tab-button"
+          [class.active]="modoVista === 'carretera'"
+          (click)="cambiarModoVista('carretera')"
+          title="Vista Carretera">
+          🚗 <span class="tab-text">Vista Carretera</span>
+        </button>
+        <button
+          class="tab-button"
+          [class.active]="vistaComparativaActiva"
+          (click)="toggleVistaComparativa()"
+          [title]="vistaComparativaActiva ? 'Cerrar vista comparativa' : 'Mostrar dos mapas en paralelo'">
+          🗺️ <span class="tab-text">{{ vistaComparativaActiva ? 'Cerrar' : 'Comparativa' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="loading-overlay" *ngIf="cargando">
+      <div class="spinner-large"></div>
+      <p>Cargando mapa...</p>
+    </div>
+
+    <div class="map-wrapper">
+      <app-mapa
+        [ubicaciones]="ubicaciones"
+        [modoRuta]="modoVista"
+        [centrarEn]="centrarEnMapa"
+        [pendienteResaltada]="pendienteResaltada">
+      </app-mapa>
+    </div>
+  </main>
+
+  <!-- ═══════════════ Panel DERECHO (destino) — solo en modo comparación ═══════════════ -->
+  <ng-container *ngIf="modoComparacion">
+    <aside class="sidebar-panel sidebar-panel--derecha">
+      <app-lista-mercadistas
+        [soloLectura]="moverModalAbierto"
+        (mercadistaSeleccionado)="onMercadistaSeleccionadoDerecha($event)"
+        (diaSeleccionado)="onDiaSeleccionadoDerecha($event)"
+        (semanaSeleccionada)="onSemanaSeleccionadaDerecha($event)"
+        (todosFiltrosLimpiados)="onLimpiarFiltrosDerecha()"
+        (mapaRecargarSolicitado)="recargarAmbosMapas()"
+        (moverModalAbiertoChange)="onMoverModalAbiertoChange($event)">
+      </app-lista-mercadistas>
+    </aside>
+
+    <main class="main-panel main-panel--derecha">
+      <div class="map-header">
+        <div class="header-content">
+          <h1>
+            <span class="panel-tag panel-tag--destino">Destino</span>
+            📍 Mapa de Rutas
+          </h1>
+          <div class="header-actions">
+            <div class="filter-info" *ngIf="filtroActivoDerecha">
+              <span class="filter-badge">{{ filtroActivoDerecha }}</span>
+              <span class="ubicaciones-count">{{ ubicacionesDerecha.length }} ubicaciones</span>
+            </div>
+            <div class="filter-info" *ngIf="!filtroActivoDerecha">
+              <span class="ubicaciones-count">{{ ubicacionesDerecha.length }} ubicaciones totales</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="leyenda-dias">
+          <span class="leyenda-dias-label">Ruta por día:</span>
+          <span *ngFor="let dia of diasLeyenda" class="leyenda-item" [style.background-color]="getColorDia(dia)">{{ dia }}</span>
+        </div>
+
+        <div class="tabs-menu">
+          <button
+            class="tab-button"
+            [class.active]="modoVista === 'linea'"
+            (click)="cambiarModoVista('linea')"
+            title="Vista Línea Recta">
+            📏 <span class="tab-text">Vista Línea Recta</span>
+          </button>
+          <button
+            class="tab-button"
+            [class.active]="modoVista === 'carretera'"
+            (click)="cambiarModoVista('carretera')"
+            title="Vista Carretera">
+            🚗 <span class="tab-text">Vista Carretera</span>
+          </button>
+          <button
+            class="tab-button"
+            [class.active]="vistaComparativaActiva"
+            (click)="toggleVistaComparativa()"
+            [disabled]="!vistaComparativaActiva && moverModalAbierto"
+            [title]="vistaComparativaActiva ? 'Cerrar vista comparativa' : 'Mostrar dos mapas en paralelo'">
+            🗺️ <span class="tab-text">{{ vistaComparativaActiva ? 'Cerrar' : 'Comparativa' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="loading-overlay" *ngIf="cargandoDerecha">
+        <div class="spinner-large"></div>
+        <p>Cargando mapa...</p>
+      </div>
+
+      <div class="map-wrapper">
+        <app-mapa [ubicaciones]="ubicacionesDerecha" [modoRuta]="modoVista"></app-mapa>
+      </div>
+    </main>
+  </ng-container>
+</div>

@@ -1,0 +1,436 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:host {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-container {
+  display: grid;
+  grid-template-columns: var(--sr-sidebar-w, clamp(260px, 19vw, 400px)) minmax(0, 1fr);
+  /* Fila única anclada al alto disponible (heredado del layout flex raíz).
+     El mapa mantiene un tamaño fijo y el sidebar scrollea internamente. */
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Modo comparación (2 mapas lado a lado):
+   [sidebar][mapa][sidebar][mapa]
+   El modal "Mover punto de venta" es arrastrable, así que ya no reservamos
+   una columna central: aparece flotante y el usuario lo mueve a donde quiera. */
+.app-container.modo-comparacion {
+  grid-template-columns:
+    clamp(260px, 18vw, 340px) minmax(0, 1fr)
+    clamp(260px, 18vw, 340px) minmax(0, 1fr);
+  column-gap: 0;
+}
+
+/* Separador visual sutil entre las dos mitades */
+.sidebar-panel--derecha {
+  border-left: 2px solid rgba(37, 99, 235, 0.18);
+}
+
+/* Etiquetas Origen / Destino en los headers de cada mapa */
+.panel-tag {
+  display: inline-block;
+  margin-right: 10px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.panel-tag--origen {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.28);
+}
+.panel-tag--destino {
+  color: #0e7490;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.32);
+}
+
+/* Sidebar Panel: contenedor de altura fija. El scroll vive en el componente
+   interno (.sidebar dentro de lista-mercadistas), así solo aparece UNA barra.
+   Importante: NO aplicamos z-index aquí porque en grid items el z-index crea un
+   stacking context propio y haría que el panel derecho tape al modal "Mover
+   punto de venta" (que es position:fixed dentro del panel izquierdo). */
+.sidebar-panel {
+  background: #f8f9fa;
+  border-right: 1px solid #e0e0e0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Main Panel */
+.main-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  position: relative;
+}
+
+/* Map Header */
+.map-header {
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  padding: var(--sr-pad-section, clamp(12px, 1.8vw, 20px)) var(--sr-pad-section, clamp(14px, 2vw, 28px));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.leyenda-dias {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #555;
+}
+
+.leyenda-dias-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+/* Tabs Menu */
+.tabs-menu {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.tab-button {
+  padding: clamp(8px, 1vw, 12px) clamp(14px, 1.6vw, 22px);
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  font-size: clamp(0.8125rem, 0.2vw + 0.78rem, 0.9375rem);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-button:hover {
+  background: #f5f5f5;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.tab-button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.map-header h1 {
+  font-size: clamp(1.125rem, 0.5vw + 1rem, 1.5rem);
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.filter-badge {
+  background: #2563eb;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.ubicaciones-count {
+  background: #f0f0f0;
+  color: #666;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Map Wrapper */
+.map-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spinner-large {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ── Modo comparación: header y tabs más compactos ─────────── */
+.app-container.modo-comparacion .map-header {
+  padding: clamp(8px, 1.1vw, 14px) clamp(10px, 1.4vw, 20px);
+}
+
+.app-container.modo-comparacion .header-content {
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.app-container.modo-comparacion .map-header h1 {
+  font-size: clamp(0.875rem, 1.3vw, 1.2rem);
+}
+
+.app-container.modo-comparacion .leyenda-dias {
+  font-size: 0.65rem;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.app-container.modo-comparacion .leyenda-item {
+  padding: 2px 6px;
+  font-size: 0.65rem;
+}
+
+.app-container.modo-comparacion .tabs-menu {
+  gap: 4px;
+  padding-top: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.app-container.modo-comparacion .tab-button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: clamp(5px, 0.6vw, 9px) clamp(6px, 0.9vw, 14px);
+  font-size: clamp(0.7rem, 0.9vw, 0.8125rem);
+  gap: 4px;
+  border-radius: 6px;
+  /* Ocultar texto largo, mostrar solo ícono en mapas muy estrechos */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-content: center;
+}
+
+.app-container.modo-comparacion .filter-badge,
+.app-container.modo-comparacion .ubicaciones-count {
+  font-size: 0.7rem;
+  padding: 4px 9px;
+}
+
+/* ── Responsive breakpoints ─────────────────────────────────── */
+@media (max-width: 1600px) {
+  .app-container.modo-comparacion {
+    grid-template-columns:
+      clamp(240px, 16vw, 300px) minmax(0, 1fr)
+      clamp(240px, 16vw, 300px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1280px) {
+  .app-container.modo-comparacion {
+    grid-template-columns:
+      clamp(220px, 15vw, 270px) minmax(0, 1fr)
+      clamp(220px, 15vw, 270px) minmax(0, 1fr);
+  }
+
+  /* A <1280 los tabs no caben en fila — mostrar solo el ícono */
+  .app-container.modo-comparacion .tab-button .tab-text {
+    display: none;
+  }
+
+  .app-container.modo-comparacion .tab-button {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-container {
+    grid-template-columns: minmax(220px, 28vw) minmax(0, 1fr);
+  }
+
+  .app-container.modo-comparacion {
+    grid-template-columns: minmax(220px, 28vw) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  /* Volver a mostrar el texto al apilar (el mapa tiene ancho completo) */
+  .app-container.modo-comparacion .tab-button .tab-text {
+    display: inline;
+  }
+
+  .app-container.modo-comparacion .tab-button {
+    flex: 1 1 auto;
+    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+    padding: clamp(6px, 1vw, 10px) clamp(10px, 1.5vw, 18px);
+  }
+
+  .app-container.modo-comparacion .map-header h1 {
+    font-size: clamp(1rem, 2vw, 1.35rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .app-container.modo-comparacion {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto 1fr;
+  }
+
+  .sidebar-panel {
+    max-height: 42vh;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .sidebar-panel--derecha {
+    border-left: none;
+    border-top: 2px solid rgba(37, 99, 235, 0.18);
+  }
+
+  .map-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .filter-info {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* En móvil las tabs pueden crecer para llenarse */
+  .tabs-menu {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    padding: 7px 10px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-header {
+    padding: 10px 12px;
+  }
+
+  .map-header h1 {
+    font-size: 1rem;
+  }
+
+  .leyenda-dias {
+    font-size: 0.65rem;
+    gap: 4px;
+  }
+
+  .leyenda-item {
+    padding: 2px 6px;
+    font-size: 0.65rem;
+  }
+
+  .filter-badge,
+  .ubicaciones-count {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+
+  .tab-button {
+    font-size: 0.75rem;
+    padding: 6px 8px;
+  }
+}

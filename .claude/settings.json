@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(./venv/bin/python -c ' *)"
+    ],
+    "deny": [
+      "Read(~/.claude/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.config/**)",
+      "Read(~/.local/**)",
+      "Edit(~/.claude/**)",
+      "Edit(~/.config/**)"
+    ]
+  }
+}

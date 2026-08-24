@@ -1,0 +1,30 @@
+venv
+.venv
+.venv-win
+__pycache__
+*.py[cod]
+*.egg-info
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.md
+.pytest_cache
+.mypy_cache
+.cursor
+.vscode
+.idea
+tests
+
+# Datos de runtime: viven en volúmenes/host, no en la imagen
+uploads
+datasets
+*.xlsx
+~$*.xlsx
+*.xlsx.lock
+backend.log
+
+# Evita invalidar la cache de capas al editar estos archivos
+Dockerfile
+.dockerignore

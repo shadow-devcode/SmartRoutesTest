@@ -1,0 +1,785 @@
+/* Gestión de pendientes — mismo lenguaje que Gestión de Excels / Gestión de
+   usuarios: fondo azul, hero centrado, tarjetas blancas de radio 16. */
+
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.gp-page {
+  --brand-from: #2563eb;
+  --brand-to: #1d4ed8;
+  --border: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.12);
+
+  min-height: var(--sr-main-min-h, calc(100dvh - 72px));
+  padding: clamp(1.25rem, 2.5vw, 2.75rem) clamp(1rem, 2vw, 1.75rem) clamp(1.75rem, 3vw, 3.5rem);
+  background: #1e3a8a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.gp-inner {
+  max-width: min(1240px, 96vw);
+  margin: 0 auto;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.gp-hero {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 1.75rem;
+}
+
+.gp-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.88;
+  margin: 0 0 0.5rem;
+}
+
+.gp-title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.75rem, 3.5vw, 2.1rem);
+  font-weight: 700;
+}
+
+.gp-lead {
+  margin: 0 auto 1.25rem;
+  max-width: 44rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.gp-actions-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* ── Avisos ───────────────────────────────────────────────── */
+.gp-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.gp-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ── Resumen ──────────────────────────────────────────────── */
+.gp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.gp-stat {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.gp-stat__value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--brand-to);
+  line-height: 1.1;
+}
+
+.gp-stat__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* ── Tarjeta ──────────────────────────────────────────────── */
+.gp-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.6rem 1.6rem;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.gp-card__head {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.gp-card__icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-from);
+  font-size: 24px;
+}
+
+.gp-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gp-card__lead {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Conmutador lista / mapa ──────────────────────────────── */
+.gp-vista-switch {
+  margin-left: auto;
+  display: inline-flex;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.gp-vista-btn {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.gp-vista-btn.active {
+  background: #fff;
+  color: var(--brand-to);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+/* ── Filtros ──────────────────────────────────────────────── */
+.gp-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+}
+
+/* Los tres desplegables se quedan en su ancho útil en vez de estirarse a lo
+   ancho de la tarjeta: el de punto de venta más largo porque los nombres lo
+   son, y los de provincia y ciudad justos. Estirados dejaban medio filtro en
+   blanco. */
+.gp-filtros .gp-filtro-mapa {
+  flex: 0 1 11rem;
+  min-width: 8rem;
+}
+
+.gp-filtros .gp-filtro-mapa:first-child {
+  flex: 0 1 24rem;
+  min-width: 14rem;
+}
+
+.gp-filtros .gp-select {
+  text-overflow: ellipsis;
+}
+
+/* Botón que abre el panel de búsqueda: se ve igual que un desplegable. */
+.gp-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.gp-select-btn--activo {
+  border-color: var(--brand-from);
+  color: var(--brand-to);
+  font-weight: 600;
+}
+
+.gp-select-btn__texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-select-btn__flecha {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.gp-filtros .btn {
+  margin-bottom: 1px;
+}
+
+.gp-input,
+.gp-select {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: #fff;
+}
+
+.gp-input {
+  flex: 1 1 22rem;
+  min-width: 15rem;
+}
+
+.gp-input:focus,
+.gp-select:focus {
+  outline: none;
+  border-color: var(--brand-from);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.gp-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+/* ── Tabla ────────────────────────────────────────────────── */
+.gp-table-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.gp-table-wrap::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.gp-table-wrap::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid #fff;
+}
+
+.gp-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.gp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.gp-table th,
+.gp-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+/* Cabecera azul, igual que la tabla de pendientes del Dashboard */
+.gp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: none;
+}
+
+.gp-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.gp-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.gp-nowrap {
+  white-space: nowrap;
+}
+
+/* Provincia y ciudad: nombres como «Santo Domingo de los Tsáchilas» en una
+   sola línea se comían el ancho de la tabla. Se dejan partir en varias líneas
+   y se acotan; el texto completo queda en el title de la celda. */
+.gp-loc {
+  white-space: normal;
+  max-width: 8rem;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.gp-desc {
+  max-width: 20rem;
+}
+
+.gp-name {
+  display: block;
+  font-weight: 600;
+}
+
+.gp-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.gp-sub--inline {
+  display: inline;
+}
+
+/* ── Píldoras ─────────────────────────────────────────────── */
+.gp-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.12rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gp-pill--dia {
+  background: #dbeafe;
+  color: #1d4ed8;
+  margin: 0 0.25rem 0.25rem 0;
+}
+
+.gp-pill--pendiente {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  font-weight: 700;
+}
+
+.gp-sin-dato {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #b45309;
+}
+
+.gp-state {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.gp-nota {
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Mapa ─────────────────────────────────────────────────── */
+.gp-mapa-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.gp-leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gp-leyenda-punto {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: radial-gradient(circle at 30% 30%, #f87171 0%, #dc2626 70%, #7f1d1d 100%);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.45);
+  flex: 0 0 auto;
+}
+
+.gp-leyenda-conteo {
+  font-weight: 600;
+  color: #334155;
+}
+
+/* El mapa necesita altura explícita: su contenedor no la hereda de nada. */
+.gp-mapa-wrap {
+  height: 60vh;
+  min-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gp-mapa-wrap app-mapa {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Botones (misma familia que el resto de pantallas) ────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-brand {
+  background: var(--brand-from);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.btn-muted {
+  background: #fff;
+  color: #475569;
+  border: 1px solid var(--border);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  /* En móvil sí se apilan: cinco desplegables no caben en una línea legible. */
+  .gp-filtros-mapa {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .gp-filtro-mapa {
+    flex: 1 1 45%;
+  }
+
+  .gp-card__head {
+    flex-wrap: wrap;
+  }
+
+  .gp-vista-switch {
+    margin-left: 0;
+  }
+
+  .gp-input {
+    flex-basis: 100%;
+  }
+}
+
+/* ── Bloque de rutas asignadas (segunda tarjeta de la página) ───────────── */
+.gp-card--rutas {
+  margin-top: 1.35rem;
+}
+
+.gp-card__icon--rutas {
+  background: #1e3a8a;
+}
+
+/* Resumen compacto dentro de la tarjeta, para no competir con el de arriba */
+.gp-stats--inline {
+  margin-bottom: 1.1rem;
+}
+
+.gp-stat--sm {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+}
+
+.gp-stat--sm .gp-stat__value {
+  font-size: 1.35rem;
+}
+
+.gp-stat--sm .gp-stat__label {
+  font-size: 0.72rem;
+}
+
+/* Los marcadores de rutas son azules; su leyenda debe coincidir. */
+.gp-leyenda-punto--ruta {
+  background: radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 70%, #1e3a8a 100%);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
+}
+
+/* La tabla con el formato del Excel tiene 13 columnas: se compacta un poco y
+   se desplaza en horizontal dentro de su propio marco. */
+.gp-table--excel {
+  font-size: 0.84rem;
+}
+
+.gp-table--excel th,
+.gp-table--excel td {
+  padding: 0.5rem 0.6rem;
+  white-space: nowrap;
+}
+
+.gp-table--excel .gp-desc {
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gp-filtros--rutas {
+  justify-content: space-between;
+}
+
+.gp-filtros-nota {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ── Botón de filtro en la cabecera (estilo autofiltro de Excel) ────────── */
+.gp-th-contenido {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+
+.gp-num .gp-th-contenido {
+  justify-content: flex-end;
+}
+
+.gp-th-texto {
+  white-space: nowrap;
+}
+
+.gp-filtro-btn {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.gp-filtro-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Columna con filtro puesto: el botón se invierte para que se vea de un vistazo */
+.gp-filtro-btn.activo {
+  background: #fff;
+  color: var(--brand-to);
+  border-color: #fff;
+  font-weight: 800;
+}
+
+/* ── Panel flotante del filtro ──────────────────────────────────────────── */
+.gp-filtro-panel {
+  position: fixed;
+  z-index: 50;
+  /* Ancho suficiente para nombres de punto de venta, que son los valores más
+     largos de la tabla; los que no quepan se recortan con puntos suspensivos y
+     el título del botón muestra el valor completo. */
+  width: 280px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gp-filtro-panel__titulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.gp-filtro-panel__input {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.gp-filtro-panel__input:focus {
+  outline: none;
+  border-color: var(--brand-from);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.gp-filtro-panel__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+}
+
+.gp-filtro-opcion {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gp-filtro-opcion:hover {
+  background: #eff6ff;
+}
+
+.gp-filtro-opcion.activa {
+  background: #dbeafe;
+  color: var(--brand-to);
+  font-weight: 600;
+}
+
+.gp-filtro-vacio {
+  padding: 0.5rem 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.gp-filtro-panel__quitar {
+  align-self: flex-end;
+}
+
+/* ── Filtros de la vista de mapa ────────────────────────────────────────── */
+/* Una sola fila horizontal sobre el mapa. Los cinco desplegables se reparten
+   el ancho a partes iguales; si la pantalla es muy estrecha, la fila se
+   desplaza en horizontal en vez de partirse en dos líneas. */
+.gp-filtros-mapa {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.gp-filtros-mapa .btn {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin-bottom: 1px;
+}
+
+.gp-filtro-mapa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 7rem;
+  flex: 1 1 0;
+}
+
+.gp-filtro-mapa__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.gp-filtro-mapa .gp-select,
+.gp-filtro-mapa .gp-input {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
+/* ── Mapa de rutas: modo de dibujo (puntos / recorrido) ─────────────────── */
+.gp-mapa-modos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.gp-vista-switch--mapa {
+  margin-left: 0;
+}
+
+.gp-mapa-aviso {
+  margin: 0 0 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.82rem;
+}

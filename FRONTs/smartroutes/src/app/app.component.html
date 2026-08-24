@@ -1,0 +1,86 @@
+<div class="app-wrapper">
+  @if (!isLoginPage) {
+    <nav class="main-nav">
+      <div class="nav-container">
+        <div class="nav-left">
+          <div class="nav-brand">
+            <h1><img src="assets/logo.png" alt="" class="nav-logo" /> {{ title }}</h1>
+          </div>
+          <div class="nav-links-panel">
+            <div class="nav-links">
+              <a routerLink="/rutas" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+                📍 Mapa de Rutas
+              </a>
+              @if (auth.canAccessComparativa()) {
+                <a routerLink="/comparativa" routerLinkActive="active">
+                  📊 Vista Comparativa
+                </a>
+              }
+              @if (auth.canAccessDashboard()) {
+                <a routerLink="/dashboard" routerLinkActive="active">
+                  📈 Dashboard
+                </a>
+              }
+              @if (auth.canAccessCargaExcel()) {
+                <a routerLink="/carga-excel" routerLinkActive="active">
+                  📂 Cargar Excel
+                </a>
+              }
+              @if (auth.canAccessGestionExcels()) {
+                <a routerLink="/gestion-excels" routerLinkActive="active">
+                  📑 Excels / Rutas
+                </a>
+              }
+              @if (auth.canAccessPendientes()) {
+                <a routerLink="/gestion-pendientes" routerLinkActive="active">
+                  📋 Gestión de pendientes
+                </a>
+              }
+              @if (auth.canAccessGestionUsuarios()) {
+                <a routerLink="/gestion-usuarios" routerLinkActive="active">👥 Gestión de usuarios</a>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="nav-auth">
+          @if (auth.isAuthenticated()) {
+            <div class="nav-user-dropdown" #userMenuRoot>
+              <button
+                type="button"
+                class="nav-user-trigger"
+                [attr.aria-expanded]="userMenuOpen()"
+                [attr.aria-label]="'Menú de usuario: ' + loggedInDisplayName"
+                aria-haspopup="true"
+                aria-controls="user-menu-panel"
+                [attr.title]="auth.user()?.email ?? ''"
+                (click)="toggleUserMenu($event)"
+              >
+                <div class="nav-user-avatar" aria-hidden="true">{{ userInitials }}</div>
+                <span class="nav-user-name">{{ loggedInDisplayName }}</span>
+                <span class="nav-user-chevron" [class.nav-user-chevron--open]="userMenuOpen()" aria-hidden="true"></span>
+              </button>
+              @if (userMenuOpen()) {
+                <div id="user-menu-panel" class="nav-user-menu" role="menu">
+                  <button
+                    type="button"
+                    class="nav-menu-item nav-menu-logout"
+                    role="menuitem"
+                    (click)="onLogoutClick()"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <a routerLink="/login" class="nav-login-link">Iniciar sesión</a>
+          }
+        </div>
+      </div>
+    </nav>
+  }
+
+  <main class="main-content">
+    <router-outlet />
+  </main>
+</div>

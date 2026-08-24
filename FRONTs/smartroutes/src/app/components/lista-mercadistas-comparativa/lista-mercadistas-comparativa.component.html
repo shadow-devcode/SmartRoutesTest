@@ -1,0 +1,201 @@
+<div class="sidebar">
+  <!-- Header -->
+  <div class="sidebar-header">
+    <h2>📊 Vista Comparativa</h2>
+    <p class="subtitle">Sistema de Rutas Inteligentes</p>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="stats-container" *ngIf="estadisticas && !errorApi">
+    <div class="stat-card">
+      <div class="stat-value">{{ mercadistas.length || estadisticas.total_mercadistas }}</div>
+      <div class="stat-label">Mercadistas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalUbicaciones }}</div>
+      <div class="stat-label">Ubicaciones</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalKilometrosRuta | number:'1.0-2' }} Km</div>
+      <div class="stat-label">Kilómetros en ruta</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalTiempoTrabajo | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo de trabajo</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ totalTiempoEntreSucursales | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo entre sucursales</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ (totalTiempoTrabajo + totalTiempoEntreSucursales) | number:'1.0-0' }} min</div>
+      <div class="stat-label">Tiempo total de trabajo</div>
+    </div>
+  </div>
+
+  <!-- Sin Excel comparativo cargado -->
+  <div class="sin-datos-state" *ngIf="errorApi && sinDatos">
+    <div class="sin-datos-icon">📊</div>
+    <h3>Sin datos comparativos</h3>
+    <p>
+      Sube un Excel ya procesado usando el botón
+      <strong>📤 Subir nuevo Excel</strong> que aparece en la parte superior del mapa.
+    </p>
+  </div>
+
+  <!-- Error de conexión real -->
+  <div class="error-state" *ngIf="errorApi && !sinDatos">
+    <div class="error-icon">⚠️</div>
+    <h3>No se pudo conectar</h3>
+    <p>Asegúrate de que la API está ejecutándose en <code>{{ apiUrlBase }}</code></p>
+    <p class="error-hint">Si la API corre en otra PC o puerto, edita <code>src/environments/environment.ts</code> y cambia <code>apiUrl</code>.</p>
+    <button class="btn-retry" (click)="reintentar()">
+      🔄 Reintentar
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <p>Cargando datos...</p>
+  </div>
+
+  <div class="filters-stack" *ngIf="!errorApi && !cargando">
+    <article class="filter-card">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Período</span>
+        <h3 class="filter-card__title">Semana</h3>
+        <p class="filter-card__desc">Comparativa filtrada por semana del archivo cargado.</p>
+      </header>
+      <div class="chips-row chips-row--wrap" role="group" aria-label="Filtrar por semana">
+        <button
+          type="button"
+          *ngFor="let op of semanasPeriodo"
+          class="filter-chip"
+          [class.filter-chip--active]="semanaActual === op.value"
+          (click)="seleccionarSemana(op.value)">
+          {{ op.label }}
+        </button>
+      </div>
+    </article>
+
+    <article class="filter-card">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Vista</span>
+        <h3 class="filter-card__title">Día de la ruta</h3>
+        <p class="filter-card__desc" *ngIf="mercadistaActual">Mostrar solo las visitas de un día.</p>
+        <p class="filter-card__desc filter-card__desc--muted" *ngIf="!mercadistaActual">Elige un mercadista para combinar con el día.</p>
+      </header>
+      <div class="chips-row chips-row--wrap" role="group" aria-label="Filtrar por día">
+        <button type="button" class="filter-chip" [class.filter-chip--active]="diaActual === ''" (click)="seleccionarDia('')">Todos los días</button>
+        <button
+          type="button"
+          *ngFor="let dia of diasSemana"
+          class="filter-chip filter-chip--day"
+          [class.filter-chip--active]="diaActual === dia"
+          (click)="seleccionarDia(dia)">
+          {{ dia }}
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <div class="section section--routes" *ngIf="!errorApi && !cargando">
+    <article class="filter-card filter-card--routes">
+      <header class="filter-card__head filter-card__head--routes">
+        <div>
+          <span class="filter-card__eyebrow">Rutas</span>
+          <h3 class="filter-card__title">Mercadistas</h3>
+        </div>
+      </header>
+
+    <div class="mercadistas-list">
+      <div
+        *ngFor="let mercadista of mercadistas"
+        class="mercadista-item"
+        [class.active]="mercadistaActual === mercadista"
+        [attr.aria-expanded]="mercadistaActual === mercadista">
+
+        <div
+          class="mercadista-header"
+          role="button"
+          tabindex="0"
+          (click)="onMercadistaHeaderClick(mercadista)"
+          (keydown)="onMercadistaHeaderKeydown($event, mercadista)">
+          <div
+            class="color-indicator"
+            [style.background-color]="getColorMercadista(mercadista)">
+          </div>
+          <div class="mercadista-header__text">
+            <span class="mercadista-nombre">{{ mercadista }}</span>
+            <span class="mercadista-hint" *ngIf="mercadistaActual !== mercadista">Clic para cambiar de mercadista</span>
+            <span class="mercadista-hint mercadista-hint--on" *ngIf="mercadistaActual === mercadista">Visitas por día</span>
+          </div>
+          <button
+            type="button"
+            class="mercadista-chevron-btn"
+            (click)="onMercadistaChevronClick(mercadista, $event)"
+            [attr.aria-expanded]="mercadistaActual === mercadista"
+            [attr.aria-label]="mercadistaActual === mercadista ? 'Cerrar ruta' : 'Abrir ruta'">
+            <span class="chevron" [class.chevron--open]="mercadistaActual === mercadista" aria-hidden="true"></span>
+          </button>
+        </div>
+
+        <!-- Detalle expandido -->
+        <div class="mercadista-detalle" *ngIf="mercadistaActual === mercadista && detalleActual">
+          <div class="dias-detalle">
+            <div 
+              *ngFor="let dia of getDiasKeys()"
+              class="dia-detalle">
+              <div class="dia-header">
+                <span class="dia-header__dia">{{ dia }}</span>
+                <span class="dia-header__count">{{ getUbicacionesDia(dia).length }} visitas</span>
+              </div>
+
+              <div class="ubicaciones-list">
+                <div
+                  *ngFor="let ubicacion of getUbicacionesDia(dia)"
+                  class="ubicacion-item">
+                  <div class="ubicacion-orden">{{ ubicacion.orden }}</div>
+                  <div class="ubicacion-info">
+                    <div class="ubicacion-nombre">{{ ubicacion.descripcion }}</div>
+                    <div class="ubicacion-direccion" *ngIf="ubicacion.provincia || ubicacion.ciudad || ubicacion.calle">
+                      <svg class="ubicacion-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                      <span class="ubicacion-direccion__text">
+                        <span *ngIf="ubicacion.calle">{{ ubicacion.calle }}</span>
+                        <span *ngIf="ubicacion.ciudad">{{ ubicacion.calle ? ', ' : '' }}{{ ubicacion.ciudad }}</span>
+                        <span *ngIf="ubicacion.provincia">{{ (ubicacion.ciudad || ubicacion.calle) ? ', ' : '' }}{{ ubicacion.provincia }}</span>
+                      </span>
+                    </div>
+                    <div class="ubicacion-meta-row">
+                      <span class="ubicacion-pill">
+                        <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        {{ ubicacion.horario }}
+                      </span>
+                      <span class="ubicacion-pill">
+                        <svg class="ubicacion-icon ubicacion-icon--sm" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"/></svg>
+                        {{ ubicacion.tiempo_servicio }} min
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </article>
+  </div>
+
+  <div class="actions" *ngIf="(mercadistaActual || diaActual !== null || semanaActual) && !errorApi">
+    <button type="button" class="btn-clear" (click)="limpiarFiltros()">
+      <span class="btn-clear__icon" aria-hidden="true">↺</span>
+      Restablecer filtros
+    </button>
+  </div>
+
+  <div class="sidebar-footer">
+    <p>Combina semana, día y mercadista para enfocar la comparativa en el mapa.</p>
+  </div>
+</div>

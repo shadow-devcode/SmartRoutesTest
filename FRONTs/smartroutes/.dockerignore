@@ -1,0 +1,13 @@
+# Dependencias y artefactos de build (se regeneran dentro de la imagen)
+node_modules/
+dist/
+.angular/
+
+# Config local con token de desarrollo (gitignored; el build de producción
+# usa environment.prod.ts con el token inyectado por build-arg)
+src/environments/environment.local.ts
+
+# Docker
+Dockerfile
+.dockerignore
+nginx.conf

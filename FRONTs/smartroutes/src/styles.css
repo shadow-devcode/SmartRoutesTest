@@ -1,0 +1,333 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* ═══════════════════════════════════════════════════════════
+   Smart Routes — diseño adaptable HD (720p) / FHD (1080p) / QHD (1440p)
+   Usa variables en componentes: var(--sr-dvh), var(--sr-sidebar-w), etc.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --sr-dvh: 100dvh;
+  --sr-vw: 100vw;
+  /* Altura aproximada de la barra superior (ajustada en breakpoints) */
+  --sr-nav-h: clamp(52px, 9dvh, 76px);
+  /* Área útil bajo la nav para vistas a pantalla completa */
+  --sr-main-min-h: max(320px, calc(var(--sr-dvh) - var(--sr-nav-h)));
+  /* Sidebar mapa / comparativa: crece en QHD, compacta en HD */
+  --sr-sidebar-w: clamp(260px, 19vw, 400px);
+  --sr-content-max: min(96vw, 1920px);
+  --sr-content-wide: min(98vw, 2400px);
+  --sr-pad-section: clamp(0.75rem, 1.8vw, 1.75rem);
+  --sr-gap-ui: clamp(0.5rem, 1.2vw, 1rem);
+}
+
+/* Portátiles / HD: menos altura útil → nav y sidebar un poco más compactos */
+@media (max-height: 820px) {
+  :root {
+    --sr-nav-h: clamp(48px, 10dvh, 68px);
+    --sr-sidebar-w: clamp(248px, 22vw, 360px);
+  }
+}
+
+@media (max-height: 720px) {
+  :root {
+    --sr-nav-h: clamp(44px, 11dvh, 60px);
+    --sr-sidebar-w: clamp(240px, 24vw, 320px);
+  }
+}
+
+/* Full HD y superior: sidebar puede ensancharse */
+@media (min-width: 1600px) and (min-height: 820px) {
+  :root {
+    --sr-sidebar-w: clamp(300px, 18vw, 440px);
+  }
+}
+
+/* 2K / QHD (2560×1440) y monitores anchos */
+@media (min-width: 2000px) and (min-height: 900px) {
+  :root {
+    --sr-sidebar-w: clamp(340px, 16vw, 480px);
+    --sr-content-max: min(94vw, 2200px);
+  }
+}
+
+/* Escala tipográfica base (1rem): ligeramente menor en 720p, mayor en QHD */
+html {
+  font-size: 100%;
+}
+
+@media (max-height: 800px) {
+  html {
+    font-size: 93.75%;
+  }
+}
+
+@media (max-height: 720px) {
+  html {
+    font-size: 87.5%;
+  }
+}
+
+@media (min-width: 1920px) and (min-height: 900px) {
+  html {
+    font-size: 106.25%;
+  }
+}
+
+@media (min-width: 2560px) and (min-height: 1000px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+
+/* Reset y estilos base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #333;
+  background: #f8f9fa;
+}
+
+/* Tipografía */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Utilidades */
+.text-center {
+  text-align: center;
+}
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+.p-4 { padding: 2rem; }
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Componentes reutilizables */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s;
+  outline: none;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-success {
+  background: #28a745;
+  color: white;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+}
+
+/* Cards */
+.card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  transition: box-shadow 0.3s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.badge-success {
+  background: #28a745;
+  color: white;
+}
+
+.badge-warning {
+  background: #ffc107;
+  color: #333;
+}
+
+.badge-danger {
+  background: #dc3545;
+  color: white;
+}
+
+/* Alerts */
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+.alert-danger {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Loading states */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive helpers */
+.hide-mobile {
+  display: block;
+}
+
+.show-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+  
+  .show-mobile {
+    display: block;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Modal "Mover visita" — desplaza la app a la derecha para
+   dejar visible el sidebar y el mapa reales junto al panel.
+   La clase se añade en document.body desde el componente.
+   ═══════════════════════════════════════════════════════════ */
+/* El modal "Mover punto de venta" ahora es una tarjeta flotante centrada,
+   así que ya no desplazamos el layout: sidebar y mapa quedan visibles a
+   ambos lados del modal. Mantenemos la clase por compatibilidad pero sin
+   efectos sobre el padding del body. */
+body.modal-mover-activo {
+  overflow: auto;
+}

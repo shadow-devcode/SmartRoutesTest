@@ -1,0 +1,1 @@
+# Middleware (autenticación JWT, roles)

@@ -1,0 +1,13 @@
+# Entorno y secretos
+.env
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Datos generados por el motor. Son salida, no fuente: cambian en cada
+# ejecución y pesan MB. El índice ya arrastraba 25 borrados de estos archivos
+# desde el principio de la rama; ignorarlos cierra ese limbo.
+datasets/
+uploads/*.xlsx
+uploads/*.xls

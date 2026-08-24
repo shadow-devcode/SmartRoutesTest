@@ -1,0 +1,147 @@
+<div class="app-container">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────── -->
+  <aside class="sidebar-panel">
+    <app-lista-mercadistas-comparativa
+      (mercadistaSeleccionado)="onMercadistaSeleccionado($event)"
+      (diaSeleccionado)="onDiaSeleccionado($event)"
+      (semanaSeleccionada)="onSemanaSeleccionada($event)"
+      (todosFiltrosLimpiados)="onLimpiarFiltros()">
+    </app-lista-mercadistas-comparativa>
+  </aside>
+
+  <!-- ── Panel principal ──────────────────────────────────────── -->
+  <main class="main-panel">
+
+    <!-- Header -->
+    <div class="map-header">
+      <div class="header-content">
+        <h1>📊 Vista Comparativa</h1>
+        <div class="header-actions">
+          <div class="filter-info" *ngIf="filtroActivo">
+            <span class="filter-badge">{{ filtroActivo }}</span>
+            <span class="ubicaciones-count">{{ ubicaciones.length }} ubicaciones</span>
+          </div>
+          <div class="filter-info" *ngIf="!filtroActivo">
+            <span class="ubicaciones-count">{{ ubicaciones.length }} ubicaciones totales</span>
+          </div>
+
+          <!-- Botón de carga -->
+          <button class="btn-upload" (click)="abrirModal()">
+            📤 Subir nuevo Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Leyenda: color por día -->
+      <div class="leyenda-dias">
+        <span class="leyenda-dias-label">Ruta por día:</span>
+        <span
+          *ngFor="let dia of diasLeyenda"
+          class="leyenda-item"
+          [style.background-color]="getColorDia(dia)">
+          {{ dia }}
+        </span>
+      </div>
+
+      <!-- Pestañas de vista -->
+      <div class="tabs-menu">
+        <button
+          class="tab-button"
+          [class.active]="modoVista === 'linea'"
+          (click)="cambiarModoVista('linea')">
+          📏 <span class="tab-text">Vista Línea Recta</span>
+        </button>
+        <button
+          class="tab-button"
+          [class.active]="modoVista === 'carretera'"
+          (click)="cambiarModoVista('carretera')">
+          🚗 <span class="tab-text">Vista Carretera</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading del mapa -->
+    <div class="loading-overlay" *ngIf="cargando">
+      <div class="spinner-large"></div>
+      <p>Cargando mapa comparativa...</p>
+    </div>
+
+    <!-- Mapa -->
+    <div class="map-wrapper">
+      <app-mapa [ubicaciones]="ubicaciones" [modoRuta]="modoVista"></app-mapa>
+    </div>
+  </main>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL DE CARGA DE EXCEL
+     ══════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="modalVisible" (click)="cerrarModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Cabecera del modal -->
+    <div class="modal-header">
+      <h2>Cargar nuevo Excel comparativo</h2>
+      <button
+        class="modal-close"
+        (click)="cerrarModal()"
+        [disabled]="etapaCarga === 'subiendo'"
+        title="Cerrar">
+        ✕
+      </button>
+    </div>
+
+    <!-- ── IDLE: seleccionar archivo ─────────────────────────── -->
+    <div class="modal-body" *ngIf="etapaCarga === 'idle'">
+      <div class="upload-zone">
+        <div class="upload-icon">📂</div>
+        <p class="upload-title">Selecciona el Excel comparativo</p>
+        <p class="upload-subtitle">
+          Debe ser un archivo ya procesado que contenga la hoja
+          <strong>Horarios_Detalle</strong>. Los datos se cargarán
+          directamente en el mapa sin reprocesamiento.
+        </p>
+        <label class="btn btn-primary">
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            (change)="onFileSeleccionado($event)"
+            hidden />
+          Seleccionar archivo
+        </label>
+        <p class="upload-hint">Formatos admitidos: .xlsx, .xls · Tamaño máximo: 50 MB</p>
+      </div>
+    </div>
+
+    <!-- ── SUBIENDO ──────────────────────────────────────────── -->
+    <div class="modal-body modal-center" *ngIf="etapaCarga === 'subiendo'">
+      <div class="spinner"></div>
+      <p class="status-title">Cargando archivo...</p>
+      <p class="status-sub">{{ archivoNombre }}</p>
+    </div>
+
+    <!-- ── COMPLETADO ────────────────────────────────────────── -->
+    <div class="modal-body modal-center" *ngIf="etapaCarga === 'completado'">
+      <div class="result-icon">✅</div>
+      <p class="status-title success-text">¡Datos cargados!</p>
+      <p class="status-sub">
+        <ng-container *ngIf="totalRegistros > 0">
+          Se cargaron <strong>{{ totalRegistros | number }}</strong> registros.
+        </ng-container>
+        El mapa comparativo ya muestra los nuevos datos.
+      </p>
+      <button class="btn btn-primary" (click)="cerrarModal()">Cerrar</button>
+    </div>
+
+    <!-- ── ERROR ─────────────────────────────────────────────── -->
+    <div class="modal-body modal-center" *ngIf="etapaCarga === 'error'">
+      <div class="result-icon">⚠️</div>
+      <p class="status-title error-text">Ocurrió un error</p>
+      <p class="status-sub error-detail">{{ errorCarga }}</p>
+      <button class="btn btn-secondary" (click)="resetearModal()">Intentar de nuevo</button>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,476 @@
+<div class="gp-page">
+  <div class="gp-inner">
+
+    <header class="gp-hero">
+      <p class="gp-eyebrow">Smart Routes</p>
+      <h1 class="gp-title">Gestión de pendientes</h1>
+      <p class="gp-lead">
+        Arriba, los puntos con visitas que el motor no pudo colocar. Abajo, las rutas ya
+        asignadas a cada mercaderista. Ambas secciones se pueden ver en
+        <strong>lista</strong> o sobre el <strong>mapa</strong>.
+      </p>
+      <div class="gp-actions-top">
+        <a routerLink="/rutas" class="btn btn-muted">Ir al mapa de rutas</a>
+        <button type="button" class="btn btn-muted" (click)="cargar()" [disabled]="cargando">
+          {{ cargando ? 'Actualizando…' : 'Actualizar lista' }}
+        </button>
+      </div>
+    </header>
+
+    <div class="gp-alert gp-alert--error" role="alert" *ngIf="error">
+      {{ error }}
+      <button type="button" class="btn btn-sm btn-muted" (click)="cargar()">Reintentar</button>
+    </div>
+
+    <!-- Resumen -->
+    <section class="gp-stats" *ngIf="!cargando && !error">
+      <article class="gp-stat">
+        <span class="gp-stat__value">{{ totalPuntos | number }}</span>
+        <span class="gp-stat__label">Puntos con pendientes</span>
+      </article>
+      <article class="gp-stat">
+        <span class="gp-stat__value">{{ totalVisitasPendientes | number }}</span>
+        <span class="gp-stat__label">Visitas sin asignar</span>
+      </article>
+      <article class="gp-stat">
+        <span class="gp-stat__value">{{ minutosPendientes | number:'1.0-0' }}</span>
+        <span class="gp-stat__label">Minutos pendientes</span>
+      </article>
+    </section>
+
+    <section class="gp-card" *ngIf="!cargando && !error">
+      <div class="gp-card__head">
+        <div class="gp-card__icon" aria-hidden="true">📋</div>
+        <div>
+          <h2 class="gp-card__title">Puntos pendientes</h2>
+          <p class="gp-card__lead">
+            Filtra por punto, ciudad o mercaderista. Los filtros se aplican también al mapa.
+          </p>
+        </div>
+        <div class="gp-vista-switch">
+          <button
+            type="button"
+            class="gp-vista-btn"
+            [class.active]="vista === 'lista'"
+            (click)="cambiarVista('lista')">
+            Lista
+          </button>
+          <button
+            type="button"
+            class="gp-vista-btn"
+            [class.active]="vista === 'mapa'"
+            (click)="cambiarVista('mapa')">
+            Mapa
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros: punto de venta, provincia y ciudad (mismas columnas de la tabla) -->
+      <div class="gp-filtros">
+        <ng-container *ngFor="let f of filtrosPendienteArriba">
+          <!-- Punto de venta abre el mismo panel con buscador que la cabecera:
+               son cientos de nombres y un desplegable no se puede recorrer. -->
+          <div class="gp-filtro-mapa" *ngIf="f.clave === 'descripcion'; else desplegable">
+            <span class="gp-filtro-mapa__label">{{ f.etiqueta }}</span>
+            <button
+              type="button"
+              class="gp-select gp-select-btn"
+              [class.gp-select-btn--activo]="columnaFiltradaPendiente(f.clave)"
+              [title]="filtrosPendiente[f.clave] || 'Todos'"
+              (click)="alternarFiltro(f.clave, $event, 'pendientes')">
+              <span class="gp-select-btn__texto">{{ filtrosPendiente[f.clave] || 'Todos' }}</span>
+              <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
+            </button>
+          </div>
+
+          <ng-template #desplegable>
+            <label class="gp-filtro-mapa">
+              <span class="gp-filtro-mapa__label">{{ f.etiqueta }}</span>
+              <select
+                class="gp-select"
+                [ngModel]="filtrosPendiente[f.clave]"
+                (ngModelChange)="cambiarFiltroPendiente(f.clave, $event)">
+                <option value="">Todos</option>
+                <option *ngFor="let v of opcionesPendiente[f.clave]" [value]="v">{{ v }}</option>
+              </select>
+            </label>
+          </ng-template>
+        </ng-container>
+        <button
+          type="button"
+          class="btn btn-sm btn-muted"
+          (click)="limpiarFiltros()"
+          [disabled]="!hayFiltrosPendiente">
+          Limpiar
+        </button>
+      </div>
+
+      <!-- Lista -->
+      <ng-container *ngIf="vista === 'lista'">
+        <div class="gp-table-wrap">
+          <table class="gp-table">
+            <thead>
+              <tr>
+                <th *ngFor="let col of columnasPendiente" [class.gp-num]="col.numerica">
+                  <span class="gp-th-contenido">
+                    <span class="gp-th-texto">{{ col.etiqueta }}</span>
+                    <button
+                      type="button"
+                      class="gp-filtro-btn"
+                      [class.activo]="columnaFiltradaPendiente(col.clave)"
+                      [title]="columnaFiltradaPendiente(col.clave)
+                        ? 'Filtrado por: ' + filtrosPendiente[col.clave]
+                        : 'Filtrar por ' + col.etiqueta"
+                      (click)="alternarFiltro(col.clave, $event, 'pendientes')">
+                      ▾
+                    </button>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of puntosFiltrados; trackBy: trackPunto">
+                <td class="gp-desc" [title]="p.descripcion">
+                  <span class="gp-name">{{ p.descripcion }}</span>
+                  <span class="gp-sub">{{ p.tiempo_servicio | number:'1.0-0' }} min/visita</span>
+                </td>
+                <td class="gp-num">{{ p.frecuencia_mes ?? '—' }}</td>
+                <td>
+                  <ng-container *ngIf="p.dias_visita.length; else sinDias">
+                    <span class="gp-pill gp-pill--dia" *ngFor="let d of p.dias_visita">{{ d }}</span>
+                  </ng-container>
+                  <ng-template #sinDias>
+                    <span class="gp-sin-dato">Sin días asignados</span>
+                  </ng-template>
+                </td>
+                <td class="gp-num">
+                  <span class="gp-pill gp-pill--pendiente">{{ p.visitas_pendientes }}</span>
+                </td>
+                <td class="gp-num">
+                  {{ p.visitas_agendadas }}
+                  <span class="gp-sub gp-sub--inline" *ngIf="p.frecuencia_mes">
+                    ({{ cobertura(p) }}%)
+                  </span>
+                </td>
+                <td>{{ p.mercadista || '—' }}</td>
+                <td class="gp-loc" [title]="p.provincia">{{ p.provincia || '—' }}</td>
+                <td class="gp-loc" [title]="p.ciudad">{{ p.ciudad || '—' }}</td>
+              </tr>
+              <tr *ngIf="puntosFiltrados.length === 0">
+                <td colspan="8" class="gp-state">
+                  No hay pendientes que coincidan con el filtro.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="gp-nota">
+          Mostrando {{ puntosFiltrados.length | number }} de {{ totalPuntos | number }} puntos.
+          Los días de visita son aquellos en los que el punto <strong>sí</strong> tiene visitas
+          agendadas; para asignar una pendiente a una ruta, usa el panel del mapa.
+        </p>
+      </ng-container>
+
+      <!-- Mapa -->
+      <ng-container *ngIf="vista === 'mapa'">
+        <div class="gp-mapa-leyenda">
+          <span class="gp-leyenda-item">
+            <span class="gp-leyenda-punto"></span>
+            El número es cuántas visitas le faltan a ese punto; el tamaño crece con ellas.
+          </span>
+          <span class="gp-leyenda-conteo">
+            {{ puntosEnMapa.length | number }} punto(s) en el mapa
+            <ng-container *ngIf="puntosSinCoordenadas > 0">
+              · {{ puntosSinCoordenadas | number }} sin coordenadas válidas, solo en la lista
+            </ng-container>
+          </span>
+        </div>
+        <div class="gp-mapa-wrap">
+          <app-mapa [ubicaciones]="[]" [puntosPendientes]="puntosEnMapa"></app-mapa>
+        </div>
+      </ng-container>
+    </section>
+
+    <section class="gp-card" *ngIf="cargando">
+      <p class="gp-state">Cargando pendientes…</p>
+    </section>
+
+    <!-- ══════════ Rutas asignadas: lo que SÍ está colocado ══════════ -->
+    <section class="gp-card gp-card--rutas" *ngIf="!rutasCargando && !rutasError">
+      <div class="gp-card__head">
+        <div class="gp-card__icon gp-card__icon--rutas" aria-hidden="true">🗺️</div>
+        <div>
+          <h2 class="gp-card__title">Rutas asignadas</h2>
+          <p class="gp-card__lead">
+            Puntos con visitas ya colocadas: quién los atiende y qué días.
+            Filtra por punto, mercaderista o provincia; también aplica al mapa.
+          </p>
+        </div>
+        <div class="gp-vista-switch">
+          <button
+            type="button"
+            class="gp-vista-btn"
+            [class.active]="rutasVista === 'lista'"
+            (click)="cambiarVistaRutas('lista')">
+            Lista
+          </button>
+          <button
+            type="button"
+            class="gp-vista-btn"
+            [class.active]="rutasVista === 'mapa'"
+            (click)="cambiarVistaRutas('mapa')">
+            Mapa
+          </button>
+        </div>
+      </div>
+
+      <div class="gp-stats gp-stats--inline">
+        <article class="gp-stat gp-stat--sm">
+          <span class="gp-stat__value">{{ rutasTotalPuntos | number }}</span>
+          <span class="gp-stat__label">Puntos con ruta</span>
+        </article>
+        <article class="gp-stat gp-stat--sm">
+          <span class="gp-stat__value">{{ rutasTotalVisitas | number }}</span>
+          <span class="gp-stat__label">Visitas asignadas</span>
+        </article>
+        <article class="gp-stat gp-stat--sm">
+          <span class="gp-stat__value">{{ rutasMinutos | number:'1.0-0' }}</span>
+          <span class="gp-stat__label">Minutos asignados</span>
+        </article>
+        <article class="gp-stat gp-stat--sm">
+          <span class="gp-stat__value">{{ rutasMercadistas.length | number }}</span>
+          <span class="gp-stat__label">Mercaderistas</span>
+        </article>
+      </div>
+
+      <div class="gp-filtros gp-filtros--rutas">
+        <span class="gp-filtros-nota">
+          Filtra desde la cabecera de cada columna, igual que en el Excel.
+        </span>
+        <button
+          type="button"
+          class="btn btn-sm btn-muted"
+          (click)="limpiarFiltrosRutas()"
+          [disabled]="!hayFiltrosRuta">
+          Limpiar filtros
+        </button>
+      </div>
+
+      <ng-container *ngIf="rutasVista === 'lista'">
+        <div class="gp-table-wrap">
+          <table class="gp-table gp-table--excel">
+            <thead>
+              <tr>
+                <th *ngFor="let col of columnasRuta" [class.gp-num]="col.numerica">
+                  <span class="gp-th-contenido">
+                    <span class="gp-th-texto">{{ col.etiqueta }}</span>
+                    <button
+                      type="button"
+                      class="gp-filtro-btn"
+                      [class.activo]="columnaFiltrada(col.clave)"
+                      [title]="columnaFiltrada(col.clave)
+                        ? 'Filtrado por: ' + filtrosRuta[col.clave]
+                        : 'Filtrar por ' + col.etiqueta"
+                      (click)="alternarFiltro(col.clave, $event, 'rutas')">
+                      ▾
+                    </button>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of rutasFilasFiltradas; trackBy: trackFila">
+                <td class="gp-nowrap">{{ f.mercadista }}</td>
+                <td class="gp-nowrap">{{ f.dia }}</td>
+                <td class="gp-num">{{ f.orden_ruta }}</td>
+                <td class="gp-desc" [title]="f.descripcion">{{ f.descripcion }}</td>
+                <td class="gp-loc" [title]="f.provincia">{{ f.provincia || '—' }}</td>
+                <td class="gp-loc" [title]="f.ciudad">{{ f.ciudad || '—' }}</td>
+                <td class="gp-num">{{ f.tiempo_servicio | number:'1.0-0' }}</td>
+                <td class="gp-nowrap">{{ f.horario || '—' }}</td>
+                <td class="gp-nowrap">{{ f.fecha || '—' }}</td>
+              </tr>
+              <tr *ngIf="rutasFilasFiltradas.length === 0">
+                <td [attr.colspan]="columnasRuta.length" class="gp-state">
+                  No hay rutas que coincidan con los filtros.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="gp-nota">
+          Mostrando {{ rutasFilasFiltradas.length | number }} de {{ rutasFilas.length | number }}
+          visitas, con las columnas de la hoja <strong>Horarios_Detalle</strong> del Excel.
+          Cada columna tiene su propio filtro, como el autofiltro de Excel.
+        </p>
+      </ng-container>
+
+      <ng-container *ngIf="rutasVista === 'mapa'">
+        <!-- Filtros del mapa: los mismos de las columnas, accesibles sin tabla -->
+        <div class="gp-filtros-mapa">
+          <label class="gp-filtro-mapa" *ngFor="let f of filtrosMapa">
+            <span class="gp-filtro-mapa__label">{{ f.etiqueta }}</span>
+            <select
+              class="gp-select"
+              [ngModel]="filtrosRuta[f.clave]"
+              (ngModelChange)="cambiarFiltroMapa(f.clave, $event)">
+              <option
+                value=""
+                *ngIf="!(modoMapaRuta === 'recorrido' && (f.clave === 'fecha' || f.clave === 'dia'))">
+                Todos
+              </option>
+              <option *ngFor="let v of opcionesRuta[f.clave]" [value]="v">{{ v }}</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            class="btn btn-sm btn-muted"
+            (click)="limpiarFiltrosRutas()"
+            [disabled]="!hayFiltrosRuta">
+            Limpiar
+          </button>
+        </div>
+
+        <!-- Qué se dibuja: nube de puntos o el recorrido con su orden y km -->
+        <div class="gp-mapa-modos">
+          <div class="gp-vista-switch gp-vista-switch--mapa">
+            <button
+              type="button"
+              class="gp-vista-btn"
+              [class.active]="modoMapaRuta === 'puntos'"
+              (click)="cambiarModoMapaRuta('puntos')">
+              Puntos
+            </button>
+            <button
+              type="button"
+              class="gp-vista-btn"
+              [class.active]="modoMapaRuta === 'recorrido'"
+              (click)="cambiarModoMapaRuta('recorrido')">
+              Recorrido
+            </button>
+          </div>
+
+          <div class="gp-vista-switch gp-vista-switch--mapa" *ngIf="modoMapaRuta === 'recorrido'">
+            <button
+              type="button"
+              class="gp-vista-btn"
+              [class.active]="modoTrazado === 'linea'"
+              (click)="cambiarTrazado('linea')">
+              Línea recta
+            </button>
+            <button
+              type="button"
+              class="gp-vista-btn"
+              [class.active]="modoTrazado === 'carretera'"
+              (click)="cambiarTrazado('carretera')">
+              Por calles
+            </button>
+          </div>
+        </div>
+
+        <div class="gp-mapa-leyenda">
+          <span class="gp-leyenda-item" *ngIf="modoMapaRuta === 'puntos'">
+            <span class="gp-leyenda-punto gp-leyenda-punto--ruta"></span>
+            <ng-container *ngIf="!filtroTemporalActivo">
+              El número son las visitas del mes de ese punto; el tamaño crece con ellas.
+            </ng-container>
+            <ng-container *ngIf="filtroTemporalActivo">
+              El número son las visitas de ese punto que pasan el filtro; el tamaño crece con ellas.
+            </ng-container>
+          </span>
+          <span class="gp-leyenda-item" *ngIf="modoMapaRuta === 'recorrido'">
+            <span class="gp-leyenda-punto gp-leyenda-punto--ruta"></span>
+            El número es el orden de la ruta de esa jornada; la etiqueta del tramo son
+            sus kilómetros. Cambia semana o día para ver las demás jornadas.
+          </span>
+          <span class="gp-leyenda-conteo">
+            <ng-container *ngIf="modoMapaRuta === 'puntos'">
+              {{ rutasEnMapa.length | number }} punto(s) en el mapa
+            </ng-container>
+            <ng-container *ngIf="modoMapaRuta === 'recorrido'">
+              {{ ubicacionesRuta.length | number }} parada(s) ·
+              {{ recorridosEnMapa | number }} recorrido(s)
+            </ng-container>
+            <ng-container *ngIf="rutasSinCoordenadas > 0">
+              · {{ rutasSinCoordenadas | number }} sin coordenadas válidas, solo en la lista
+            </ng-container>
+          </span>
+        </div>
+
+        <p class="gp-mapa-aviso" *ngIf="modoMapaRuta === 'recorrido' && recorridosEnMapa > 12">
+          Hay {{ recorridosEnMapa | number }} recorridos dibujados a la vez. Filtra por
+          mercaderista, semana y día para ver una jornada limpia.
+        </p>
+
+        <div class="gp-mapa-wrap">
+          <app-mapa
+            [ubicaciones]="modoMapaRuta === 'recorrido' ? ubicacionesRuta : []"
+            [puntosRuta]="modoMapaRuta === 'puntos' ? rutasEnMapa : []"
+            [modoRuta]="modoTrazado"
+            [agruparPorSemana]="true">
+          </app-mapa>
+        </div>
+      </ng-container>
+    </section>
+
+    <div class="gp-alert gp-alert--error" role="alert" *ngIf="rutasError">
+      {{ rutasError }}
+      <button type="button" class="btn btn-sm btn-muted" (click)="cargarRutas()">Reintentar</button>
+    </div>
+
+    <section class="gp-card" *ngIf="rutasCargando">
+      <p class="gp-state">Cargando rutas asignadas…</p>
+    </section>
+
+
+    <!-- Panel de filtro de columna (se ancla al botón de su cabecera) -->
+    <div
+      class="gp-filtro-panel"
+      *ngIf="filtroAbierto"
+      [style.left.px]="filtroPos.x"
+      [style.top.px]="filtroPos.y"
+      (click)="$event.stopPropagation()">
+      <div class="gp-filtro-panel__titulo">{{ columnaPanel?.etiqueta }}</div>
+
+      <input
+        type="text"
+        class="gp-filtro-panel__input"
+        placeholder="Buscar valor…"
+        [(ngModel)]="filtroBusqueda"
+      />
+      <ul class="gp-filtro-panel__lista">
+        <li>
+          <button
+            type="button"
+            class="gp-filtro-opcion"
+            [class.activa]="!panelFiltrado"
+            (click)="aplicarFiltro(filtroAbierto, '')">
+            (Todos)
+          </button>
+        </li>
+        <li *ngFor="let v of opcionesPanel">
+          <button
+            type="button"
+            class="gp-filtro-opcion"
+            [class.activa]="valorPanel(v)"
+            [title]="v"
+            (click)="aplicarFiltro(filtroAbierto, v)">
+            {{ v }}
+          </button>
+        </li>
+        <li *ngIf="opcionesPanel.length === 0" class="gp-filtro-vacio">Sin coincidencias</li>
+      </ul>
+
+      <button
+        type="button"
+        class="btn btn-sm btn-muted gp-filtro-panel__quitar"
+        (click)="aplicarFiltro(filtroAbierto, '')"
+        [disabled]="!panelFiltrado">
+        Quitar filtro
+      </button>
+    </div>
+
+  </div>
+</div>

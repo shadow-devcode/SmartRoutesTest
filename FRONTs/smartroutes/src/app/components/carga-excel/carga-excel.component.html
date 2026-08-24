@@ -1,0 +1,302 @@
+<div class="carga-excel-container">
+
+  <!-- ── CABECERA ─────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>Carga y Procesamiento de Datos</h1>
+    <p class="subtitle">Sube tu archivo Excel para generar las rutas optimizadas automáticamente</p>
+  </header>
+
+  <div class="page-content">
+
+    <!-- ── BLOQUE DE ERROR ──────────────────────────────────────── -->
+    <div class="alert alert-error" *ngIf="etapa === 'error'">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>Ocurrió un error</strong>
+        <p>{{ errorMensaje }}</p>
+      </div>
+      <button class="btn btn-secondary" (click)="reiniciar()">Intentar de nuevo</button>
+    </div>
+
+    <!-- ── PASO 1: ZONA DE CARGA ────────────────────────────────── -->
+    <section
+      class="section-card upload-section"
+      *ngIf="etapa === 'sin_archivo' || etapa === 'cargando_preview'"
+    >
+      <div class="section-header">
+        <div class="step-badge">1</div>
+        <h2>Seleccionar archivo</h2>
+      </div>
+
+      <div
+        class="drop-zone"
+        [class.dragging]="isDragging"
+        [class.loading]="etapa === 'cargando_preview'"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave()"
+        (drop)="onDrop($event)"
+      >
+        <!-- Estado de carga -->
+        <ng-container *ngIf="etapa === 'cargando_preview'">
+          <div class="spinner"></div>
+          <p class="drop-title">Analizando el archivo...</p>
+          <p class="drop-subtitle">Esto solo tomará un momento</p>
+        </ng-container>
+
+        <!-- Estado inicial -->
+        <ng-container *ngIf="etapa === 'sin_archivo'">
+          <div class="drop-icon">📂</div>
+          <p class="drop-title">Arrastra tu archivo Excel aquí</p>
+          <p class="drop-subtitle">o haz clic en el botón para buscarlo en tu computadora</p>
+
+          <label class="btn btn-primary">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              (change)="onFileSelected($event)"
+              hidden
+            />
+            Seleccionar archivo
+          </label>
+
+          <p class="drop-hint">Formatos admitidos: .xlsx, .xls &nbsp;·&nbsp; Tamaño máximo: 50 MB</p>
+        </ng-container>
+      </div>
+    </section>
+
+    <!-- ── PASO 2: VISTA PREVIA ─────────────────────────────────── -->
+    <section
+      class="section-card preview-section"
+      *ngIf="etapa === 'preview_listo' || etapa === 'procesando' || etapa === 'completado'"
+    >
+      <div class="section-header">
+        <div class="step-badge" [class.step-done]="etapa !== 'preview_listo'">2</div>
+        <h2>Vista previa de datos</h2>
+        <div class="file-meta">
+          <span class="badge badge-file">📄 {{ nombreArchivo }}</span>
+          <span class="badge badge-count">{{ totalFilas | number }} registros</span>
+          <button
+            class="btn-link"
+            (click)="reiniciar()"
+            *ngIf="etapa === 'preview_listo'"
+          >
+            Cambiar archivo
+          </button>
+        </div>
+      </div>
+
+      <!-- Aviso si hay más filas de las que se muestran -->
+      <div class="info-banner" *ngIf="hayMasFilas">
+        ℹ️ Se muestran los primeros 200 registros. El procesamiento incluirá los
+        <strong>{{ totalFilas | number }}</strong> registros del archivo completo.
+      </div>
+
+      <!-- Indicador de scroll horizontal -->
+      <div class="scroll-hint" *ngIf="columnas.length > 5">
+        ← desliza para ver todas las columnas →
+      </div>
+
+      <!-- Tabla de datos -->
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-num col-sticky">#</th>
+              <th *ngFor="let col of columnas" [title]="col">{{ col }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let fila of filasPaginadas; let i = index">
+              <td class="col-num col-sticky">{{ paginaActual * filasPorPagina + i + 1 }}</td>
+              <td
+                *ngFor="let col of columnas"
+                [title]="getValorCelda(fila, col)">
+                {{ getValorCelda(fila, col) }}
+              </td>
+            </tr>
+            <tr *ngIf="filasPaginadas.length === 0">
+              <td [attr.colspan]="columnas.length + 1" class="empty-row">
+                No hay datos para mostrar
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginación -->
+      <div class="pagination" *ngIf="totalPaginas > 1">
+        <button
+          class="btn-page"
+          (click)="cambiarPagina(-1)"
+          [disabled]="paginaActual === 0"
+        >
+          ← Anterior
+        </button>
+        <span class="page-info">
+          Página {{ paginaActual + 1 }} de {{ totalPaginas }}
+        </span>
+        <button
+          class="btn-page"
+          (click)="cambiarPagina(1)"
+          [disabled]="paginaActual === totalPaginas - 1"
+        >
+          Siguiente →
+        </button>
+      </div>
+    </section>
+
+    <!-- ── PASO 3: EJECUTAR ─────────────────────────────────────── -->
+    <section class="section-card execute-section" *ngIf="etapa === 'preview_listo'">
+      <div class="section-header">
+        <div class="step-badge">3</div>
+        <h2>Configurar y Ejecutar Procesamiento</h2>
+      </div>
+
+      <div class="execute-content">
+        <p>
+          Elige cómo se calcularán las rutas y ponle un nombre para reconocerlas después.
+        </p>
+
+        <!-- Configuración: los cuatro desplegables en una fila. -->
+        <div class="config-form">
+          <label class="config-fila">
+            <span class="config-fila__label">Asignación de visitas</span>
+            <select
+              class="config-select"
+              [ngModel]="tipoRuta"
+              (ngModelChange)="seleccionarTipoRuta($event)">
+              <option value="tiempo_completo">Tiempo completo</option>
+              <!-- El valor sigue siendo medio_tiempo: lo que cambia es cómo se
+                   llama de cara al usuario, no el modo que ejecuta el motor. -->
+              <option value="medio_tiempo">Tiempo Completo (puntos de visita duplicados)</option>
+            </select>
+          </label>
+
+          <label class="config-fila">
+            <span class="config-fila__label">Reparto entre mercaderistas</span>
+            <select
+              class="config-select"
+              [ngModel]="tipoCarga"
+              (ngModelChange)="seleccionarTipoCarga($event)">
+              <option value="zona">Por zona</option>
+              <option value="ciudad">Por ciudad</option>
+              <option value="cadena">Por cadena</option>
+            </select>
+          </label>
+
+          <label class="config-fila">
+            <span class="config-fila__label">Qué consume la jornada</span>
+            <select
+              class="config-select"
+              [ngModel]="modoDesplazamiento"
+              (ngModelChange)="seleccionarModoDesplazamiento($event)">
+              <option value="sin_desplazamiento">Sin tiempo de desplazamiento</option>
+              <option value="con_desplazamiento">Con tiempo de desplazamiento</option>
+            </select>
+          </label>
+
+          <label class="config-fila" *ngIf="modoDesplazamiento === 'sin_desplazamiento'">
+            <span class="config-fila__label">Tope de jornada</span>
+            <select
+              class="config-select"
+              [ngModel]="minutosJornada"
+              (ngModelChange)="seleccionarMinutosJornada($event)">
+              <option [ngValue]="480">480 min/día</option>
+              <option [ngValue]="400">400 min/día</option>
+            </select>
+          </label>
+
+        </div>
+
+        <label class="config-fila config-nombre">
+          <span class="config-fila__label">Nombre en el listado</span>
+          <input
+            type="text"
+            [(ngModel)]="nombreListado"
+            maxlength="255"
+            class="config-select"
+            autocomplete="off"
+            placeholder="Ej. Prueba 1"
+          />
+        </label>
+
+        <p class="config-alerta" *ngIf="tipoCarga === 'cadena' && !tieneColumnaCadena">
+          ⚠️ El Excel cargado no trae la columna <strong>CADENA</strong>: el procesamiento se
+          detendrá con un error. Añádela al final o elige otro tipo de carga.
+        </p>
+
+        <p class="execute-note">
+          ⏳ Se analizarán las <strong>{{ totalFilas | number }} ubicaciones</strong>; puede tomar
+          varios minutos. No cierres esta ventana.
+        </p>
+
+        <button class="btn btn-execute" (click)="ejecutarProcesamiento()">
+          ▶&nbsp; Ejecutar procesamiento
+        </button>
+      </div>
+    </section>
+
+    <!-- ── PASO 3 (ACTIVO): BARRA DE PROGRESO ──────────────────── -->
+    <section class="section-card progress-section" *ngIf="etapa === 'procesando'">
+      <div class="section-header">
+        <div class="step-badge step-active">3</div>
+        <h2>Procesando rutas</h2>
+      </div>
+
+      <div class="progress-content">
+        <p class="progress-message">{{ estado.message || 'Procesando...' }}</p>
+
+        <div class="progress-track" role="progressbar" [attr.aria-valuenow]="estado.progress">
+          <div
+            class="progress-fill"
+            [style.width.%]="estado.progress"
+          ></div>
+        </div>
+
+        <div class="progress-footer">
+          <span class="progress-pct">{{ estado.progress }}%</span>
+          <span class="progress-hint">Por favor no cierres esta ventana</span>
+        </div>
+
+        <div class="progress-actions">
+          <button
+            class="btn btn-cancel"
+            (click)="cancelarProcesamiento()"
+            [disabled]="cancelando">
+            {{ cancelando ? 'Cancelando...' : '✕  Cancelar proceso' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── COMPLETADO ───────────────────────────────────────────── -->
+    <section class="section-card success-section" *ngIf="etapa === 'completado'">
+      <div class="success-content">
+        <div class="success-icon">✅</div>
+        <h2>¡Rutas generadas exitosamente!</h2>
+        <p>
+          El procesamiento finalizó. Descarga el archivo con los resultados
+          o explora las rutas directamente en el mapa.
+        </p>
+
+        <!-- Descarga vía HttpClient para enviar JWT (enlace directo → 401). -->
+        <button
+          type="button"
+          class="btn btn-download"
+          (click)="descargarExcelResultado()"
+          [disabled]="descargaEnCurso"
+        >
+          {{ descargaEnCurso ? '⏳ Descargando…' : '⬇️  Descargar Excel con rutas' }}
+        </button>
+        <p class="descarga-error" *ngIf="descargaError">{{ descargaError }}</p>
+
+        <div class="success-actions">
+          <a routerLink="/rutas" class="btn btn-primary">🗺️&nbsp; Ver rutas en el mapa</a>
+          <a routerLink="/dashboard" class="btn btn-secondary">📊&nbsp; Ver dashboard</a>
+          <button class="btn btn-ghost" (click)="reiniciar()">Cargar otro archivo</button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /page-content -->
+</div>

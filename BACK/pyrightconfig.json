@@ -1,0 +1,6 @@
+{
+  "include": ["."],
+  "exclude": ["venv", "**/__pycache__", "datasets", "uploads"],
+  "venvPath": ".",
+  "venv": "venv"
+}

@@ -1,0 +1,1 @@
+# Manejo centralizado de excepciones
