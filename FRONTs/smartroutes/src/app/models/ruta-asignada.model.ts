@@ -1,3 +1,5 @@
+import { JornadaDataset } from './mercadista.model';
+
 /**
  * Rutas asignadas agrupadas por PUNTO DE VENTA (GET /api/rutas-asignadas).
  *
@@ -58,6 +60,8 @@ export interface FilaRuta {
 }
 
 export interface RutasAsignadasResponse {
+  /** Cuota del dataset: 480 o 400 min/día, para medir el llenado de cada día. */
+  jornada?: JornadaDataset;
   /** Filas tal cual salen del Excel. */
   filas: FilaRuta[];
   total_filas: number;

@@ -803,3 +803,406 @@
   color: #92400e;
   font-size: 0.82rem;
 }
+
+/* ── Calendario de la semana ─────────────────────────────────────────────── */
+.gp-card--calendario {
+  margin-top: 1.5rem;
+}
+
+.gp-card__icon--calendario {
+  background: #7c3aed;
+}
+
+.cal-resumen {
+  align-self: flex-end;
+  margin-bottom: 2px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.cal-ok {
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  font-size: 0.88rem;
+}
+
+/* Cinco días en columnas; en pantallas estrechas se desplazan en horizontal
+   antes que apilarse: la semana se lee de un vistazo o no se lee. */
+.cal-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(13rem, 1fr);
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.cal-grid--guardando {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.cal-dia {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 12rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* Destino posible mientras se arrastra. */
+.cal-dia--destino {
+  border-color: var(--brand-from);
+  border-style: dashed;
+  background: #eff6ff;
+}
+
+.cal-dia__cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cal-dia__nombre {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cal-dia__carga {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-dia__carga--lleno {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.cal-barra {
+  height: 4px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.cal-barra__relleno {
+  display: block;
+  height: 100%;
+  background: var(--brand-from);
+}
+
+.cal-barra__relleno--lleno {
+  background: #f59e0b;
+}
+
+.cal-visitas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cal-visita {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  cursor: grab;
+}
+
+.cal-visita:active {
+  cursor: grabbing;
+}
+
+.cal-visita:hover,
+.cal-visita--abierta {
+  border-color: var(--brand-from);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.cal-visita__orden {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--brand-from);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.cal-visita__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.cal-visita__nombre {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-visita__meta {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-mover {
+  margin-top: 0.4rem;
+  padding: 0.6rem;
+  border: 1px solid var(--brand-from);
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cal-mover__campos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cal-mover__campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cal-mover__acciones {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cal-vacio {
+  padding: 0.6rem 0.4rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* Cuadrícula + panel de pendientes, uno al lado del otro. */
+.cal-tablero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 15rem;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .cal-tablero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cal-pendientes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+  background: #fffbeb;
+  max-height: 32rem;
+}
+
+.cal-pendientes__cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cal-pendientes__titulo {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.cal-pendientes__conteo {
+  font-size: 0.72rem;
+  color: #b45309;
+}
+
+.cal-pendientes__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0 2px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cal-pendiente {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  cursor: grab;
+}
+
+.cal-pendiente:active {
+  cursor: grabbing;
+}
+
+.cal-pendiente:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 2px 8px rgba(180, 83, 9, 0.12);
+}
+
+.cal-pendiente__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.cal-pendiente__nombre {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-pendiente__meta {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+/* Cuántas visitas le faltan a ese punto. */
+.cal-pendiente__faltan {
+  flex-shrink: 0;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.cal-pendientes__ayuda {
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: #92400e;
+}
+
+/* Mismo campo de búsqueda que el panel de filtros de las tablas. `.gp-input`
+   no servía aquí: trae `flex: 1 1 22rem` para una fila de filtros y, en un
+   contenedor en columna, esa base se convierte en la ALTURA — el campo salía
+   como una caja enorme. */
+.cal-pendientes__buscar {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+/* Pendiente de otro mercaderista: se ve, pero no se puede arrastrar aquí. */
+.cal-pendiente--ajeno {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #fdfaf3;
+}
+
+.cal-pendiente--ajeno:hover {
+  border-color: #fde68a;
+  box-shadow: none;
+}
+
+.cal-pendiente__dueno {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+/* ── Tabla semanal de rutas (días en columnas) ───────────────────────────── */
+.gp-table--semana .gp-th-dia {
+  background: #2563eb;
+}
+
+.gp-td-dia {
+  text-align: center;
+  white-space: nowrap;
+  background: #f8fbff;
+}
+
+.gp-dia-min {
+  display: block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-dia-horario {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.gp-td-total {
+  font-weight: 600;
+}
+
+/* Pie de totales: se queda pegado abajo al hacer scroll dentro de la tabla. */
+.gp-table--semana tfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-align: right;
+  border-top: 2px solid #93c5fd;
+}
+
+.gp-table--semana tfoot th:first-child {
+  text-align: left;
+}
+
+/* Visita sobre la que se va a soltar: marca dónde caerá. */
+.cal-visita--destino {
+  border-color: var(--brand-from);
+  border-top: 3px solid var(--brand-from);
+  background: #eff6ff;
+}

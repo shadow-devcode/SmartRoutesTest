@@ -835,6 +835,69 @@ input.config-select {
   line-height: 1;
 }
 
+/* ── Grupos de cadenas (multicanal) ─────────────────────────────────────── */
+.grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 40rem;
+}
+
+.grupo {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #f8fafc;
+}
+
+.grupo__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.55rem;
+}
+
+.grupo__nombre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.grupo__conteo {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.grupo__quitar {
+  border: none;
+  background: none;
+  padding: 0 0.2rem;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.grupo__quitar:hover:not(:disabled) {
+  color: #b91c1c;
+}
+
+.grupo__quitar:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Cadena que ya vive en otro grupo: se ve, pero apagada. */
+.cadena-chip--ajena {
+  opacity: 0.45;
+}
+
+.grupos__resto {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
 .cadenas__ayuda {
   margin: 0.6rem 0 0;
   max-width: 40rem;

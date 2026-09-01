@@ -37,7 +37,7 @@ JORNADAS_PERMITIDAS_MIN = (480, 400)
 
 # Tipos de carga aceptados. Se validan aquí para que un valor inventado no
 # acabe repartiendo el trabajo con un criterio que nadie eligió.
-TIPOS_CARGA_PERMITIDOS = ("zona", "ciudad", "cadena", "canal")
+TIPOS_CARGA_PERMITIDOS = ("zona", "ciudad", "cadena", "canal", "multicanal")
 
 
 def _parse_tipo_carga(valor) -> str | None:
@@ -69,6 +69,31 @@ def _parse_cadenas(valor) -> list:
         if texto and texto not in limpias:
             limpias.append(texto)
     return limpias
+
+
+def _parse_grupos_cadenas(valor) -> list:
+    """
+    Grupos de cadenas del reparto multicanal: una lista de listas.
+
+    Se descartan los grupos vacíos y las cadenas repetidas entre grupos (una
+    cadena solo puede pertenecer a un grupo; si aparece en dos, manda el
+    primero). El tamaño se acota para que un cliente no mande una estructura
+    arbitrariamente grande.
+    """
+    if not isinstance(valor, (list, tuple)):
+        return []
+    grupos, vistas = [], set()
+    for bruto in valor[:20]:
+        cadenas = []
+        for item in _parse_cadenas(bruto):
+            clave = item.upper()
+            if clave in vistas:
+                continue
+            vistas.add(clave)
+            cadenas.append(item)
+        if cadenas:
+            grupos.append(cadenas)
+    return grupos
 
 
 def _parse_minutos_jornada(valor) -> int | None:
@@ -225,8 +250,15 @@ def procesar_excel():
         # nivel de cadena por debajo que acotar.
         canal = _parse_cadenas(body.get("canales"))
         cadenas = []
+    elif tipo_carga == "multicanal":
+        canal, cadenas = "", []
     else:
         canal, cadenas = "", []
+    grupos_cadenas = (
+        _parse_grupos_cadenas(body.get("grupos_cadenas"))
+        if tipo_carga == "multicanal"
+        else []
+    )
 
     output_target, register_ds, uid = _prepare_dataset_output()
 
@@ -244,6 +276,7 @@ def procesar_excel():
         tipo_carga=tipo_carga,
         canal=canal,
         cadenas=cadenas,
+        grupos_cadenas=grupos_cadenas,
     )
 
     return jsonify({"success": True, "message": "Procesamiento iniciado correctamente."})

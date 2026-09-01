@@ -185,6 +185,7 @@
               <option value="ciudad">Por ciudad</option>
               <option value="cadena">Por cadena</option>
               <option value="canal">Por canal</option>
+              <option value="multicanal">Multicanal (grupos de cadenas)</option>
             </select>
           </label>
 
@@ -205,6 +206,62 @@
 
 
           </div>
+        <!-- Multicanal: se arman grupos de cadenas y cada grupo va a su propio
+             equipo de mercaderistas. -->
+        <div class="grupos" *ngIf="tipoCarga === 'multicanal' && hayCanales">
+          <div class="cadenas__cabecera">
+            <span class="config-fila__label">Grupos de cadenas</span>
+            <div class="cadenas__acciones">
+              <button type="button" class="cadenas__accion" (click)="agregarGrupo()">
+                + Añadir grupo
+              </button>
+            </div>
+          </div>
+
+          <div class="grupo" *ngFor="let grupo of gruposCadenas; let i = index">
+            <div class="grupo__cabecera">
+              <span class="grupo__nombre">Grupo {{ i + 1 }}</span>
+              <span class="grupo__conteo">
+                {{ grupo.length }} cadena{{ grupo.length === 1 ? '' : 's' }}
+              </span>
+              <button
+                type="button"
+                class="grupo__quitar"
+                (click)="quitarGrupo(i)"
+                [disabled]="gruposCadenas.length === 1 && !grupo.length"
+                title="Quitar este grupo">
+                ✕
+              </button>
+            </div>
+            <div class="cadenas__lista">
+              <button
+                type="button"
+                class="cadena-chip"
+                *ngFor="let cadena of cadenasDisponibles"
+                [class.cadena-chip--on]="grupo.includes(cadena)"
+                [class.cadena-chip--ajena]="grupoDeCadena(cadena) !== -1 && !grupo.includes(cadena)"
+                [attr.aria-pressed]="grupo.includes(cadena)"
+                [title]="grupoDeCadena(cadena) !== -1 && !grupo.includes(cadena)
+                  ? 'Ya está en el grupo ' + (grupoDeCadena(cadena) + 1) + '; al marcarla aquí se mueve'
+                  : cadena"
+                (click)="alternarEnGrupo(i, cadena)">
+                <span class="cadena-chip__marca" aria-hidden="true">
+                  {{ grupo.includes(cadena) ? '✓' : '' }}
+                </span>
+                {{ cadena }}
+              </button>
+            </div>
+          </div>
+
+          <p class="cadenas__ayuda" *ngIf="faltanGrupos">
+            Forma al menos un grupo con una cadena dentro.
+          </p>
+          <p class="grupos__resto" *ngIf="!faltanGrupos && cadenasSinAgrupar.length">
+            Fuera del cálculo: {{ cadenasSinAgrupar.join(', ') }}. Las cadenas sin grupo
+            no se planifican en esta ejecución.
+          </p>
+        </div>
+
         <!-- Cadenas o canales, según el reparto: una o varias. Solo se
              planifica lo marcado. -->
         <div
@@ -303,7 +360,9 @@
 
         </div>
 
-        <p class="config-alerta" *ngIf="tipoCarga === 'cadena' && !tieneColumnaCadena">
+        <p
+          class="config-alerta"
+          *ngIf="(tipoCarga === 'cadena' || tipoCarga === 'multicanal') && !tieneColumnaCadena">
           ⚠️ El Excel cargado no trae la columna <strong>CADENA</strong>: el procesamiento se
           detendrá con un error. Añádela al final o elige otro tipo de carga.
         </p>

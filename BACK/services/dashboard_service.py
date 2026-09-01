@@ -20,6 +20,7 @@ from route_engine.config import (
     max_servicio_dia,
 )
 from utils.dataset_config import (
+    cuota_dia_del_dataset,
     cuota_mes_del_dataset,
     cuota_semana_del_dataset,
     incluye_viaje_del_dataset,
@@ -181,6 +182,8 @@ def provincias_porcentaje(
     prov["minutos_servicio"] = prov[col_serv].round(0).astype(int)
     max_mes = cuota_mes_del_dataset(hp)
     max_semana = cuota_semana_del_dataset(hp)
+    # Tope diario del propio dataset (480 o 400): es el 100% de cada día.
+    max_dia = cuota_dia_del_dataset(hp)
     prov["porcentaje"] = ((prov["minutos"] / max_mes) * 100).round(1) if max_mes else 0.0
     prov = prov.sort_values(["Mercadista", "minutos"], ascending=[True, False])
 
@@ -221,11 +224,26 @@ def provincias_porcentaje(
                 if not sem_df.empty and "Día" in sem_df.columns
                 else {}
             )
+            # Minutos y ocupación de cada día. El porcentaje se mide contra el
+            # tope diario del dataset (480 o 400 min = 100%), que es como se
+            # lee una jornada: 240 min es media jornada, no «pocos puntos».
+            dias_minutos = (
+                sem_df.groupby("Día")["_combinado"].sum().to_dict()
+                if not sem_df.empty and "Día" in sem_df.columns
+                else {}
+            )
             semanas_data[semana] = {
                 "total_puntos": total_puntos,
                 "minutos": int(round(minutos_sem)),
                 "porcentaje": porcentaje_sem,
                 "puntos_por_dia": {str(k): int(v) for k, v in dias_counts.items()},
+                "minutos_por_dia": {
+                    str(k): int(round(float(v))) for k, v in dias_minutos.items()
+                },
+                "porcentaje_por_dia": {
+                    str(k): (round((float(v) / max_dia) * 100, 1) if max_dia else 0.0)
+                    for k, v in dias_minutos.items()
+                },
             }
 
         lista.append(

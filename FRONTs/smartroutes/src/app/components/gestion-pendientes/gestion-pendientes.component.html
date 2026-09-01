@@ -260,11 +260,13 @@
       </div>
 
       <ng-container *ngIf="rutasVista === 'lista'">
+        <!-- Una fila por punto y semana, con los días en columnas: el mismo
+             formato que la hoja Rutas_Semana del Excel descargado. -->
         <div class="gp-table-wrap">
-          <table class="gp-table gp-table--excel">
+          <table class="gp-table gp-table--excel gp-table--semana">
             <thead>
               <tr>
-                <th *ngFor="let col of columnasRuta" [class.gp-num]="col.numerica">
+                <th *ngFor="let col of columnasResumen">
                   <span class="gp-th-contenido">
                     <span class="gp-th-texto">{{ col.etiqueta }}</span>
                     <button
@@ -279,35 +281,64 @@
                     </button>
                   </span>
                 </th>
+                <th class="gp-num gp-th-dia" *ngFor="let d of diasRuta">
+                  <span class="gp-th-contenido">
+                    <span class="gp-th-texto">{{ d }}</span>
+                    <button
+                      type="button"
+                      class="gp-filtro-btn"
+                      [class.activo]="columnaFiltrada('dia')"
+                      [title]="columnaFiltrada('dia')
+                        ? 'Filtrado por: ' + resumenFiltro(filtrosRuta, 'dia')
+                        : 'Filtrar por día'"
+                      (click)="alternarFiltro('dia', $event, 'rutas')">
+                      ▾
+                    </button>
+                  </span>
+                </th>
+                <th class="gp-num">Total (min)</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let f of rutasFilasFiltradas; trackBy: trackFila">
+              <tr *ngFor="let f of rutasSemanales; trackBy: trackSemana">
                 <td class="gp-nowrap">{{ f.mercadista }}</td>
-                <td class="gp-nowrap">{{ f.dia }}</td>
-                <td class="gp-num">{{ f.orden_ruta }}</td>
+                <td class="gp-nowrap">{{ f.fecha }}</td>
                 <td class="gp-desc" [title]="f.descripcion">{{ f.descripcion }}</td>
                 <td class="gp-nowrap">{{ f.canal || '—' }}</td>
                 <td class="gp-nowrap">{{ f.cadena || '—' }}</td>
                 <td class="gp-loc" [title]="f.provincia">{{ f.provincia || '—' }}</td>
                 <td class="gp-loc" [title]="f.ciudad">{{ f.ciudad || '—' }}</td>
-                <td class="gp-num">{{ f.tiempo_servicio | number:'1.0-0' }}</td>
-                <td class="gp-nowrap">{{ f.horario || '—' }}</td>
-                <td class="gp-nowrap">{{ f.fecha || '—' }}</td>
+                <td class="gp-num gp-td-dia" *ngFor="let d of diasRuta">
+                  <ng-container *ngIf="f.dias[d] as dato">
+                    <span class="gp-dia-min">{{ dato.minutos | number:'1.0-0' }}</span>
+                    <span class="gp-dia-horario">{{ dato.horario }}</span>
+                  </ng-container>
+                </td>
+                <td class="gp-num gp-td-total">{{ f.total | number:'1.0-0' }}</td>
               </tr>
-              <tr *ngIf="rutasFilasFiltradas.length === 0">
-                <td [attr.colspan]="columnasRuta.length" class="gp-state">
+              <tr *ngIf="rutasSemanales.length === 0">
+                <td [attr.colspan]="columnasResumen.length + diasRuta.length + 1" class="gp-state">
                   No hay rutas que coincidan con los filtros.
                 </td>
               </tr>
             </tbody>
+            <tfoot *ngIf="rutasSemanales.length">
+              <tr>
+                <th [attr.colspan]="columnasResumen.length">TOTAL</th>
+                <th class="gp-num" *ngFor="let d of diasRuta">
+                  {{ totalesSemanales.dias[d] || 0 | number:'1.0-0' }}
+                </th>
+                <th class="gp-num">{{ totalesSemanales.total | number:'1.0-0' }}</th>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
         <p class="gp-nota">
-          Mostrando {{ rutasFilasFiltradas.length | number }} de {{ rutasFilas.length | number }}
-          visitas, con las columnas de la hoja <strong>Horarios_Detalle</strong> del Excel.
-          Cada columna tiene su propio filtro, como el autofiltro de Excel.
+          {{ rutasSemanales.length | number }} punto(s)-semana ·
+          {{ totalesSemanales.visitas | number }} de {{ rutasFilas.length | number }} visitas.
+          Cada celda de día son los minutos de esa jornada y su horario; el pie suma
+          lo que se está viendo, así que responde a los filtros.
         </p>
       </ng-container>
 
@@ -419,6 +450,203 @@
       </ng-container>
     </section>
 
+    <!-- ══════════ Calendario de la semana: ver y mover visitas ══════════ -->
+    <section class="gp-card gp-card--calendario" *ngIf="!rutasCargando && !rutasError && rutasMercadistas.length">
+      <div class="gp-card__head">
+        <div class="gp-card__icon gp-card__icon--calendario" aria-hidden="true">🗓️</div>
+        <div>
+          <h2 class="gp-card__title">Calendario de la semana</h2>
+          <p class="gp-card__lead">
+            La semana de un mercaderista con sus días en columnas. Arrastra una visita
+            a otro día para moverla, o ábrela para mandarla a otra semana.
+          </p>
+        </div>
+      </div>
+
+      <div class="gp-filtros">
+        <!-- Mismo panel con buscador que las cabeceras de las tablas: con 80
+             mercaderistas un desplegable nativo no se puede recorrer. -->
+        <div class="gp-filtro-mapa">
+          <span class="gp-filtro-mapa__label">Mercaderista</span>
+          <button
+            type="button"
+            class="gp-select gp-select-btn"
+            [class.gp-select-btn--activo]="!!calMercadista"
+            [title]="calMercadista || 'Elige un mercaderista'"
+            (click)="alternarFiltro('mercadista', $event, 'calendario')">
+            <span class="gp-select-btn__texto">{{ calMercadista || 'Elige uno' }}</span>
+            <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
+          </button>
+        </div>
+        <div class="gp-filtro-mapa">
+          <span class="gp-filtro-mapa__label">Semana</span>
+          <button
+            type="button"
+            class="gp-select gp-select-btn"
+            [class.gp-select-btn--activo]="!!calSemana"
+            [title]="calSemana"
+            (click)="alternarFiltro('semana', $event, 'calendario')">
+            <span class="gp-select-btn__texto">{{ calSemana }}</span>
+            <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
+          </button>
+        </div>
+        <span class="cal-resumen">
+          {{ calMinutosSemana | number }} min en la semana ·
+          jornada de {{ jornadaMinutosDia }} min/día
+        </span>
+      </div>
+
+      <div class="gp-alert gp-alert--error" role="alert" *ngIf="calError">{{ calError }}</div>
+      <p class="cal-ok" role="status" *ngIf="calMensaje">{{ calMensaje }}</p>
+
+      <div class="cal-tablero">
+      <div class="cal-grid" [class.cal-grid--guardando]="calGuardando">
+        <div
+          class="cal-dia"
+          *ngFor="let dia of calDias"
+          [class.cal-dia--destino]="arrastrandoSobre(dia)"
+          (dragover)="permitirSoltar($event)"
+          (drop)="alSoltarEnDia(dia, $event)">
+
+          <header class="cal-dia__cabecera">
+            <span class="cal-dia__nombre">{{ dia }}</span>
+            <span
+              class="cal-dia__carga"
+              [class.cal-dia__carga--lleno]="calPorcentajeDia(dia) >= 100">
+              {{ calMinutosDia(dia) }} min · {{ calPorcentajeDia(dia) }}%
+            </span>
+          </header>
+
+          <div class="cal-barra" aria-hidden="true">
+            <span
+              class="cal-barra__relleno"
+              [class.cal-barra__relleno--lleno]="calPorcentajeDia(dia) >= 100"
+              [style.width.%]="calPorcentajeDia(dia) > 100 ? 100 : calPorcentajeDia(dia)"></span>
+          </div>
+
+          <ul class="cal-visitas">
+            <li *ngFor="let v of calVisitas(dia)">
+              <div
+                class="cal-visita"
+                [class.cal-visita--abierta]="calMenu === v"
+                [class.cal-visita--destino]="calSobreVisita === v"
+                draggable="true"
+                (dragstart)="alEmpezarArrastre(v)"
+                (dragend)="alTerminarArrastre()"
+                (dragover)="marcarSobreVisita(v, $event)"
+                (dragleave)="marcarSobreVisita(null)"
+                (drop)="alSoltarEnVisita(v, $event)"
+                (click)="abrirMenuVisita(v, $event)"
+                [title]="v.descripcion + ' · ' + v.horario + ' — arrástrala para cambiarla de orden o de día'">
+                <span class="cal-visita__orden">{{ v.orden_ruta }}</span>
+                <span class="cal-visita__cuerpo">
+                  <span class="cal-visita__nombre">{{ v.descripcion }}</span>
+                  <span class="cal-visita__meta">
+                    {{ v.horario }} · {{ v.tiempo_servicio | number:'1.0-0' }} min
+                  </span>
+                </span>
+              </div>
+
+              <!-- Mover a otra semana o a un día que no está a la vista -->
+              <div class="cal-mover" *ngIf="calMenu === v" (click)="$event.stopPropagation()">
+                <div class="cal-mover__campos">
+                  <label>
+                    <span>Semana</span>
+                    <select class="gp-select" [(ngModel)]="calMenuSemana">
+                      <option *ngFor="let s of semanasPeriodo" [value]="s">{{ s }}</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Día</span>
+                    <select class="gp-select" [(ngModel)]="calMenuDia">
+                      <option *ngFor="let d of calDias" [value]="d">{{ d }}</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="cal-mover__acciones">
+                  <button type="button" class="btn btn-sm btn-brand" (click)="confirmarMoverDesdeMenu()">
+                    Mover
+                  </button>
+                  <button type="button" class="btn btn-sm btn-muted" (click)="cerrarMenuVisita()">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </li>
+
+            <li class="cal-vacio" *ngIf="calVisitas(dia).length === 0">
+              Sin visitas. Arrastra una aquí.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Pendientes de este mercaderista: se arrastran a un día para colocarlos -->
+      <aside class="cal-pendientes" [class.cal-grid--guardando]="calGuardando">
+        <header class="cal-pendientes__cabecera">
+          <span class="cal-pendientes__titulo">Pendientes por colocar</span>
+          <span class="cal-pendientes__conteo">
+            {{ pendientesAsignables | number }} de
+            {{ pendientesParaCalendario.length | number }}
+          </span>
+        </header>
+
+        <input
+          type="text"
+          class="gp-filtro-panel__input cal-pendientes__buscar"
+          placeholder="Buscar punto…"
+          [(ngModel)]="calBusquedaPendiente"
+          autocomplete="off" />
+
+        <ul class="cal-pendientes__lista">
+          <li
+            class="cal-pendiente"
+            *ngFor="let p of pendientesParaCalendario"
+            [class.cal-pendiente--ajeno]="!puedeAsignarPendiente(p)"
+            [draggable]="puedeAsignarPendiente(p)"
+            (dragstart)="alEmpezarArrastrePendiente(p, $event)"
+            (dragend)="alTerminarArrastre()"
+            [title]="puedeAsignarPendiente(p)
+              ? p.descripcion + ' · ' + p.ciudad
+              : p.descripcion + ' — lo atiende ' + p.mercadista">
+            <span class="cal-pendiente__cuerpo">
+              <span class="cal-pendiente__nombre">{{ p.descripcion }}</span>
+              <span class="cal-pendiente__meta">
+                {{ p.tiempo_servicio | number:'1.0-0' }} min ·
+                {{ p.ciudad || p.provincia || '—' }}
+              </span>
+              <span class="cal-pendiente__dueno" *ngIf="!puedeAsignarPendiente(p)">
+                de {{ p.mercadista }}
+              </span>
+            </span>
+            <span
+              class="cal-pendiente__faltan"
+              [title]="p.visitas_pendientes + ' visita(s) por colocar'">
+              {{ p.visitas_pendientes }}
+            </span>
+          </li>
+
+          <li class="cal-vacio" *ngIf="pendientesParaCalendario.length === 0">
+            No hay pendientes que coincidan.
+          </li>
+        </ul>
+
+        <p class="cal-pendientes__ayuda">
+          Arrastra un punto a un día para colocar <strong>una</strong> de sus visitas
+          en la {{ calSemana }}. Los apagados ya los atiende otro mercaderista.
+        </p>
+      </aside>
+      </div>
+
+      <p class="gp-nota">
+        Suelta una visita <strong>sobre otra</strong> para ponerla en esa posición
+        —dentro del mismo día cambia el orden de ruta— o <strong>en la columna</strong>
+        para mandarla al final de ese día. El servidor recalcula horarios, tiempos
+        entre puntos y kilómetros de los días afectados. No se puede cambiar de mercaderista desde aquí:
+        para eso, manda la visita a pendientes y asígnala desde el mapa.
+      </p>
+    </section>
+
     <div class="gp-alert gp-alert--error" role="alert" *ngIf="rutasError">
       {{ rutasError }}
       <button type="button" class="btn btn-sm btn-muted" (click)="cargarRutas()">Reintentar</button>
@@ -438,7 +666,7 @@
       (click)="$event.stopPropagation()">
       <div class="gp-filtro-panel__titulo">
         {{ columnaPanel?.etiqueta }}
-        <span class="gp-filtro-panel__pista">Puedes marcar varios</span>
+        <span class="gp-filtro-panel__pista" *ngIf="!panelEsUnico">Puedes marcar varios</span>
       </div>
 
       <input
@@ -448,7 +676,7 @@
         [(ngModel)]="filtroBusqueda"
       />
       <ul class="gp-filtro-panel__lista">
-        <li>
+        <li *ngIf="!panelEsUnico">
           <button
             type="button"
             class="gp-filtro-opcion"
@@ -475,6 +703,7 @@
       <button
         type="button"
         class="btn btn-sm btn-muted gp-filtro-panel__quitar"
+        *ngIf="!panelEsUnico"
         (click)="quitarFiltroPanel()"
         [disabled]="!panelFiltrado">
         Quitar filtro

@@ -71,6 +71,12 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   /** Cadenas elegidas dentro del canal. Se puede marcar una o varias. */
   cadenasSeleccionadas: string[] = [];
 
+  /**
+   * Grupos de cadenas del reparto multicanal. Cada lista es un grupo con su
+   * propio equipo de mercaderistas; una cadena pertenece como mucho a un grupo.
+   */
+  gruposCadenas: string[][] = [[]];
+
   // ─── Datos del preview ─────────────────────────────────────────────────────
   columnas: string[] = [];
   filas: FilaExcelPreview[] = [];
@@ -149,7 +155,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   get puedeProcesar(): boolean {
     // Repartiendo por cadena hay que decir QUÉ cadenas: son las que se van a
     // planificar, y el resto del archivo queda fuera.
-    return this.etapa === 'preview_listo' && !this.faltaElegirCadenas;
+    return this.etapa === 'preview_listo' && !this.faltaElegirCadenas && !this.faltanGrupos;
   }
 
   // ─── Drag & Drop ───────────────────────────────────────────────────────────
@@ -208,6 +214,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     const disponibles = Object.keys(this.canales);
     this.canal = disponibles.length === 1 ? disponibles[0] : '';
     this.cadenasSeleccionadas = [];
+    this.gruposCadenas = [[]];
     this.filas = resp.filas;
     this.totalFilas = resp.total_filas;
     this.nombreArchivo = resp.nombre_archivo;
@@ -239,15 +246,16 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.tipoCarga = tipo;
     // El alcance por canal y cadenas es propio de "por cadena": al salir de ese
     // tipo se olvida, para no arrastrar un recorte que ya no se ve en pantalla.
-    if (tipo !== 'cadena' && tipo !== 'canal') {
+    if (tipo !== 'cadena' && tipo !== 'canal' && tipo !== 'multicanal') {
       this.canal = '';
       this.cadenasSeleccionadas = [];
     } else {
-      // Al saltar entre "por cadena" y "por canal" cambian los valores que se
-      // marcan (cadenas frente a canales): lo elegido antes ya no aplica.
+      // Al saltar entre repartos cambian los valores que se marcan (cadenas,
+      // canales o grupos): lo elegido antes ya no aplica.
       this.canal = '';
       this.cadenasSeleccionadas = [];
     }
+    if (tipo !== 'multicanal') this.gruposCadenas = [[]];
     this.cdr.markForCheck();
   }
 
@@ -277,6 +285,57 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
       for (const cadena of lista) todas.add(cadena);
     }
     return [...todas].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  // ─── Grupos de cadenas (multicanal) ────────────────────────────────────────
+
+  /** Grupo al que pertenece una cadena, o -1 si está sin agrupar. */
+  grupoDeCadena(cadena: string): number {
+    return this.gruposCadenas.findIndex((grupo) => grupo.includes(cadena));
+  }
+
+  /**
+   * Mete o saca una cadena de un grupo. Al meterla, se retira de cualquier otro:
+   * dos grupos con la misma cadena no serían dos barreras sino una
+   * contradicción.
+   */
+  alternarEnGrupo(indice: number, cadena: string): void {
+    const yaEsta = this.gruposCadenas[indice]?.includes(cadena);
+    this.gruposCadenas = this.gruposCadenas.map((grupo) =>
+      grupo.filter((c) => c !== cadena),
+    );
+    if (!yaEsta) {
+      this.gruposCadenas[indice] = [...this.gruposCadenas[indice], cadena];
+    }
+    this.cdr.markForCheck();
+  }
+
+  agregarGrupo(): void {
+    this.gruposCadenas = [...this.gruposCadenas, []];
+    this.cdr.markForCheck();
+  }
+
+  quitarGrupo(indice: number): void {
+    // Siempre queda al menos uno: sin grupos no hay nada que repartir.
+    this.gruposCadenas =
+      this.gruposCadenas.length > 1
+        ? this.gruposCadenas.filter((_, i) => i !== indice)
+        : [[]];
+    this.cdr.markForCheck();
+  }
+
+  /** Cadenas que no se han metido en ningún grupo: quedan fuera del cálculo. */
+  get cadenasSinAgrupar(): string[] {
+    return this.cadenasDisponibles.filter((c) => this.grupoDeCadena(c) === -1);
+  }
+
+  /** Falta formar al menos un grupo con una cadena dentro. */
+  get faltanGrupos(): boolean {
+    return (
+      this.tipoCarga === 'multicanal' &&
+      this.hayCanales &&
+      !this.gruposCadenas.some((g) => g.length > 0)
+    );
   }
 
   seleccionarCanal(canal: string): void {
@@ -357,6 +416,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
         this.tipoCarga,
         this.canal,
         this.cadenasSeleccionadas,
+        this.gruposCadenas,
       )
       .subscribe({
         next: (resp) => {
@@ -453,6 +513,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.canales = {};
     this.canal = '';
     this.cadenasSeleccionadas = [];
+    this.gruposCadenas = [[]];
     this.filas = [];
     this.totalFilas = 0;
     this.nombreArchivo = '';

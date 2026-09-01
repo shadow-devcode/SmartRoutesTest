@@ -542,7 +542,11 @@
           </select>
         </div>
       </div>
-      <p class="card-desc">Puntos visitados por día de la semana, para la semana seleccionada.</p>
+      <p class="card-desc">
+        Puntos visitados por día de la semana, para la semana seleccionada. Entre
+        paréntesis, el <strong>% de la jornada</strong> ocupada ese día
+        ({{ minutosJornadaDia }} min = 100%).
+      </p>
       <div class="table-wrapper">
         <table class="data-table">
           <thead>
@@ -576,8 +580,12 @@
             <tr *ngFor="let pp of provinciasSorted">
               <td>{{ pp.mercadista }}</td>
               <td>{{ pp.provincia }}</td>
-              <td *ngFor="let d of diasConRutas">
+              <td *ngFor="let d of diasConRutas"
+                  [title]="(pp.dias_por_semana?.[semanaSeleccionada]?.minutos_por_dia?.[d] || 0) + ' min de jornada'">
                 {{ pp.dias_por_semana?.[semanaSeleccionada]?.puntos_por_dia?.[d] || 0 }}
+                <span class="dia-porcentaje">
+                  ({{ pp.dias_por_semana?.[semanaSeleccionada]?.porcentaje_por_dia?.[d] || 0 }}%)
+                </span>
               </td>
             </tr>
           </tbody>

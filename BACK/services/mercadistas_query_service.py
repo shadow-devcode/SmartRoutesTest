@@ -436,6 +436,12 @@ def resumen_rutas(
         "total_visitas": sum(x["visitas_agendadas"] for x in lista),
         "minutos_asignados": round(sum(x["minutos_mes"] for x in lista), 1),
         "mercadistas": mercadistas,
+        # Cuota del dataset: el calendario mide contra ella el llenado de cada
+        # día en vez de dar por hecho que son 480 min.
+        "jornada": jornada_dto(
+            cuota_dia_del_dataset(hp),
+            incluye_desplazamiento=incluye_viaje_del_dataset(hp),
+        ),
     }
 
 

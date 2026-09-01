@@ -100,8 +100,12 @@ export type MinutosJornada = 480 | 400;
  * - `canal`  — la misma regla un escalón más arriba: cada mercaderista atiende
  *   un solo canal (columna `canal`: Moderno, TRADICIONAL...). Quien lleva el
  *   canal moderno puede visitar CORAL y TIA, pero no la tienda de barrio.
+ * - `multicanal` — las cadenas se agrupan a mano y cada grupo va a su propio
+ *   equipo de mercaderistas: ROSADO + CORAL a unos, TIA + FAVORITA a otros. Es
+ *   el caso general de los dos anteriores, con los grupos que decida quien
+ *   lanza el procesamiento.
  */
-export type TipoCarga = 'zona' | 'ciudad' | 'cadena' | 'canal';
+export type TipoCarga = 'zona' | 'ciudad' | 'cadena' | 'canal' | 'multicanal';
 
 /** Resultado de la validación local del archivo antes de subirlo. */
 export interface ValidacionArchivo {

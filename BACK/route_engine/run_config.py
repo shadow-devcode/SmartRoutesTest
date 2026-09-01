@@ -25,6 +25,7 @@ CLAVE_MAX_MES = "max_minutos_mes"
 CLAVE_CUADRILLA_FIN_SEMANA = "mercaderistas_fin_de_semana"
 CLAVE_CANAL = "canal"
 CLAVE_CADENAS = "cadenas"
+CLAVE_GRUPOS = "grupos_de_cadenas"
 
 _COL_PARAMETRO = "Parámetro"
 _COL_VALOR = "Valor"
@@ -44,6 +45,7 @@ def build_config_procesamiento_df(
     cuadrilla_fin_semana: int = 0,
     canal: str = "",
     cadenas=None,
+    grupos_cadenas=None,
 ) -> pd.DataFrame:
     """Hoja de metadatos: cómo se calculó este Excel."""
     modelo = (
@@ -81,6 +83,17 @@ def build_config_procesamiento_df(
             ", ".join(cadenas) if cadenas else "todas",
             "Cadenas planificadas. Los puntos de otras cadenas quedaron fuera "
             "del alcance de esta ejecución.",
+        ),
+        (
+            CLAVE_GRUPOS,
+            " · ".join(
+                f"Grupo {i}: {', '.join(g)}"
+                for i, g in enumerate(grupos_cadenas or [], start=1)
+                if g
+            )
+            or "—",
+            "Grupos de cadenas del reparto multicanal; cada grupo tiene su "
+            "propio equipo de mercaderistas.",
         ),
         (
             CLAVE_CUADRILLA_FIN_SEMANA,

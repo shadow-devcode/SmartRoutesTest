@@ -319,9 +319,12 @@ def planificar_flota_por_capacidad(
     # el motor acababa con 86 personas al 86% de ocupación: cada visita que no
     # cabía en SU día generaba plaza en vez de buscar quién tenía sitio. Se
     # rellena lo existente antes de contratar.
+    # `grupo` es imprescindible con reparto por cadena/canal/multicanal: una
+    # caja sin grupo admite cualquier partición, y el hueco libre de un
+    # mercaderista de ROSADO se llenaba con puntos de TIA.
     previas = [
         _Caja(nombre=c["merc"], zona=c["zona"], carga=c.get("carga", 0.0),
-              coords=c.get("coords") or [])
+              coords=c.get("coords") or [], grupo=c.get("grupo"))
         for c in (cajas_previas or [])
     ]
     if previas:

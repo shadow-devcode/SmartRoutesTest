@@ -38,9 +38,13 @@ from route_engine.load_grouping import (
     ETIQUETAS,
     TIPO_CADENA,
     TIPO_CANAL,
+    TIPO_MULTICANAL,
     TIPO_ZONA,
+    cadenas_agrupadas,
+    limpiar_grupos_multicanal,
     normalizar_tipo_carga,
     resumen_grupos,
+    set_grupos_multicanal,
     validar_datos_suficientes,
 )
 from route_engine.mapbox import obtener_direccion_desde_coordenadas
@@ -326,6 +330,7 @@ def _absorber_pendientes_abriendo_plazas(state, df, tipo_ruta, notify, max_ronda
         state.punto_mercadista.update(
             {pk: m for pk, m in propiedad_extra.items() if m not in nuevos}
         )
+        state.sincronizar_grupos()
         for inst in para_existentes:
             dueno = propiedad_extra.get(state.get_punto_key(inst))
             zona = zona_de_merc.get(dueno)
@@ -345,6 +350,8 @@ def _absorber_pendientes_abriendo_plazas(state, df, tipo_ruta, notify, max_ronda
             state.all_day_summaries.extend(state_extra.all_day_summaries)
             state.mercadistas_plan = list(state.mercadistas_plan) + list(plan_extra)
             state.punto_mercadista.update(state_extra.punto_mercadista)
+            state.grupo_de_punto.update(getattr(state_extra, "grupo_de_punto", {}))
+            state.sincronizar_grupos()
             state.mercadistas_asignados += state_extra.mercadistas_asignados
             for zona, lst in state_extra.remaining_by_prov.items():
                 if lst:
@@ -450,6 +457,8 @@ def _absorber_pendientes_fin_de_semana(state, df, tipo_ruta, notify, max_rondas=
         state.all_day_summaries.extend(state_fs.all_day_summaries)
         state.mercadistas_plan = list(state.mercadistas_plan) + list(plan_fs)
         state.punto_mercadista.update(state_fs.punto_mercadista)
+        state.grupo_de_punto.update(getattr(state_fs, "grupo_de_punto", {}))
+        state.sincronizar_grupos()
         state.mercadistas_asignados += state_fs.mercadistas_asignados
         for zona, lst in state_fs.remaining_by_prov.items():
             if lst:
@@ -493,12 +502,16 @@ def _hueco_libre_de_la_plantilla(state, solo=None):
             coords.setdefault(merc, set()).add(punto)
 
     zona_de_merc = dict(state.mercadistas_plan)
+    grupo_de_merc = getattr(state, "grupo_de_merc", {})
     return [
         {
             "merc": merc,
             "zona": zona_de_merc.get(merc),
             "carga": carga,
             "coords": list(coords.get(merc, ())),
+            # La partición que ya tiene: sin esto, el empaquetado le metería
+            # puntos de otra cadena en su hueco libre.
+            "grupo": grupo_de_merc.get(merc),
         }
         for merc, carga in usado.items()
         if zona_de_merc.get(merc) and (solo is None or merc in solo)
@@ -515,6 +528,7 @@ def procesar_minoristas(
     tipo_carga: Optional[str] = None,
     canal: Optional[str] = None,
     cadenas: Optional[list] = None,
+    grupos_cadenas: Optional[list] = None,
 ) -> None:
     """Funcion principal de procesamiento de rutas.
 
@@ -546,6 +560,10 @@ def procesar_minoristas(
             canal. Es un recorte del ALCANCE: los puntos de otras cadenas no se
             planifican ni se reportan como pendientes, porque no se pidieron.
             Solo se aplica con tipo_carga='cadena'.
+        grupos_cadenas: lista de listas de cadenas para tipo_carga='multicanal'.
+            Cada lista es un grupo con su propio equipo de mercaderistas
+            (["ROSADO", "CORAL"], ["TIA"]...). Las cadenas que no estén en
+            ningún grupo quedan fuera de la ejecución.
 
     Ambos ajustes se aplican durante toda la ejecución y se restauran al
     terminar, también si el procesamiento falla o se cancela.
@@ -561,6 +579,7 @@ def procesar_minoristas(
             tipo_carga=tipo_carga,
             canal=canal,
             cadenas=cadenas,
+            grupos_cadenas=grupos_cadenas,
         )
 
 
@@ -572,6 +591,7 @@ def _procesar_minoristas(
     tipo_carga: Optional[str] = None,
     canal: Optional[str] = None,
     cadenas: Optional[list] = None,
+    grupos_cadenas: Optional[list] = None,
 ) -> None:
     """Cuerpo del procesamiento. Asume el modelo de jornada ya aplicado."""
 
@@ -594,6 +614,15 @@ def _procesar_minoristas(
     # La cuadrilla de fin de semana es estado de ejecución: se decide dentro de
     # este procesamiento y no debe filtrarse al siguiente.
     limpiar_mercadistas_fin_semana()
+    limpiar_grupos_multicanal()
+
+    # Grupos de cadenas de multicanal: los define quien lanza el procesamiento.
+    # Solo se planifican las cadenas agrupadas; lo que no entró en ningún grupo
+    # queda fuera del alcance, igual que las cadenas no marcadas en "por cadena".
+    if normalizar_tipo_carga(tipo_carga) == TIPO_MULTICANAL and grupos_cadenas:
+        mapa = set_grupos_multicanal(grupos_cadenas)
+        cadenas = cadenas_agrupadas()
+        print(f"      -> Grupos de cadenas: {mapa}")
 
     _notify(3, "Preparando el archivo de datos...")
 
@@ -605,7 +634,9 @@ def _procesar_minoristas(
     # Recorte por canal y cadenas: se hace aquí, antes de expandir frecuencias
     # y de dimensionar la flota, para que todo lo que viene después (plantilla,
     # rutas, pendientes, porcentajes) hable solo de lo que se pidió planificar.
-    if normalizar_tipo_carga(tipo_carga) in (TIPO_CADENA, TIPO_CANAL) and (canal or cadenas):
+    if normalizar_tipo_carga(tipo_carga) in (
+        TIPO_CADENA, TIPO_CANAL, TIPO_MULTICANAL
+    ) and (canal or cadenas):
         df, descartadas = filtrar_por_canal_y_cadenas(df, canal or "", cadenas or [])
         canal_txt = ", ".join(canal) if isinstance(canal, (list, tuple)) else (canal or "todos")
         etiqueta = ", ".join(cadenas) if cadenas else "todas las cadenas"
@@ -729,6 +760,7 @@ def _procesar_minoristas(
     # Alcance de la ejecución, para que quede escrito en el Excel resultante.
     state.canal = (", ".join(canal) if isinstance(canal, (list, tuple)) else canal) or ""
     state.cadenas = list(cadenas or [])
+    state.grupos_cadenas = [list(g) for g in (grupos_cadenas or []) if g]
     mercadistas_plan = state.mercadistas_plan
 
     # Inyectar puntos con coordenadas (0,0) en la lista separada Puntos_Sin_Coordenadas

@@ -113,6 +113,10 @@ export interface ProvinciaPorcentaje {
       minutos?: number;
       porcentaje?: number;
       puntos_por_dia: { [dia: string]: number };
+      /** Minutos de jornada de cada día (servicio + desplazamiento si cuenta). */
+      minutos_por_dia?: { [dia: string]: number };
+      /** Ocupación de cada día sobre el tope diario del dataset (480 = 100%). */
+      porcentaje_por_dia?: { [dia: string]: number };
     };
   };
 }

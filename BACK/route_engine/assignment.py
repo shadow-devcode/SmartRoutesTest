@@ -229,6 +229,25 @@ class AsignacionState:
             self.grupo_de_merc.setdefault(merc_name, grupo)
         return True
 
+    def sincronizar_grupos(self):
+        """
+        Recalcula la partición de cada mercaderista a partir de quién posee cada
+        punto ahora mismo.
+
+        Hace falta porque algunas fases escriben la propiedad EN BLOQUE
+        (`punto_mercadista.update(...)`) sin pasar por `asignar_punto`, que es
+        quien registra el grupo. Un mercaderista sin grupo registrado pasa
+        `puede_atender` para cualquier punto, y así se colaba trabajo de otra
+        cadena: dos personas con puntos de dos grupos en la medición.
+        """
+        if self.tipo_carga == "zona":
+            return
+        self.grupo_de_merc = {}
+        for pk, merc in self.punto_mercadista.items():
+            grupo = self.grupo_de_punto.get(pk)
+            if merc and grupo is not None:
+                self.grupo_de_merc.setdefault(merc, grupo)
+
     def count_remaining(self):
         return sum(len(v) for v in self.remaining_by_prov.values())
 

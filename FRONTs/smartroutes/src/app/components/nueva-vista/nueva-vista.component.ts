@@ -453,6 +453,11 @@ export class NuevaVistaComponent implements OnInit {
    * semana). Así la tabla no se ensancha con dos columnas de ceros cuando no
    * hay nadie trabajando el fin de semana.
    */
+  /** Tope diario del dataset: el 100% contra el que se mide cada jornada. */
+  get minutosJornadaDia(): number {
+    return this.estadisticas?.jornada?.minutos_dia ?? 480;
+  }
+
   get diasConRutas(): string[] {
     const conRutas = new Set<string>();
     for (const pp of this.provinciasPorcentaje) {

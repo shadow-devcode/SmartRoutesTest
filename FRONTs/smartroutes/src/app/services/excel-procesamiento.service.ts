@@ -72,6 +72,7 @@ export class ExcelProcesamientoService {
     tipoCarga: TipoCarga = 'zona',
     canal = '',
     cadenas: string[] = [],
+    gruposCadenas: string[][] = [],
   ): Observable<IniciarProcesamientoResponse> {
     const body: Record<string, any> = {
       tipo_ruta: tipoRuta,
@@ -87,6 +88,11 @@ export class ExcelProcesamientoService {
       if (cadenas.length) body['cadenas'] = cadenas;
     } else if (tipoCarga === 'canal') {
       if (cadenas.length) body['canales'] = cadenas;
+    } else if (tipoCarga === 'multicanal') {
+      // Cada grupo es un equipo de mercaderistas; las cadenas que no estén en
+      // ningún grupo no se planifican.
+      const grupos = gruposCadenas.filter((g) => g.length);
+      if (grupos.length) body['grupos_cadenas'] = grupos;
     }
     if (displayName && displayName.trim().length > 0) {
       body['display_name'] = displayName.trim();
