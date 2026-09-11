@@ -8,7 +8,7 @@
   <!-- Estadísticas -->
   <div class="stats-container" *ngIf="estadisticas && !errorApi">
     <div class="stat-card">
-      <div class="stat-value">{{ mercadistas.length || estadisticas.total_mercadistas }}</div>
+      <div class="stat-value">{{ mercadistasEnVista }}</div>
       <div class="stat-label">Mercadistas</div>
     </div>
     <div class="stat-card">
@@ -38,8 +38,9 @@
     <div class="sin-datos-icon">📊</div>
     <h3>Sin datos comparativos</h3>
     <p>
-      Sube un Excel ya procesado usando el botón
-      <strong>📤 Subir nuevo Excel</strong> que aparece en la parte superior del mapa.
+      Sube la planificación de la semana con el botón
+      <strong>📋 Subir plantilla semanal</strong> que aparece en la parte superior
+      del mapa, o procesa un Excel nuevo desde <strong>Carga de Excel</strong>.
     </p>
   </div>
 
@@ -79,6 +80,38 @@
       </div>
     </article>
 
+    <!-- Zona: acota el mapa y la lista de mercadistas -->
+    <article class="filter-card" *ngIf="provincias.length">
+      <header class="filter-card__head">
+        <span class="filter-card__eyebrow">Zona</span>
+        <h3 class="filter-card__title">Provincia y ciudad</h3>
+        <p class="filter-card__desc">Acota el mapa y deja solo los mercadistas de esa zona.</p>
+      </header>
+      <div class="zona-campos">
+        <label class="zona-campo">
+          <span class="zona-campo__label">Provincia</span>
+          <select
+            class="zona-select"
+            [ngModel]="provinciaActual"
+            (ngModelChange)="seleccionarProvincia($event)">
+            <option value="">Todas</option>
+            <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
+          </select>
+        </label>
+        <label class="zona-campo">
+          <span class="zona-campo__label">Ciudad</span>
+          <select
+            class="zona-select"
+            [ngModel]="ciudadActual"
+            (ngModelChange)="seleccionarCiudad($event)"
+            [disabled]="ciudades.length === 0">
+            <option value="">Todas</option>
+            <option *ngFor="let c of ciudades" [value]="c">{{ c }}</option>
+          </select>
+        </label>
+      </div>
+    </article>
+
     <article class="filter-card">
       <header class="filter-card__head">
         <span class="filter-card__eyebrow">Vista</span>
@@ -111,7 +144,7 @@
 
     <div class="mercadistas-list">
       <div
-        *ngFor="let mercadista of mercadistas"
+        *ngFor="let mercadista of mercadistasVisibles"
         class="mercadista-item"
         [class.active]="mercadistaActual === mercadista"
         [attr.aria-expanded]="mercadistaActual === mercadista">

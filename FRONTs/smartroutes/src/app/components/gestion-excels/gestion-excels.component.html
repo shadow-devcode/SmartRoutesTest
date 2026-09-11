@@ -231,6 +231,28 @@
       }
     </section>
 
+    @if (aEliminar) {
+      <div class="ge-modal-backdrop" (click)="cancelarEliminar()"></div>
+      <div
+        class="ge-modal ge-modal--confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="borrar-title">
+        <h2 class="ge-modal-title" id="borrar-title">Eliminar Excel</h2>
+        <!-- El nombre va en su propia línea: son cadenas largas y sin espacios
+             («RUTERO_COMPLETO_NACIONAL_AGOSTO_2026_ZONA…») que dentro del
+             título desbordaban el cuadro. -->
+        <p class="ge-modal-nombre">{{ aEliminar.display_name }}</p>
+        <p class="ge-modal-aviso">
+          Se borra del sistema con sus rutas y pendientes. No se puede deshacer.
+        </p>
+        <div class="ge-modal-actions">
+          <button type="button" class="btn btn-muted" (click)="cancelarEliminar()">Cancelar</button>
+          <button type="button" class="btn btn-danger" (click)="confirmarBorrado()">Eliminar</button>
+        </div>
+      </div>
+    }
+
     @if (editandoPunto) {
       <div class="ge-modal-backdrop" (click)="cerrarModal()"></div>
       <div class="ge-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">

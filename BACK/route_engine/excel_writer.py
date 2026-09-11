@@ -36,10 +36,11 @@ from route_engine.excel_reader import (
     columna_frecuencia_mes,
     index_frecuencia_mes_por_punto,
     lookup_frecuencia_mes,
+    minutos_normalizados,
     parse_coordenada_a_float,
 )
 from route_engine.geo import normalizar_coord_geografica, haversine_km
-from route_engine.mapbox import _geocode_cache, calcular_tiempo_entre
+from route_engine.mapbox import _geocode_cache, calcular_tiempo_entre, provincia_display
 from route_engine.scheduling import (
     calcular_horario_almuerzo,
     mostrar_progreso,
@@ -585,17 +586,38 @@ def _info_puntos_desde_df(df) -> dict:
         key = clave_punto_frecuencia(desc, lat_f, lon_f)
         if key[1] is None:
             continue
-        tiempo = pd.to_numeric(row.get("TIEMPO DE SERVICIO", 0), errors="coerce")
+        # Mismo redondeo que usa el motor al crear las visitas. Sin él, un
+        # tiempo calculado con fórmula en Excel (294.0000000000001) no coincide
+        # con el de las visitas ya agendadas (294.0), la reconciliación cree que
+        # el punto no tiene ninguna visita puesta y duplica su frecuencia entera
+        # en pendientes.
+        tiempo = minutos_normalizados(row.get("TIEMPO DE SERVICIO", 0))
         freq = pd.to_numeric(row.get(col_freq, 0) if col_freq else 0, errors="coerce")
         info[key].append({
             "descripcion": desc,
             "lat": lat_f,
             "lon": lon_f,
-            "tiempo": float(tiempo) if pd.notna(tiempo) else 0.0,
+            "tiempo": tiempo,
             "frecuencia": int(freq) if pd.notna(freq) and int(freq) > 0 else 1,
             "provincia": str(row.get("PROVINCIA_COORD", "") or "").strip(),
         })
     return info
+
+
+def _prioridad_sobrante(motivo: str) -> int:
+    """Orden en que se descartan las pendientes que sobran.
+
+    Primero las sintéticas de una reconciliación anterior, después las que
+    describen un intento de colocación fallido (red de seguridad / rescate) y
+    por último las genéricas: si hay que quitar una, mejor perder la que menos
+    cuenta sobre lo que pasó.
+    """
+    m = str(motivo or "").lower()
+    if m.startswith("reconciliación") or m.startswith("reconciliacion"):
+        return 0
+    if m.startswith("red de seguridad") or m.startswith("rescue"):
+        return 1
+    return 2
 
 
 def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
@@ -622,8 +644,9 @@ def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
             )
             if key[1] is None:
                 continue
-            t = pd.to_numeric(r.get("Tiempo Servicio (min)", 0), errors="coerce")
-            t_val = float(t) if pd.notna(t) else 0.0
+            # Redondeado igual que en `info`: la pareja (punto, tiempo) es la
+            # clave con la que se cruzan agendadas y frecuencia esperada.
+            t_val = minutos_normalizados(r.get("Tiempo Servicio (min)", 0))
             agendadas_por_config[(key, t_val)] += 1
 
             sem = _semana_a_int(r.get("Fecha"))
@@ -640,23 +663,31 @@ def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
     # ningún lado: ni agendadas, ni pendientes, ni reconciliadas.
     pend_por_config = defaultdict(int)
     vistas_pend = set()
-    for p in state.puntos_pendientes:
+    # Entradas de `state.puntos_pendientes` que forman cada fila escrita, para
+    # poder retirarlas enteras si sobran.
+    entradas_por_grupo: dict = defaultdict(list)
+    grupos_por_config: dict = defaultdict(list)
+    for pos, p in enumerate(state.puntos_pendientes):
         key = clave_punto_frecuencia(p.get("descripcion"), p.get("lat"), p.get("lon"))
         if key[1] is None:
             continue
         sem = _semana_a_int(p.get("semana"))
         dedup_key = (key, sem, p.get("_dedup_token", ""))
+        entradas_por_grupo[dedup_key].append(pos)
         if dedup_key in vistas_pend:
             continue
         vistas_pend.add(dedup_key)
 
-        t_val = float(p.get("tiempo", 0))
+        t_val = minutos_normalizados(p.get("tiempo", 0))
         pend_por_config[(key, t_val)] += 1
+        grupos_por_config[(key, t_val)].append((dedup_key, str(p.get("motivo", ""))))
 
         if sem is not None:
             semanas_usadas[key].add(sem)
 
     añadidas = 0
+    sobrantes = 0
+    a_retirar: set = set()
     for key, configs in info.items():
         usadas = set(semanas_usadas.get(key, set()))
         for idx_conf, conf in enumerate(configs):
@@ -664,7 +695,27 @@ def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
             freq_esperada = conf["frecuencia"]
             ya_cubiertas = agendadas_por_config.get((key, t_val), 0) + pend_por_config.get((key, t_val), 0)
             deficit = freq_esperada - ya_cubiertas
-            if deficit <= 0:
+            if deficit < 0:
+                # Sobran pendientes: el punto tiene ya toda su frecuencia
+                # agendada y además filas en la hoja. Pasa cuando una fase
+                # tardía coloca una visita que una anterior había dado por
+                # perdida —la cuadrilla de fin de semana recoge lo que la red
+                # de seguridad no pudo—, porque quien la registró como
+                # pendiente no se entera de que después encontró hueco.
+                #
+                # La regla del negocio es una igualdad, no un mínimo:
+                # agendadas + pendientes == FRECUENCIA MES. Sin este recorte,
+                # un punto con sus 8 visitas puestas seguía pidiendo 4 más en
+                # el panel de pendientes.
+                candidatos = sorted(
+                    grupos_por_config.get((key, t_val), []),
+                    key=lambda g: _prioridad_sobrante(g[1]),
+                )
+                for dedup_key, _motivo in candidatos[: -deficit]:
+                    a_retirar.update(entradas_por_grupo.get(dedup_key, ()))
+                    sobrantes += 1
+                continue
+            if deficit == 0:
                 continue
 
             for i in range(deficit):
@@ -687,15 +738,28 @@ def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
                 })
                 añadidas += 1
 
-    if añadidas:
+    if a_retirar:
+        state.puntos_pendientes[:] = [
+            p for i, p in enumerate(state.puntos_pendientes) if i not in a_retirar
+        ]
+
+    if añadidas or sobrantes:
         import sys as _sys
-        print(
-            f"      [!] Reconciliación de frecuencia: {añadidas} visita(s) "
-            "faltante(s) añadidas a 'Pendientes_Sin_Asignar' para cumplir "
-            "(agendadas + pendientes = frecuencia mensual).",
-            file=_sys.stderr,
-            flush=True,
-        )
+        if añadidas:
+            print(
+                f"      [!] Reconciliación de frecuencia: {añadidas} visita(s) "
+                "faltante(s) añadidas a 'Pendientes_Sin_Asignar' para cumplir "
+                "(agendadas + pendientes = frecuencia mensual).",
+                file=_sys.stderr,
+                flush=True,
+            )
+        if sobrantes:
+            print(
+                f"      [!] Reconciliación de frecuencia: {sobrantes} pendiente(s) "
+                "retirada(s); esas visitas ya estaban agendadas.",
+                file=_sys.stderr,
+                flush=True,
+            )
     return añadidas
 
 
@@ -1337,7 +1401,12 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
                     prov_cache, ciudad_cache, calle_cache = _geocode_cache.get(key_coord, ("", "", ""))
                 except Exception:
                     prov_cache, ciudad_cache, calle_cache = "", "", ""
-            provincia_final = (
+            # `provincia_punto` es la clave interna en mayúsculas. Se pasa por
+            # `provincia_display` para que la hoja de pendientes guarde el mismo
+            # nombre que Horarios_Detalle: al reinsertar una visita, ese texto
+            # viaja a la columna PROVINCIA y, sin esto, la misma provincia salía
+            # dos veces en los filtros.
+            provincia_final = provincia_display(
                 p.get("provincia_punto") or p.get("provincia") or prov_cache or ""
             )
             ciudad_final = p.get("ciudad_punto") or p.get("ciudad") or ciudad_cache or ""

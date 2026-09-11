@@ -17,6 +17,18 @@ import { PuntosSinCoordenadasApiService } from '../../services/api/puntos-sin-co
 import type { PuntoSinCoordenada } from '../../models/puntos-sin-coordenadas.model';
 import { AuthService } from '../../services/auth.service';
 
+/** Columnas por las que se puede ordenar la tabla de provincias. */
+type SortCol =
+  | 'mercadista'
+  | 'provincia'
+  | 'porcentaje'
+  | 'total'
+  | 'minutos'
+  | 'semana1'
+  | 'semana2'
+  | 'semana3'
+  | 'semana4';
+
 @Component({
   selector: 'app-nueva-vista',
   standalone: true,
@@ -339,15 +351,14 @@ export class NuevaVistaComponent implements OnInit {
     });
   }
 
-  /** Total de VISITAS pendientes (filas crudas de Pendientes_Sin_Asignar),
-   *  consistente con el contador de /rutas. `pendientesFiltrados` agrupa por
-   *  nombre (puntos únicos), por eso da un número menor. Respeta el buscador. */
-  get totalVisitasPendientes(): number {
-    const termino = this.filtroPuntoVisita.trim().toLowerCase();
-    if (!termino) return this.pendientes.length;
-    return this.pendientes.filter((p) =>
-      (p.descripcion || '').toLowerCase().includes(termino)
-    ).length;
+  /** Puntos de venta distintos con algo pendiente: una fila de la tabla, uno.
+   *
+   *  Antes aquí se contaban las filas crudas de `Pendientes_Sin_Asignar`, que
+   *  son visitas: un punto al que le faltan ocho sumaba ocho. La tabla agrupa
+   *  por nombre, así que ese número no cuadraba con nada de lo que se ve. Las
+   *  visitas que faltan siguen estando, sumadas en la columna Frecuencia. */
+  get totalPuntosPendientes(): number {
+    return this.pendientesFiltrados.length;
   }
 
   get totalPendientesTiempo(): number {
@@ -422,24 +433,67 @@ export class NuevaVistaComponent implements OnInit {
     return this.modoDesglose === 'dias';
   }
 
-  /** Ordenación compartida por las tablas de Porcentaje/Minutos */
-  sortCol: 'mercadista' | 'provincia' | 'porcentaje' | 'minutos' | 'semana1' | 'semana2' | 'semana3' | 'semana4' | null = null;
-  sortDir: 'asc' | 'desc' = 'desc';
+  /**
+   * Ordenación compartida por las tablas de Porcentaje/Minutos.
+   *
+   * Es una LISTA, no una sola columna: se puede ordenar por provincia y, dentro
+   * de cada una, por ocupación. Con un único criterio había que elegir entre
+   * agrupar o comparar, y las preguntas reales son las dos a la vez («en
+   * Tungurahua, ¿quién está más cargado?»).
+   *
+   * Cada clic sobre una cabecera pasa al siguiente estado: sin orden →
+   * descendente → ascendente → sin orden. La posición en la lista es la
+   * prioridad, y sale escrita junto a la flecha para que se vea cuál manda.
+   */
+  ordenes: { col: SortCol; dir: 'asc' | 'desc' }[] = [];
 
-  toggleSort(col: 'mercadista' | 'provincia' | 'porcentaje' | 'minutos' | 'semana1' | 'semana2' | 'semana3' | 'semana4'): void {
-    if (this.sortCol === col) {
-      this.sortDir = this.sortDir === 'desc' ? 'asc' : 'desc';
-    } else {
-      this.sortCol = col;
-      this.sortDir = (col === 'mercadista' || col === 'provincia') ? 'asc' : 'desc';
+  toggleSort(col: SortCol): void {
+    const i = this.ordenes.findIndex((o) => o.col === col);
+    if (i < 0) {
+      // Texto de la A a la Z; números de mayor a menor, que es como se busca
+      // «quién está más cargado».
+      const dir = col === 'mercadista' || col === 'provincia' ? 'asc' : 'desc';
+      this.ordenes = [...this.ordenes, { col, dir }];
+      return;
     }
+    const actual = this.ordenes[i];
+    const invertida: 'asc' | 'desc' = actual.dir === 'asc' ? 'desc' : 'asc';
+    const inicial = col === 'mercadista' || col === 'provincia' ? 'asc' : 'desc';
+    this.ordenes =
+      actual.dir === inicial
+        ? this.ordenes.map((o, j) => (j === i ? { col, dir: invertida } : o))
+        : this.ordenes.filter((_, j) => j !== i);
+  }
+
+  /** Quita todos los criterios de orden. */
+  limpiarOrden(): void {
+    this.ordenes = [];
+  }
+
+  ordenActivo(col: SortCol): boolean {
+    return this.ordenes.some((o) => o.col === col);
+  }
+
+  /** Flecha de la cabecera: sentido del orden, o ↕ si esa columna no ordena. */
+  ordenIcono(col: SortCol): string {
+    const orden = this.ordenes.find((o) => o.col === col);
+    if (!orden) return '↕';
+    return orden.dir === 'desc' ? '↓' : '↑';
+  }
+
+  /** Prioridad (1, 2, 3…) o cadena vacía si la columna no ordena. */
+  ordenRango(col: SortCol): string {
+    const i = this.ordenes.findIndex((o) => o.col === col);
+    if (i < 0) return '';
+    return this.ordenes.length > 1 ? String(i + 1) : '';
   }
 
   /** Mapa de claves de ordenación a campos reales de ProvinciaPorcentaje */
-  private readonly sortKeyMap: Record<string, keyof ProvinciaPorcentaje> = {
+  private readonly sortKeyMap: Record<SortCol, keyof ProvinciaPorcentaje> = {
     mercadista: 'mercadista',
     provincia: 'provincia',
     porcentaje: 'porcentaje',
+    total: 'total_mercadista_porcentaje',
     minutos: 'minutos',
     semana1: 'semana1_puntos',
     semana2: 'semana2_puntos',
@@ -470,20 +524,25 @@ export class NuevaVistaComponent implements OnInit {
   }
 
   get provinciasSorted(): ProvinciaPorcentaje[] {
-    if (!this.sortCol) {
+    if (!this.ordenes.length) {
       return this.provinciasPorcentaje;
     }
-    const field = this.sortKeyMap[this.sortCol] ?? (this.sortCol as keyof ProvinciaPorcentaje);
-    const dir = this.sortDir === 'desc' ? -1 : 1;
+    // Se comparan los criterios en orden: el primero que desempata, manda.
     return [...this.provinciasPorcentaje].sort((a, b) => {
-      const valA = a[field];
-      const valB = b[field];
-      if (typeof valA === 'string' && typeof valB === 'string') {
-        return valA.localeCompare(valB, 'es') * dir;
+      for (const { col, dir } of this.ordenes) {
+        const field = this.sortKeyMap[col] ?? (col as keyof ProvinciaPorcentaje);
+        const valA = a[field];
+        const valB = b[field];
+        const signo = dir === 'desc' ? -1 : 1;
+        let comparacion: number;
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          comparacion = valA.localeCompare(valB, 'es');
+        } else {
+          comparacion = (Number(valA) || 0) - (Number(valB) || 0);
+        }
+        if (comparacion !== 0) return comparacion * signo;
       }
-      const va = Number(valA) || 0;
-      const vb = Number(valB) || 0;
-      return (va - vb) * dir;
+      return 0;
     });
   }
 

@@ -12,6 +12,7 @@ from typing import Optional
 
 import pandas as pd
 
+from route_engine.mapbox import provincia_display
 from utils.access_scope import df_filtrar_mercadista_usuario
 from utils.excel_cache import read_excel_cached
 from utils.horarios_validation import horarios_corruption_message, horarios_missing_columns
@@ -104,9 +105,9 @@ def detalle_mercadista(
                 "descripcion": row["Descripción"],
                 "latitud": row["Latitud"],
                 "longitud": row["Longitud"],
-                "provincia": row.get("PROVINCIA", ""),
-                "ciudad": row.get("CIUDAD", ""),
-                "calle": row.get("CALLE", ""),
+                "provincia": provincia_display(row.get("PROVINCIA", "")),
+                "ciudad": _texto(row.get("CIUDAD")),
+                "calle": _texto(row.get("CALLE")),
                 "tiempo_servicio": row["Tiempo Servicio (min)"],
                 "duracion": row["Duración (hh:mm)"],
                 "tiempo_entre_sucursal": row.get("Tiempo entre sucursal (min)", 0),
@@ -259,9 +260,9 @@ def categorias(hp: str) -> dict:
             "id": row.get("ID"),
             "descripcion": row.get("DESCRIPCION", ""),
             "categoria": row.get("CATEGORIA", "DESCONOCIDO"),
-            "provincia": row.get("PROVINCIA", ""),
-            "ciudad": row.get("CIUDAD", ""),
-            "calle": row.get("CALLE", ""),
+            "provincia": provincia_display(row.get("PROVINCIA", "")),
+            "ciudad": _texto(row.get("CIUDAD")),
+            "calle": _texto(row.get("CALLE")),
         }
         for _, row in df_categorias.iterrows()
     ]
@@ -326,9 +327,9 @@ def resumen_rutas(
                 "descripcion": desc,
                 "latitud": lat_f,
                 "longitud": lon_f,
-                "provincia": str(row.get("PROVINCIA") or "").strip(),
-                "ciudad": str(row.get("CIUDAD") or "").strip(),
-                "mercadista": str(row.get("Mercadista") or "").strip(),
+                "provincia": provincia_display(row.get("PROVINCIA")),
+                "ciudad": _texto(row.get("CIUDAD")),
+                "mercadista": _texto(row.get("Mercadista")),
                 "tiempo_servicio": 0.0,
                 "dias_visita": set(),
                 "semanas": set(),
@@ -413,11 +414,11 @@ def resumen_rutas(
                 "longitud": _coord(row.get("Longitud")),
                 # Canal y cadena solo existen en los Excels generados a partir
                 # de un archivo que los traía; en los antiguos van vacíos.
-                "canal": str(row.get("CANAL") or "").strip(),
-                "cadena": str(row.get("CADENA") or "").strip(),
-                "provincia": str(row.get("PROVINCIA") or "").strip(),
-                "ciudad": str(row.get("CIUDAD") or "").strip(),
-                "calle": str(row.get("CALLE") or "").strip(),
+                "canal": _texto(row.get("CANAL")),
+                "cadena": _texto(row.get("CADENA")),
+                "provincia": provincia_display(row.get("PROVINCIA")),
+                "ciudad": _texto(row.get("CIUDAD")),
+                "calle": _texto(row.get("CALLE")),
                 "tiempo_servicio": _numero(row.get("Tiempo Servicio (min)")),
                 "duracion": str(row.get("Duración (hh:mm)") or "").strip(),
                 "tiempo_entre_sucursal": _numero(row.get("Tiempo entre sucursal (min)")),
@@ -443,6 +444,19 @@ def resumen_rutas(
             incluye_desplazamiento=incluye_viaje_del_dataset(hp),
         ),
     }
+
+
+def _texto(valor) -> str:
+    """Texto de una celda, con el vacío de pandas como cadena vacía.
+
+    `str(valor or "")` no sirve: un NaN es verdadero, así que las celdas sin
+    dato salían por la API como el literal "nan" y aparecían como una opción
+    más en los desplegables de filtro.
+    """
+    if valor is None or (isinstance(valor, float) and valor != valor):
+        return ""
+    texto = str(valor).strip()
+    return "" if texto.lower() in ("nan", "nat", "none") else texto
 
 
 def _numero(valor) -> float:

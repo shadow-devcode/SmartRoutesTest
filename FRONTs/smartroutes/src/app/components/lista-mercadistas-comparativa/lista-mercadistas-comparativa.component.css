@@ -942,3 +942,48 @@
   }
 }
 
+
+/* ── Filtro de zona (provincia y ciudad) ─────────────────────────────────── */
+.zona-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zona-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.zona-campo__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sr-muted, #64748b);
+}
+
+.zona-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--sr-border, rgba(15, 23, 42, 0.12));
+  border-radius: 10px;
+  background: var(--sr-surface, #fff);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--sr-text, #0f172a);
+  cursor: pointer;
+}
+
+.zona-select:focus {
+  outline: none;
+  border-color: var(--sr-accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.zona-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

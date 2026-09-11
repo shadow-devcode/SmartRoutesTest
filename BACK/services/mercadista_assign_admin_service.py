@@ -16,6 +16,7 @@ from route_engine.excel_writer import (
     format_horarios_detalle_worksheet,
 )
 from services.ruta_edit_service import _sanitizar_df_para_excel
+from utils.excel_atomic import escritura_atomica
 from utils.excel_cache import invalidate_excel_cache
 from utils.excel_lock import with_excel_file_lock
 
@@ -32,12 +33,15 @@ def _write_horarios_detalle(df: pd.DataFrame, path: str) -> None:
     sort_cols = [c for c in ["Mercadista", "Día", "Fecha", "Orden Ruta"] if c in df.columns]
     if sort_cols:
         df = df.sort_values(by=sort_cols)
-    with pd.ExcelWriter(path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-        _sanitizar_df_para_excel(df).to_excel(writer, sheet_name=SHEET, index=False)
-        try:
-            format_horarios_detalle_worksheet(writer.book[SHEET])
-        except Exception:
-            pass
+    # Sobre una copia temporal que sustituye al original de golpe: quien
+    # lea mientras tanto nunca verá el .xlsx a medio escribir.
+    with escritura_atomica(path) as _destino:
+        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            _sanitizar_df_para_excel(df).to_excel(writer, sheet_name=SHEET, index=False)
+            try:
+                format_horarios_detalle_worksheet(writer.book[SHEET])
+            except Exception:
+                pass
     invalidate_excel_cache(path)
 
 

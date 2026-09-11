@@ -13,6 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
+from route_engine.mapbox import provincia_display
 from utils.access_scope import df_filtrar_mercadista_usuario
 from utils.excel_cache import read_excel_cached
 from utils.logging import log_endpoint_error, safe_error_message
@@ -187,7 +188,7 @@ def detalle_mercadista(cp: str, mercadista_name: str, semana: str, *, auth_loade
                 "descripcion": row["Descripción"],
                 "latitud": row["Latitud"],
                 "longitud": row["Longitud"],
-                "provincia": row.get("PROVINCIA", ""),
+                "provincia": provincia_display(row.get("PROVINCIA", "")),
                 "ciudad": row.get("CIUDAD", ""),
                 "calle": row.get("CALLE", ""),
                 "tiempo_servicio": row["Tiempo Servicio (min)"],

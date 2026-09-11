@@ -11,9 +11,11 @@ from typing import Optional
 
 import pandas as pd
 
+from route_engine.mapbox import provincia_display
 from utils.route_helpers import (
     coords_validas,
     km_entre_sucursales_row,
+    minutos_entre_sucursales_row,
     recortar_lat,
     recortar_lon,
 )
@@ -46,12 +48,15 @@ def fila_a_ubicacion(row, *, incluir_semana: bool) -> Optional[dict]:
         "descripcion": row["Descripción"] if pd.notna(row["Descripción"]) else "",
         "latitud": lat,
         "longitud": lon,
-        "provincia": row.get("PROVINCIA", "") if pd.notna(row.get("PROVINCIA", "")) else "",
+        "provincia": provincia_display(row.get("PROVINCIA", "")),
         "ciudad": row.get("CIUDAD", "") if pd.notna(row.get("CIUDAD", "")) else "",
         "calle": row.get("CALLE", "") if pd.notna(row.get("CALLE", "")) else "",
         "tiempo_servicio": int(row["Tiempo Servicio (min)"]) if pd.notna(row["Tiempo Servicio (min)"]) else 0,
         "horario": row["Horario"] if pd.notna(row["Horario"]) else "",
         "km_entre_sucursales": km_entre_sucursales_row(row),
+        # El desplazamiento de cada tramo: lo suman las tarjetas de resumen
+        # para dar el tiempo de la ruta que se está mirando, no la del mes.
+        "tiempo_entre_sucursal": minutos_entre_sucursales_row(row),
     }
     if incluir_semana:
         item["semana"] = (

@@ -112,4 +112,29 @@ export class ComparativaApiService {
         ),
       );
   }
+
+  /**
+   * Sube la plantilla semanal del cliente —una fila por punto con los días en
+   * columnas— y deja que el servidor la convierta al formato interno antes de
+   * guardarla como comparativa.
+   */
+  uploadPlantilla(
+    file: File,
+  ): Observable<{ success: boolean; message?: string; error?: string; visitas?: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http
+      .post<{ success: boolean; message?: string; error?: string; visitas?: number }>(
+        `${this.apiUrl}/comparativa/upload-plantilla`,
+        formData,
+      )
+      .pipe(
+        catchError((error) =>
+          of({
+            success: false,
+            error: error.error?.error ?? 'Error al subir la plantilla',
+          }),
+        ),
+      );
+  }
 }

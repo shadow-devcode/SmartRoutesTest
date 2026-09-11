@@ -14,6 +14,7 @@ import pandas as pd
 
 from route_engine.excel_writer import drop_spurious_total_rows_horarios_df
 from route_engine.geo import parse_coordenada_a_float
+from route_engine.mapbox import provincia_display
 from utils.excel_cache import read_excel_cached
 from utils.route_helpers import clave_ub, coords_validas, recortar_lat, recortar_lon
 from utils.uploads import UPLOAD_FOLDER
@@ -173,7 +174,7 @@ def pendientes_to_json_list(
             t_serv = float(t_serv) if t_serv is not None and not pd.isna(t_serv) else 0.0
         except (TypeError, ValueError):
             t_serv = 0.0
-        provincia = "" if pd.isna(row.get("Provincia")) else str(row.get("Provincia") or "").strip()
+        provincia = provincia_display(row.get("Provincia"))
         ciudad = "" if pd.isna(row.get("Ciudad")) else str(row.get("Ciudad") or "").strip()
         calle = "" if pd.isna(row.get("Calle")) else str(row.get("Calle") or "").strip()
         if (not provincia or not ciudad) and coord_index and lat is not None and lon is not None:

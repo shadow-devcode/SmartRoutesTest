@@ -532,3 +532,12 @@
     padding: 6px 8px;
   }
 }
+
+/* Segundo botón de carga: la plantilla del negocio, no el Excel del motor. */
+.btn-upload--plantilla {
+  background: #7c3aed;
+}
+
+.btn-upload--plantilla:hover {
+  background: #6d28d9;
+}

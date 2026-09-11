@@ -238,6 +238,21 @@ def inicializar_columnas(df):
     return df
 
 
+def minutos_normalizados(valor, por_defecto: float = 0.0) -> float:
+    """
+    Minutos de una celda de Excel, sin el ruido de la coma flotante.
+
+    Una celda calculada como =2,5*60 se guarda como 149.99999999999994. Excel lo
+    enseña como 150, pero el motor lo arrastraba tal cual y acababa escribiendo
+    jornadas de 419.99999999999994 min. Se redondea a dos decimales, que es más
+    precisión de la que tiene ningún tiempo de servicio real.
+    """
+    numero = pd.to_numeric(valor, errors="coerce")
+    if pd.isna(numero):
+        return por_defecto
+    return round(float(numero), 2)
+
+
 def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
     """
     Genera la lista de instancias de visita expandiendo por frecuencia.
@@ -288,8 +303,7 @@ def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
             ubicaciones_omitidas += 1
             mostrar_progreso(idx + 1, total_rows, "      Progreso")
             desc_val = row.get("DESCRIPCION", "")
-            tiempo = pd.to_numeric(row.get("TIEMPO DE SERVICIO", 0), errors="coerce")
-            tiempo = float(tiempo) if pd.notna(tiempo) else 0.0
+            tiempo = minutos_normalizados(row.get("TIEMPO DE SERVICIO", 0))
             freq = pd.to_numeric(row.get("FRECUENCIA MES", 0), errors="coerce")
             frecuencia_original = int(freq) if pd.notna(freq) else 1
             lat_val = parse_coordenada_a_float(row.get("LATITUD"))
@@ -309,8 +323,7 @@ def crear_instancias_visita(df, tipo_ruta="tiempo_completo"):
             continue
 
         # Solo Tiempo de Servicio cuenta para trabajo (día/semana/mes); no tiempo entre sucursales
-        tiempo = pd.to_numeric(row.get("TIEMPO DE SERVICIO", 0), errors="coerce")
-        tiempo = float(tiempo) if pd.notna(tiempo) else 0.0
+        tiempo = minutos_normalizados(row.get("TIEMPO DE SERVICIO", 0))
         freq = pd.to_numeric(row.get("FRECUENCIA MES", 0), errors="coerce")
 
         frecuencia_original = int(freq) if pd.notna(freq) else 1

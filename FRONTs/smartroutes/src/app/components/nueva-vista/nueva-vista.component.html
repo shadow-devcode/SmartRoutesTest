@@ -198,7 +198,7 @@
           </tbody>
           <tfoot>
             <tr>
-              <th>Total visitas pendientes: {{ totalVisitasPendientes }}</th>
+              <th>Total puntos de visita: {{ totalPuntosPendientes }}</th>
               <th>{{ totalPendientesTiempo }}</th>
               <th>{{ totalPendientesFrecuencia }}</th>
             </tr>
@@ -321,41 +321,41 @@
             <tr>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
-                  [class.sort-btn--active]="sortCol === 'mercadista'"
-                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('mercadista')"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (ordenIcono('mercadista') === '↓' ? 'ascendente' : 'descendente')">
                   Mercadista
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('mercadista') }}<sup class="sort-rango">{{ ordenRango('mercadista') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
-                  [class.sort-btn--active]="sortCol === 'provincia'"
-                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('provincia')"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (ordenIcono('provincia') === '↓' ? 'ascendente' : 'descendente')">
                   Provincia
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('provincia') }}<sup class="sort-rango">{{ ordenRango('provincia') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('porcentaje')"
-                  [class.sort-btn--active]="sortCol === 'porcentaje'"
-                  [attr.aria-label]="'Ordenar por Porcentaje ' + (sortCol === 'porcentaje' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('porcentaje')"
+                  [attr.aria-label]="'Ordenar por Porcentaje ' + (ordenIcono('porcentaje') === '↓' ? 'ascendente' : 'descendente')">
                   Porcentaje
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'porcentaje' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('porcentaje') }}<sup class="sort-rango">{{ ordenRango('porcentaje') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('minutos')"
-                  [class.sort-btn--active]="sortCol === 'minutos'"
-                  [attr.aria-label]="'Ordenar por Minutos ' + (sortCol === 'minutos' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('minutos')"
+                  [attr.aria-label]="'Ordenar por Minutos ' + (ordenIcono('minutos') === '↓' ? 'ascendente' : 'descendente')">
                   Minutos/mes
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'minutos' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('minutos') }}<sup class="sort-rango">{{ ordenRango('minutos') }}</sup>
                   </span>
                 </button>
               </th>
@@ -396,16 +396,16 @@
             <option value="">Todas las provincias</option>
             <option *ngFor="let p of provincias" [value]="p">{{ p }}</option>
           </select>
-          <button type="button" class="btn-unir-action" (click)="abrirModalUnir()">
-            ⚡ Forzar unión de mercaderistas
+          <button
+            type="button"
+            class="btn-quitar-orden"
+            *ngIf="ordenes.length"
+            (click)="limpiarOrden()"
+            title="Vuelve al orden original de la tabla">
+            ✕ Quitar orden ({{ ordenes.length }})
           </button>
         </div>
       </div>
-      <p class="card-desc">
-        Tiempo de servicio por provincia. 9600 min = 100% (4 semanas × 5 días × 8h).
-        En cada columna Semana 1..4 se muestra el <strong>número de visitas</strong> y
-        entre paréntesis el <strong>% del tope semanal</strong> (2400 min = 100%).
-      </p>
       <div class="table-loading" *ngIf="cargandoFiltros">Cargando...</div>
       <div class="table-wrapper" *ngIf="!cargandoFiltros && provinciasPorcentaje.length">
         <table class="data-table">
@@ -413,81 +413,91 @@
             <tr>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
-                  [class.sort-btn--active]="sortCol === 'mercadista'"
-                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('mercadista')"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (ordenIcono('mercadista') === '↓' ? 'ascendente' : 'descendente')">
                   Mercadista
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('mercadista') }}<sup class="sort-rango">{{ ordenRango('mercadista') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
-                  [class.sort-btn--active]="sortCol === 'provincia'"
-                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('provincia')"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (ordenIcono('provincia') === '↓' ? 'ascendente' : 'descendente')">
                   Provincia
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('provincia') }}<sup class="sort-rango">{{ ordenRango('provincia') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('porcentaje')"
-                  [class.sort-btn--active]="sortCol === 'porcentaje'"
-                  [attr.aria-label]="'Ordenar por Porcentaje ' + (sortCol === 'porcentaje' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
-                  Porcentaje/mes
+                  [class.sort-btn--active]="ordenActivo('porcentaje')"
+                  [attr.aria-label]="'Ordenar por Porcentaje ' + (ordenIcono('porcentaje') === '↓' ? 'ascendente' : 'descendente')">
+                  En la provincia
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'porcentaje' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('porcentaje') }}<sup class="sort-rango">{{ ordenRango('porcentaje') }}</sup>
+                  </span>
+                </button>
+              </th>
+              <th>
+                <button type="button" class="sort-btn" (click)="toggleSort('total')"
+                  [class.sort-btn--active]="ordenActivo('total')"
+                  [attr.aria-label]="'Ordenar por ocupación total ' + (ordenIcono('total') === '↓' ? 'ascendente' : 'descendente')">
+                  Ocupación total
+                  <span class="sort-icon" aria-hidden="true">
+                    {{ ordenIcono('total') }}<sup class="sort-rango">{{ ordenRango('total') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('minutos')"
-                  [class.sort-btn--active]="sortCol === 'minutos'"
-                  [attr.aria-label]="'Ordenar por Minutos ' + (sortCol === 'minutos' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('minutos')"
+                  [attr.aria-label]="'Ordenar por Minutos ' + (ordenIcono('minutos') === '↓' ? 'ascendente' : 'descendente')">
                   Minutos/mes
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'minutos' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('minutos') }}<sup class="sort-rango">{{ ordenRango('minutos') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('semana1')"
-                  [class.sort-btn--active]="sortCol === 'semana1'"
-                  [attr.aria-label]="'Ordenar por Semana 1 ' + (sortCol === 'semana1' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('semana1')"
+                  [attr.aria-label]="'Ordenar por Semana 1 ' + (ordenIcono('semana1') === '↓' ? 'ascendente' : 'descendente')">
                   Semana 1
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'semana1' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('semana1') }}<sup class="sort-rango">{{ ordenRango('semana1') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('semana2')"
-                  [class.sort-btn--active]="sortCol === 'semana2'"
-                  [attr.aria-label]="'Ordenar por Semana 2 ' + (sortCol === 'semana2' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('semana2')"
+                  [attr.aria-label]="'Ordenar por Semana 2 ' + (ordenIcono('semana2') === '↓' ? 'ascendente' : 'descendente')">
                   Semana 2
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'semana2' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('semana2') }}<sup class="sort-rango">{{ ordenRango('semana2') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('semana3')"
-                  [class.sort-btn--active]="sortCol === 'semana3'"
-                  [attr.aria-label]="'Ordenar por Semana 3 ' + (sortCol === 'semana3' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('semana3')"
+                  [attr.aria-label]="'Ordenar por Semana 3 ' + (ordenIcono('semana3') === '↓' ? 'ascendente' : 'descendente')">
                   Semana 3
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'semana3' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('semana3') }}<sup class="sort-rango">{{ ordenRango('semana3') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('semana4')"
-                  [class.sort-btn--active]="sortCol === 'semana4'"
-                  [attr.aria-label]="'Ordenar por Semana 4 ' + (sortCol === 'semana4' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('semana4')"
+                  [attr.aria-label]="'Ordenar por Semana 4 ' + (ordenIcono('semana4') === '↓' ? 'ascendente' : 'descendente')">
                   Semana 4
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'semana4' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('semana4') }}<sup class="sort-rango">{{ ordenRango('semana4') }}</sup>
                   </span>
                 </button>
               </th>
@@ -497,7 +507,28 @@
             <tr *ngFor="let pp of provinciasSorted">
               <td>{{ pp.mercadista }}</td>
               <td>{{ pp.provincia }}</td>
-              <td>{{ pp.porcentaje }}%</td>
+              <td>
+                <span class="ocup">
+                  <span class="ocup__cifra">{{ pp.porcentaje }}%</span>
+                  <span class="ocup__barra" aria-hidden="true">
+                    <span class="ocup__relleno" [style.width.%]="pp.porcentaje > 100 ? 100 : pp.porcentaje"></span>
+                  </span>
+                </span>
+              </td>
+              <td [title]="(pp.total_mercadista_minutos ?? 0) + ' min al mes en ' + (pp.provincias_mercadista ?? 1) + ' provincia(s)'">
+                <span class="ocup">
+                  <span class="ocup__cifra ocup__cifra--total">{{ pp.total_mercadista_porcentaje ?? pp.porcentaje }}%</span>
+                  <span class="ocup__barra" aria-hidden="true">
+                    <span
+                      class="ocup__relleno ocup__relleno--total"
+                      [class.ocup__relleno--lleno]="(pp.total_mercadista_porcentaje ?? 0) >= 95"
+                      [style.width.%]="(pp.total_mercadista_porcentaje ?? 0) > 100 ? 100 : (pp.total_mercadista_porcentaje ?? 0)"></span>
+                  </span>
+                  <span class="ocup__nota" *ngIf="(pp.provincias_mercadista ?? 1) > 1">
+                    reparte en {{ pp.provincias_mercadista }} provincias
+                  </span>
+                </span>
+              </td>
               <td [title]="(pp.minutos_servicio ?? 0) + ' min en punto de venta + ' + (pp.minutos_viaje ?? 0) + ' min de desplazamiento'">{{ pp.minutos }}</td>
               <td [title]="(pp.semana1_minutos ?? 0) + ' min'">{{ pp.semana1_puntos ?? 0 }} ({{ pp.semana1_porcentaje ??
                 0 }}%)</td>
@@ -516,6 +547,7 @@
                 {{ totalesResumenProvincias.mercadistas === 1 ? 'mercadista' : 'mercadistas' }}
               </th>
               <th>{{ filtroProvincia || 'Todas las provincias' }}</th>
+              <th>—</th>
               <th>—</th>
               <th>{{ totalesResumenProvincias.minutos | number }}</th>
               <th *ngFor="let visitas of totalesResumenProvincias.semanas">
@@ -553,21 +585,21 @@
             <tr>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('mercadista')"
-                  [class.sort-btn--active]="sortCol === 'mercadista'"
-                  [attr.aria-label]="'Ordenar por Mercadista ' + (sortCol === 'mercadista' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('mercadista')"
+                  [attr.aria-label]="'Ordenar por Mercadista ' + (ordenIcono('mercadista') === '↓' ? 'ascendente' : 'descendente')">
                   Mercadista
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'mercadista' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('mercadista') }}<sup class="sort-rango">{{ ordenRango('mercadista') }}</sup>
                   </span>
                 </button>
               </th>
               <th>
                 <button type="button" class="sort-btn" (click)="toggleSort('provincia')"
-                  [class.sort-btn--active]="sortCol === 'provincia'"
-                  [attr.aria-label]="'Ordenar por Provincia ' + (sortCol === 'provincia' && sortDir === 'desc' ? 'ascendente' : 'descendente')">
+                  [class.sort-btn--active]="ordenActivo('provincia')"
+                  [attr.aria-label]="'Ordenar por Provincia ' + (ordenIcono('provincia') === '↓' ? 'ascendente' : 'descendente')">
                   Provincia
                   <span class="sort-icon" aria-hidden="true">
-                    {{ sortCol === 'provincia' ? (sortDir === 'desc' ? '↓' : '↑') : '↕' }}
+                    {{ ordenIcono('provincia') }}<sup class="sort-rango">{{ ordenRango('provincia') }}</sup>
                   </span>
                 </button>
               </th>

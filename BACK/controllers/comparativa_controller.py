@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 
 from controllers.auth_state import is_auth_loaded
 from services import comparativa_service as cs
+from services import plantilla_semanal_service as pss
 from services.path_resolution_service import active_comparativa_path
 from utils.uploads import allowed_file
 from utils.logging import log_endpoint_error, safe_error_message
@@ -44,6 +45,63 @@ def upload_excel_comparativa():
     return jsonify({
         "success": True,
         "message": "Archivo comparativo cargado correctamente.",
+    })
+
+
+@comparativa_bp.route("/upload-plantilla", methods=["POST"])
+def upload_plantilla_comparativa():
+    """
+    Recibe la plantilla semanal del cliente —una fila por punto con los días en
+    columnas— y la convierte al formato interno para poder verla en el mapa
+    comparativo, sin pedirle a nadie que reprocese nada.
+    """
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "No se encontró el archivo en la petición"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"success": False, "error": "No se seleccionó ningún archivo"}), 400
+    if not allowed_file(file.filename):
+        return jsonify({
+            "success": False,
+            "error": "Tipo de archivo no permitido. Solo se aceptan .xlsx o .xls",
+        }), 400
+
+    try:
+        contenido = file.read()
+    except Exception as exc:
+        log_endpoint_error("POST /api/comparativa/upload-plantilla:leer", exc)
+        return jsonify({
+            "success": False,
+            "error": safe_error_message(exc, generic="Error al leer el archivo"),
+        }), 400
+
+    try:
+        df = pss.convertir_plantilla(contenido)
+        convertido = pss.plantilla_a_excel(df)
+    except pss.PlantillaError as exc:
+        return jsonify({"success": False, "error": exc.message}), 400
+    except Exception as exc:
+        log_endpoint_error("POST /api/comparativa/upload-plantilla:convertir", exc)
+        return jsonify({
+            "success": False,
+            "error": safe_error_message(exc, generic="No se pudo convertir la plantilla"),
+        }), 500
+
+    try:
+        cs.guardar_comparativa(convertido, auth_loaded=is_auth_loaded())
+    except cs.ComparativaUploadError as exc:
+        return jsonify({"success": False, "error": exc.message}), exc.status_code
+
+    mercaderistas = int(df["Mercadista"].nunique()) if not df.empty else 0
+    return jsonify({
+        "success": True,
+        "message": (
+            f"Plantilla cargada: {len(df)} visita(s) de {mercaderistas} mercaderista(s), "
+            "repartidas en las cuatro semanas."
+        ),
+        "visitas": len(df),
+        "mercadistas": mercaderistas,
     })
 
 

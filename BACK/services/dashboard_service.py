@@ -19,6 +19,11 @@ from route_engine.config import (
     max_dia_flex,
     max_servicio_dia,
 )
+from route_engine.mapbox import provincia_display
+
+# Etiqueta de las visitas sin provincia conocida (geocodificación sin resultado).
+SIN_PROVINCIA = "Sin provincia"
+from utils.excel_atomic import escritura_atomica
 from utils.dataset_config import (
     cuota_dia_del_dataset,
     cuota_mes_del_dataset,
@@ -162,6 +167,10 @@ def provincias_porcentaje(
             "provincias": [],
         }
 
+    # 'TOTAL' es la fila de totales que arrastra la hoja, no una persona; salía
+    # como un mercaderista más con 0% en todas sus columnas.
+    df = df[~df["Mercadista"].astype(str).str.strip().str.upper().isin(["", "TOTAL", "NAN"])]
+
     col_serv = "Tiempo Servicio (min)"
     col_viaje = "Tiempo entre sucursal (min)"
     df[col_serv] = pd.to_numeric(df.get(col_serv, 0), errors="coerce").fillna(0)
@@ -172,8 +181,15 @@ def provincias_porcentaje(
     df["_combinado"] = carga_jornada(
         df[col_serv], df[col_viaje], incluye_viaje=incluye_viaje_del_dataset(hp)
     )
-    df["PROVINCIA"] = df["PROVINCIA"].fillna("").astype(str).str.strip()
-    df = df[df["PROVINCIA"] != ""]
+    # Un solo nombre por provincia: en los Excels donde conviven "Pichincha" y
+    # la clave interna "PICHINCHA" el groupby las contaba como dos provincias
+    # distintas y el mercaderista aparecía repartido entre ambas filas.
+    df["PROVINCIA"] = df["PROVINCIA"].map(provincia_display)
+    # Las visitas cuya provincia no se pudo deducir por coordenadas se agrupan
+    # bajo una etiqueta propia en vez de descartarse. Descartarlas hacía que el
+    # reparto de un mercaderista no sumara su jornada real: las suyas salían de
+    # todas las filas de la tabla y no aparecían en ninguna provincia.
+    df["PROVINCIA"] = df["PROVINCIA"].replace("", SIN_PROVINCIA)
 
     prov = (
         df.groupby(["Mercadista", "PROVINCIA"])[[col_serv, "_combinado"]].sum().reset_index()
@@ -186,6 +202,17 @@ def provincias_porcentaje(
     max_dia = cuota_dia_del_dataset(hp)
     prov["porcentaje"] = ((prov["minutos"] / max_mes) * 100).round(1) if max_mes else 0.0
     prov = prov.sort_values(["Mercadista", "minutos"], ascending=[True, False])
+
+    # Carga total de cada persona, sumando TODAS sus provincias y calculada
+    # ANTES de aplicar los filtros: una fila dice cuánto trabaja alguien en una
+    # provincia, y sin el total al lado ese 10% se lee como si fuera toda su
+    # ocupación. Con el filtro de provincia puesto el total sigue siendo el
+    # real, no el del trozo que se está mirando.
+    por_merc = prov.groupby("Mercadista").agg(
+        total_minutos=("minutos", "sum"), provincias=("PROVINCIA", "nunique")
+    )
+    total_min_merc = por_merc["total_minutos"].to_dict()
+    provincias_merc = por_merc["provincias"].to_dict()
 
     if mercadista_filter:
         prov = prov[prov["Mercadista"].str.contains(mercadista_filter, case=False, na=False)]
@@ -256,6 +283,13 @@ def provincias_porcentaje(
                 # es desplazamiento. `minutos` ya es la suma de ambos.
                 "minutos_servicio": int(r["minutos_servicio"]),
                 "minutos_viaje": int(r["minutos"]) - int(r["minutos_servicio"]),
+                # Ocupación de la persona entera y en cuántas provincias
+                # reparte su mes: el contexto que le falta a la fila.
+                "total_mercadista_minutos": int(total_min_merc.get(merc, 0)),
+                "total_mercadista_porcentaje": (
+                    round((total_min_merc.get(merc, 0) / max_mes) * 100, 1) if max_mes else 0.0
+                ),
+                "provincias_mercadista": int(provincias_merc.get(merc, 0)),
                 "semana1_puntos": semanas_data.get("semana 1", {}).get("total_puntos", 0),
                 "semana2_puntos": semanas_data.get("semana 2", {}).get("total_puntos", 0),
                 "semana3_puntos": semanas_data.get("semana 3", {}).get("total_puntos", 0),
@@ -803,8 +837,11 @@ def unir_mercadistas(
         else:
             try:
                 if "Horarios_Detalle" in sheet_names:
-                    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                        df.to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+                    # Sobre una copia temporal que sustituye al original de golpe: quien
+                    # lea mientras tanto nunca verá el .xlsx a medio escribir.
+                    with escritura_atomica(hp) as _destino:
+                        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+                            df.to_excel(writer, sheet_name="Horarios_Detalle", index=False)
                 else:
                     df.to_excel(hp, index=False, engine="openpyxl")
             except Exception:

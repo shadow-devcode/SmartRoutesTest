@@ -31,6 +31,9 @@ export class VistaComparativaComponent implements OnInit {
   mercadistaSeleccionado: string | null = null;
   diaSeleccionado: string | null = null;
   semanaSeleccionada = '';
+  /** Zona elegida en el panel lateral: acota el mapa igual que el mercadista. */
+  provinciaSeleccionada = '';
+  ciudadSeleccionada = '';
   modoVista: 'linea' | 'carretera' = 'linea';
   /** Leyenda de días: lunes a viernes y, si hay cuadrilla de fin de semana,
    *  también sábado y domingo. */
@@ -91,6 +94,26 @@ export class VistaComparativaComponent implements OnInit {
     this.aplicarFiltros();
   }
 
+  onZonaSeleccionada(zona: { provincia: string; ciudad: string }): void {
+    this.provinciaSeleccionada = zona.provincia || '';
+    this.ciudadSeleccionada = zona.ciudad || '';
+    // Si el mercadista abierto no trabaja en la zona, deja de acotar el mapa.
+    if (this.mercadistaSeleccionado && !this.mercadistaEnZona(this.mercadistaSeleccionado)) {
+      this.mercadistaSeleccionado = null;
+    }
+    this.aplicarFiltros();
+  }
+
+  private mercadistaEnZona(mercadista: string): boolean {
+    return this.todasUbicaciones.some(
+      (ub) =>
+        ub.mercadista === mercadista &&
+        (!this.provinciaSeleccionada ||
+          (ub.provincia || '').trim() === this.provinciaSeleccionada) &&
+        (!this.ciudadSeleccionada || (ub.ciudad || '').trim() === this.ciudadSeleccionada),
+    );
+  }
+
   onSemanaSeleccionada(semana: string): void {
     this.semanaSeleccionada = semana || '';
     this.cargarTodasUbicaciones(this.semanaSeleccionada || undefined, false);
@@ -99,6 +122,16 @@ export class VistaComparativaComponent implements OnInit {
   private aplicarFiltros(): void {
     let filtradas = [...this.todasUbicaciones];
 
+    if (this.provinciaSeleccionada) {
+      filtradas = filtradas.filter(
+        (ub) => (ub.provincia || '').trim() === this.provinciaSeleccionada,
+      );
+    }
+    if (this.ciudadSeleccionada) {
+      filtradas = filtradas.filter(
+        (ub) => (ub.ciudad || '').trim() === this.ciudadSeleccionada,
+      );
+    }
     if (this.mercadistaSeleccionado) {
       filtradas = filtradas.filter((ub) => ub.mercadista === this.mercadistaSeleccionado);
     }
@@ -117,12 +150,16 @@ export class VistaComparativaComponent implements OnInit {
       };
       partes.push(labels[this.semanaSeleccionada.trim()] ?? this.semanaSeleccionada);
     }
+    if (this.provinciaSeleccionada) partes.push(this.provinciaSeleccionada);
+    if (this.ciudadSeleccionada) partes.push(this.ciudadSeleccionada);
     if (this.mercadistaSeleccionado) partes.push(this.mercadistaSeleccionado);
     if (this.diaSeleccionado) partes.push(this.diaSeleccionado);
     this.filtroActivo = partes.join(' · ');
   }
 
   onLimpiarFiltros(): void {
+    this.provinciaSeleccionada = '';
+    this.ciudadSeleccionada = '';
     this.cargarTodasUbicaciones('');
   }
 
@@ -132,8 +169,18 @@ export class VistaComparativaComponent implements OnInit {
 
   // ─── Modal de carga ────────────────────────────────────────────────────────
 
-  abrirModal(): void {
+  /**
+   * Formato del archivo que se va a subir.
+   *
+   * `procesado` es un Excel salido del motor (hoja Horarios_Detalle);
+   * `plantilla` es el archivo del negocio —una fila por punto con los días en
+   * columnas—, que el servidor convierte antes de guardarlo.
+   */
+  formatoCarga: 'procesado' | 'plantilla' = 'procesado';
+
+  abrirModal(formato: 'procesado' | 'plantilla' = 'procesado'): void {
     this.resetearModal();
+    this.formatoCarga = formato;
     this.modalVisible = true;
   }
 
@@ -165,7 +212,12 @@ export class VistaComparativaComponent implements OnInit {
     this.etapaCarga = 'subiendo';
     this.errorCarga = '';
 
-    this.apiService.uploadExcelComparativa(file).subscribe({
+    const peticion =
+      this.formatoCarga === 'plantilla'
+        ? this.apiService.uploadPlantillaComparativa(file)
+        : this.apiService.uploadExcelComparativa(file);
+
+    peticion.subscribe({
       next: (resp) => {
         if (!resp.success) {
           // El backend informó un error. Aun así verificamos si el archivo

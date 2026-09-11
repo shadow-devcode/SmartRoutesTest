@@ -20,6 +20,7 @@ from route_engine.excel_writer import (
     format_horarios_detalle_worksheet,
 )
 from route_engine.geo import parse_coordenada_a_float
+from route_engine.mapbox import provincia_display
 from services.pendientes_service import (
     PENDIENTES_COLS,
     PENDIENTES_SHEET,
@@ -27,6 +28,7 @@ from services.pendientes_service import (
     leer_hoja_pendientes,
     resolver_excel_maestro_frecuencia,
 )
+from utils.excel_atomic import escritura_atomica
 from utils.dataset_config import cuota_dia_del_dataset, incluye_viaje_del_dataset
 from utils.excel_cache import invalidate_excel_cache, read_excel_cached
 from utils.excel_lock import with_excel_file_lock
@@ -89,7 +91,7 @@ def _fila_horarios_a_pendiente(row, motivo: str, freq_index: dict | None = None)
     except (TypeError, ValueError):
         t_serv = 0.0
     prov = row.get("PROVINCIA", "") if "PROVINCIA" in row.index else row.get("Provincia", "")
-    prov = "" if (prov is None or pd.isna(prov)) else str(prov).strip()
+    prov = provincia_display(prov)
     desc = str(row.get("Descripción", "") or "").strip()
     lat = parse_coordenada_a_float(row.get("Latitud"))
     lon = parse_coordenada_a_float(row.get("Longitud"))
@@ -194,13 +196,16 @@ def _sanitizar_df_para_excel(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _guardar_horarios_pendientes(hp: str, df_horarios: pd.DataFrame, df_pend: pd.DataFrame) -> None:
-    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-        _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
-        try:
-            format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
-        except Exception:
-            pass
-        _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name=PENDIENTES_SHEET, index=False)
+    # Sobre una copia temporal que sustituye al original de golpe: quien
+    # lea mientras tanto nunca verá el .xlsx a medio escribir.
+    with escritura_atomica(hp) as _destino:
+        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+            try:
+                format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
+            except Exception:
+                pass
+            _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name=PENDIENTES_SHEET, index=False)
     invalidate_excel_cache(hp)
 
 
@@ -208,12 +213,15 @@ def _guardar_horarios(hp: str, df_horarios: pd.DataFrame) -> None:
     """Persiste solo Horarios_Detalle. Sanitiza igual que la variante con
     pendientes: día/semana/mercadista destino llegan del body del request y
     sin esto quedarían como fórmula ejecutable al abrir el Excel."""
-    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-        _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
-        try:
-            format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
-        except Exception:
-            pass
+    # Sobre una copia temporal que sustituye al original de golpe: quien
+    # lea mientras tanto nunca verá el .xlsx a medio escribir.
+    with escritura_atomica(hp) as _destino:
+        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+            try:
+                format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
+            except Exception:
+                pass
     invalidate_excel_cache(hp)
 
 
@@ -508,6 +516,65 @@ def mover_visita(
 
 
 @with_excel_file_lock("hp")
+def intercambiar_dias(
+    hp: str,
+    *,
+    semana: str,
+    mercadista: str,
+    dia_a: str,
+    dia_b: str,
+) -> dict:
+    """
+    Intercambia las jornadas completas de dos días de un mercaderista.
+
+    Todo lo del lunes pasa al miércoles y todo lo del miércoles al lunes, con su
+    orden de ruta intacto. Se hace en una sola escritura y no visita por visita:
+    mover treinta puntos de uno en uno serían treinta reescrituras del Excel, y
+    entre medias la semana quedaría en estados imposibles —dos días con las
+    mismas visitas— que el propio motor rechazaría.
+
+    Los horarios, tiempos entre puntos y kilómetros se recalculan en los dos
+    días: la ruta es la misma, pero el día al que pertenece cambia.
+    """
+    dia_a = str(dia_a or "").strip()
+    dia_b = str(dia_b or "").strip()
+    if not dia_a or not dia_b or dia_a == dia_b:
+        raise RutaEditError("Elige dos días distintos para intercambiarlos", status_code=400)
+
+    df = read_excel_cached(hp, "Horarios_Detalle")
+    df = drop_spurious_total_rows_horarios_df(df)
+
+    # Las dos máscaras se calculan ANTES de tocar nada: si se calculara la
+    # segunda después de reescribir la primera, arrastraría las filas ya movidas.
+    mask_a = _mask_grupo(df, mercadista, dia_a, semana)
+    mask_b = _mask_grupo(df, mercadista, dia_b, semana)
+    total_a, total_b = int(mask_a.sum()), int(mask_b.sum())
+    if total_a == 0 and total_b == 0:
+        raise RutaEditError(
+            f"{mercadista} no tiene visitas ni el {dia_a.lower()} ni el {dia_b.lower()} "
+            f"de la {semana}.",
+            status_code=404,
+        )
+
+    df.loc[mask_a, "Día"] = dia_b
+    df.loc[mask_b, "Día"] = dia_a
+
+    df = _renumerar_y_recalcular_grupos(
+        df,
+        {(mercadista, dia_a, semana), (mercadista, dia_b, semana)},
+        incluye_viaje_del_dataset(hp),
+    )
+    _guardar_horarios(hp, df)
+
+    return {
+        "success": True,
+        # Corto a propósito: el calendario ya enseña el resultado del cambio,
+        # así que el aviso solo confirma qué se tocó.
+        "message": f"{dia_a} ↔ {dia_b} · {semana}",
+        "visitas_movidas": total_a + total_b,
+    }
+
+
 def asignar_pendiente(
     hp: str,
     *,

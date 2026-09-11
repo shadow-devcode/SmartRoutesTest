@@ -160,25 +160,73 @@ def obtener_direccion_desde_coordenadas(lat, lon, api_key=None):
 
 _PREFIJOS_PROVINCIA = ("PROVINCIA DE ", "PROVINCIA DEL ", "PROVINCIA ", "PROV. ", "PROV ")
 
+# Nombre oficial de cada provincia del Ecuador indexado por su clave canónica
+# (mayúsculas sin tildes, la que produce `norm_provincia`).
+#
+# El mismo lugar entra al sistema escrito de varias formas: Mapbox devuelve
+# "Pichincha", el motor guarda la clave interna "PICHINCHA" en la hoja de
+# pendientes y una visita reinsertada desde ahí se lleva esa clave a la columna
+# PROVINCIA. Sin una forma única, los desplegables mostraban "Pichincha" y
+# "PICHINCHA" como si fueran dos provincias distintas y cada filtro dejaba
+# fuera las visitas de la otra.
+_PROVINCIAS_EC = {
+    "AZUAY": "Azuay",
+    "BOLIVAR": "Bolívar",
+    "CANAR": "Cañar",
+    "CARCHI": "Carchi",
+    "CHIMBORAZO": "Chimborazo",
+    "COTOPAXI": "Cotopaxi",
+    "EL ORO": "El Oro",
+    "ESMERALDAS": "Esmeraldas",
+    "GALAPAGOS": "Galápagos",
+    "GUAYAS": "Guayas",
+    "IMBABURA": "Imbabura",
+    "LOJA": "Loja",
+    "LOS RIOS": "Los Ríos",
+    "MANABI": "Manabí",
+    "MORONA SANTIAGO": "Morona Santiago",
+    "NAPO": "Napo",
+    "ORELLANA": "Orellana",
+    "PASTAZA": "Pastaza",
+    "PICHINCHA": "Pichincha",
+    "SANTA ELENA": "Santa Elena",
+    "SANTO DOMINGO DE LOS TSACHILAS": "Santo Domingo de los Tsáchilas",
+    "SUCUMBIOS": "Sucumbíos",
+    "TUNGURAHUA": "Tungurahua",
+    "ZAMORA CHINCHIPE": "Zamora Chinchipe",
+}
+
 
 def provincia_display(val):
     """
-    Nombre de provincia para mostrar: quita el prefijo "Provincia de" pero
-    conserva tildes y mayúsculas originales.
+    Nombre de provincia para mostrar, en una sola forma.
 
     Mapbox no es consistente: para unos puntos devuelve "Provincia de
-    Tungurahua" y para otros "Tungurahua". Como este texto se escribe tal cual
-    en la columna PROVINCIA del Excel y el dashboard agrupa por ella, las dos
-    variantes salían como dos filas distintas para la misma provincia, aunque
-    el motor —que usa `norm_provincia`— ya las tratara como una sola.
+    Tungurahua" y para otros "Tungurahua". Y el propio sistema mezcla el nombre
+    legible con la clave interna en mayúsculas, porque las pendientes guardan
+    esta última y una visita reinsertada la arrastra hasta la columna PROVINCIA.
+    Como este texto es el que agrupan el dashboard y los desplegables de filtro,
+    cada variante aparecía como una provincia distinta.
 
-    A diferencia de `norm_provincia`, que produce la clave interna en
-    mayúsculas y sin tildes, esto es solo para lectura humana.
+    Por eso todas las variantes de una provincia ecuatoriana se resuelven contra
+    `_PROVINCIAS_EC`, que da el nombre oficial con sus tildes. Lo que no esté en
+    esa tabla —o venga vacío— se devuelve limpio de prefijo y de espacios, tal
+    como llegó.
+
+    A diferencia de `norm_provincia`, que produce la clave interna en mayúsculas
+    y sin tildes, esto es solo para lectura humana.
     """
     if val is None:
         return ""
 
     s = " ".join(str(val).strip().split())
+    if not s or s.lower() in ("nan", "none", "nat"):
+        return ""
+
+    oficial = _PROVINCIAS_EC.get(norm_provincia(s))
+    if oficial:
+        return oficial
+
     sin_tildes = unicodedata.normalize("NFD", s)
     sin_tildes = "".join(c for c in sin_tildes if unicodedata.category(c) != "Mn").upper()
 

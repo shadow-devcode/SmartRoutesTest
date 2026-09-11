@@ -457,8 +457,9 @@
         <div>
           <h2 class="gp-card__title">Calendario de la semana</h2>
           <p class="gp-card__lead">
-            La semana de un mercaderista con sus días en columnas. Arrastra una visita
-            a otro día para moverla, o ábrela para mandarla a otra semana.
+            Las cuatro semanas de un mercaderista con sus días en columnas. Filtra por
+            provincia y ciudad para encontrarlo, y arrastra las visitas entre días o
+            semanas.
           </p>
         </div>
       </div>
@@ -478,20 +479,28 @@
             <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
           </button>
         </div>
-        <div class="gp-filtro-mapa">
-          <span class="gp-filtro-mapa__label">Semana</span>
-          <button
-            type="button"
-            class="gp-select gp-select-btn"
-            [class.gp-select-btn--activo]="!!calSemana"
-            [title]="calSemana"
-            (click)="alternarFiltro('semana', $event, 'calendario')">
-            <span class="gp-select-btn__texto">{{ calSemana }}</span>
-            <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
-          </button>
-        </div>
+        <label class="gp-filtro-mapa">
+          <span class="gp-filtro-mapa__label">Provincia</span>
+          <select
+            class="gp-select"
+            [ngModel]="calProvincia"
+            (ngModelChange)="cambiarCalProvincia($event)">
+            <option value="">Todas</option>
+            <option *ngFor="let p of calProvincias" [value]="p">{{ p }}</option>
+          </select>
+        </label>
+        <label class="gp-filtro-mapa">
+          <span class="gp-filtro-mapa__label">Ciudad</span>
+          <select
+            class="gp-select"
+            [ngModel]="calCiudad"
+            (ngModelChange)="cambiarCalCiudad($event)">
+            <option value="">Todas</option>
+            <option *ngFor="let c of calCiudades" [value]="c">{{ c }}</option>
+          </select>
+        </label>
         <span class="cal-resumen">
-          {{ calMinutosSemana | number }} min en la semana ·
+          {{ calMinutosMes | number }} min en el mes ·
           jornada de {{ jornadaMinutosDia }} min/día
         </span>
       </div>
@@ -499,86 +508,116 @@
       <div class="gp-alert gp-alert--error" role="alert" *ngIf="calError">{{ calError }}</div>
       <p class="cal-ok" role="status" *ngIf="calMensaje">{{ calMensaje }}</p>
 
-      <div class="cal-tablero">
-      <div class="cal-grid" [class.cal-grid--guardando]="calGuardando">
-        <div
-          class="cal-dia"
-          *ngFor="let dia of calDias"
-          [class.cal-dia--destino]="arrastrandoSobre(dia)"
-          (dragover)="permitirSoltar($event)"
-          (drop)="alSoltarEnDia(dia, $event)">
+      <!-- Qué provincia es cada visita. Solo aparece cuando la ruta toca más
+           de una: con una sola, el color no distingue nada. -->
+      <div class="cal-leyenda" *ngIf="calProvinciasRuta.length > 1">
+        <span class="cal-leyenda__titulo">Provincias de la ruta:</span>
+        <span class="cal-leyenda__item" *ngFor="let p of calProvinciasRuta">
+          <span class="cal-leyenda__punto" [style.background]="p.color" aria-hidden="true"></span>
+          {{ p.provincia }}
+        </span>
+      </div>
 
-          <header class="cal-dia__cabecera">
-            <span class="cal-dia__nombre">{{ dia }}</span>
-            <span
-              class="cal-dia__carga"
-              [class.cal-dia__carga--lleno]="calPorcentajeDia(dia) >= 100">
-              {{ calMinutosDia(dia) }} min · {{ calPorcentajeDia(dia) }}%
-            </span>
+      <div class="cal-tablero">
+      <div class="cal-semanas" [class.cal-grid--guardando]="calGuardando">
+        <!-- Las cuatro semanas, una debajo de otra: así se ve el mes entero y
+             se puede arrastrar una visita de una semana a otra. -->
+        <section class="cal-semana" *ngFor="let semana of semanasPeriodo">
+          <header class="cal-semana__cabecera">
+            <h3 class="cal-semana__titulo">{{ semana | titlecase }}</h3>
+            <span class="cal-semana__total">{{ calMinutosSemana(semana) | number }} min</span>
           </header>
 
-          <div class="cal-barra" aria-hidden="true">
-            <span
-              class="cal-barra__relleno"
-              [class.cal-barra__relleno--lleno]="calPorcentajeDia(dia) >= 100"
-              [style.width.%]="calPorcentajeDia(dia) > 100 ? 100 : calPorcentajeDia(dia)"></span>
-          </div>
+          <div class="cal-grid">
+            <!-- El resaltado del arrastre lo pinta el componente con DOM
+                 directo, fuera de Angular: `dragover` dispara decenas de
+                 eventos por segundo. -->
+            <div
+              class="cal-dia"
+              *ngFor="let dia of calDias"
+              (drop)="alSoltarEnDia(dia, semana, $event)">
 
-          <ul class="cal-visitas">
-            <li *ngFor="let v of calVisitas(dia)">
-              <div
-                class="cal-visita"
-                [class.cal-visita--abierta]="calMenu === v"
-                [class.cal-visita--destino]="calSobreVisita === v"
+              <!-- La cabecera arrastra la jornada entera: soltarla sobre otro
+                   día intercambia los dos. -->
+              <header
+                class="cal-dia__cabecera"
                 draggable="true"
-                (dragstart)="alEmpezarArrastre(v)"
+                (dragstart)="alEmpezarArrastreDia(dia, semana, $event)"
                 (dragend)="alTerminarArrastre()"
-                (dragover)="marcarSobreVisita(v, $event)"
-                (dragleave)="marcarSobreVisita(null)"
-                (drop)="alSoltarEnVisita(v, $event)"
-                (click)="abrirMenuVisita(v, $event)"
-                [title]="v.descripcion + ' · ' + v.horario + ' — arrástrala para cambiarla de orden o de día'">
-                <span class="cal-visita__orden">{{ v.orden_ruta }}</span>
-                <span class="cal-visita__cuerpo">
-                  <span class="cal-visita__nombre">{{ v.descripcion }}</span>
-                  <span class="cal-visita__meta">
-                    {{ v.horario }} · {{ v.tiempo_servicio | number:'1.0-0' }} min
-                  </span>
+                title="Arrastra el día sobre otro para intercambiar sus visitas">
+                <span class="cal-dia__nombre">
+                  <span class="cal-dia__asa" aria-hidden="true">⠿</span>
+                  {{ dia }}
                 </span>
+                <span
+                  class="cal-dia__carga"
+                  [class.cal-dia__carga--lleno]="calPorcentajeDia(dia, semana) >= 100">
+                  {{ calMinutosDia(dia, semana) }} min · {{ calPorcentajeDia(dia, semana) }}%
+                </span>
+              </header>
+
+              <div class="cal-barra" aria-hidden="true">
+                <span
+                  class="cal-barra__relleno"
+                  [class.cal-barra__relleno--lleno]="calPorcentajeDia(dia, semana) >= 100"
+                  [style.width.%]="calPorcentajeDia(dia, semana) > 100
+                    ? 100
+                    : calPorcentajeDia(dia, semana)"></span>
               </div>
 
-              <!-- Mover a otra semana o a un día que no está a la vista -->
-              <div class="cal-mover" *ngIf="calMenu === v" (click)="$event.stopPropagation()">
-                <div class="cal-mover__campos">
-                  <label>
-                    <span>Semana</span>
-                    <select class="gp-select" [(ngModel)]="calMenuSemana">
-                      <option *ngFor="let s of semanasPeriodo" [value]="s">{{ s }}</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Día</span>
-                    <select class="gp-select" [(ngModel)]="calMenuDia">
-                      <option *ngFor="let d of calDias" [value]="d">{{ d }}</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="cal-mover__acciones">
-                  <button type="button" class="btn btn-sm btn-brand" (click)="confirmarMoverDesdeMenu()">
-                    Mover
-                  </button>
-                  <button type="button" class="btn btn-sm btn-muted" (click)="cerrarMenuVisita()">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </li>
+              <ul class="cal-visitas">
+                <li *ngFor="let v of calVisitas(dia, semana)">
+                  <div
+                    class="cal-visita"
+                    [class.cal-visita--abierta]="calMenu === v"
+                    [style.borderLeftColor]="colorProvincia(v.provincia)"
+                    draggable="true"
+                    (dragstart)="alEmpezarArrastre(v, $event)"
+                    (dragend)="alTerminarArrastre()"
+                    (drop)="alSoltarEnVisita(v, $event)"
+                    (click)="abrirMenuVisita(v, $event)"
+                    [title]="v.descripcion + ' · ' + (v.provincia || 'sin provincia') + ' · ' + v.horario + ' — arrástrala para cambiarla de orden, de día o de semana'">
+                    <span
+                      class="cal-visita__orden"
+                      [style.background]="colorProvincia(v.provincia)">{{ v.orden_ruta }}</span>
+                    <span class="cal-visita__cuerpo">
+                      <span class="cal-visita__nombre">{{ v.descripcion }}</span>
+                    </span>
+                  </div>
 
-            <li class="cal-vacio" *ngIf="calVisitas(dia).length === 0">
-              Sin visitas. Arrastra una aquí.
-            </li>
-          </ul>
-        </div>
+                  <!-- Acciones de la visita. Mover de día, de semana o de
+                       orden se hace arrastrando, así que aquí solo queda lo
+                       que el ratón no puede hacer. -->
+                  <div class="cal-mover" *ngIf="calMenu === v" (click)="$event.stopPropagation()">
+                    <span class="cal-mover__titulo">Mandar a pendientes</span>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-muted cal-mover__boton"
+                      (click)="mandarAPendientes(v, false)">
+                      Solo esta visita
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger cal-mover__boton"
+                      (click)="mandarAPendientes(v, true)">
+                      Todas las del punto
+                    </button>
+                    <button
+                      type="button"
+                      class="cal-mover__cerrar"
+                      (click)="cerrarMenuVisita()">
+                      Cancelar
+                    </button>
+                  </div>
+                </li>
+
+                <li class="cal-vacio" *ngIf="calVisitas(dia, semana).length === 0">
+                  Sin visitas. Arrastra una aquí.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
       </div>
 
       <!-- Pendientes de este mercaderista: se arrastran a un día para colocarlos -->
@@ -598,11 +637,31 @@
           [(ngModel)]="calBusquedaPendiente"
           autocomplete="off" />
 
+        <!-- Zona de los pendientes: independiente de la del calendario, para
+             poder buscar trabajo cercano sin cambiar de mercaderista. -->
+        <div class="cal-pendientes__zona">
+          <select
+            class="gp-filtro-panel__input"
+            [ngModel]="pendProvincia"
+            (ngModelChange)="cambiarPendProvincia($event)">
+            <option value="">Todas las provincias</option>
+            <option *ngFor="let p of pendProvincias" [value]="p">{{ p }}</option>
+          </select>
+          <select
+            class="gp-filtro-panel__input"
+            [ngModel]="pendCiudad"
+            (ngModelChange)="cambiarPendCiudad($event)">
+            <option value="">Todas las ciudades</option>
+            <option *ngFor="let c of pendCiudades" [value]="c">{{ c }}</option>
+          </select>
+        </div>
+
         <ul class="cal-pendientes__lista">
           <li
             class="cal-pendiente"
             *ngFor="let p of pendientesParaCalendario"
             [class.cal-pendiente--ajeno]="!puedeAsignarPendiente(p)"
+            [style.borderLeftColor]="colorProvincia(p.provincia)"
             [draggable]="puedeAsignarPendiente(p)"
             (dragstart)="alEmpezarArrastrePendiente(p, $event)"
             (dragend)="alTerminarArrastre()"
@@ -633,13 +692,14 @@
 
         <p class="cal-pendientes__ayuda">
           Arrastra un punto a un día para colocar <strong>una</strong> de sus visitas
-          en la {{ calSemana }}. Los apagados ya los atiende otro mercaderista.
+          en esa semana. Los apagados ya los atiende otro mercaderista.
         </p>
       </aside>
       </div>
 
       <p class="gp-nota">
-        Suelta una visita <strong>sobre otra</strong> para ponerla en esa posición
+        Arrastra la <strong>cabecera de un día</strong> sobre otro para intercambiar
+        sus jornadas completas. Suelta una visita <strong>sobre otra</strong> para ponerla en esa posición
         —dentro del mismo día cambia el orden de ruta— o <strong>en la columna</strong>
         para mandarla al final de ese día. El servidor recalcula horarios, tiempos
         entre puntos y kilómetros de los días afectados. No se puede cambiar de mercaderista desde aquí:
@@ -710,5 +770,32 @@
       </button>
     </div>
 
+  </div>
+
+  <!-- Pregunta antes de una acción que no se deshace sola: pasarse de la
+       jornada o sacar visitas de la ruta. Es un cuadro de la propia página,
+       no el del navegador, para poder nombrar el punto y el día. -->
+  <div class="cal-dialogo" *ngIf="calConfirmacion" (click)="cancelarDialogo()">
+    <div
+      class="cal-dialogo__caja"
+      role="alertdialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()">
+      <h3 class="cal-dialogo__titulo">{{ calConfirmacion.titulo }}</h3>
+      <p class="cal-dialogo__detalle">{{ calConfirmacion.detalle }}</p>
+      <div class="cal-dialogo__acciones">
+        <button type="button" class="btn btn-sm btn-muted" (click)="cancelarDialogo()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-danger]="calConfirmacion.peligro"
+          [class.btn-brand]="!calConfirmacion.peligro"
+          (click)="confirmarDialogo()">
+          {{ calConfirmacion.aceptar }}
+        </button>
+      </div>
+    </div>
   </div>
 </div>

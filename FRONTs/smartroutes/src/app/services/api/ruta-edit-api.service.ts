@@ -141,6 +141,29 @@ export class RutaEditApiService {
   }
 
   /**
+   * Intercambia las jornadas completas de dos días del mismo mercaderista:
+   * lo del lunes pasa al miércoles y viceversa, en una sola operación.
+   */
+  intercambiarDias(
+    semana: string,
+    mercadista: string,
+    diaA: string,
+    diaB: string,
+  ): Observable<{ success: boolean; message?: string; error?: string; visitas_movidas?: number }> {
+    return this.http.put<{
+      success: boolean;
+      message?: string;
+      error?: string;
+      visitas_movidas?: number;
+    }>(`${this.apiUrl}/ruta/intercambiar-dias`, {
+      semana: semana?.trim() || 'semana 1',
+      mercadista,
+      dia_a: diaA,
+      dia_b: diaB,
+    });
+  }
+
+  /**
    * Asigna una visita pendiente a un (mercadista, día, semana) destino.
    * Si el destino excede 480 min combinados y `forzar=false`, el backend
    * devuelve 409; el frontend debe pedir confirmación al usuario y reintentar

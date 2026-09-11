@@ -1,4 +1,12 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnInit,
+  OnChanges,
+  Output,
+  EventEmitter,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -9,6 +17,7 @@ import {
   SEMANAS_PERIODO,
   getColorForMercadista,
   Estadisticas,
+  UbicacionMapa,
   ordenarDiasLaborables,
 } from '../../models/mercadista.model';
 
@@ -19,13 +28,98 @@ import {
   templateUrl: './lista-mercadistas-comparativa.component.html',
   styleUrl: './lista-mercadistas-comparativa.component.css',
 })
-export class ListaMercadistasComparativaComponent implements OnInit {
+export class ListaMercadistasComparativaComponent implements OnInit, OnChanges {
   @Output() mercadistaSeleccionado = new EventEmitter<string>();
   @Output() diaSeleccionado = new EventEmitter<string | null>();
   @Output() semanaSeleccionada = new EventEmitter<string>();
   @Output() todosFiltrosLimpiados = new EventEmitter<void>();
+  /** Zona elegida: la vista de mapa filtra por ella y la lista se acota. */
+  @Output() zonaSeleccionada = new EventEmitter<{ provincia: string; ciudad: string }>();
+
+  /**
+   * Ubicaciones del archivo comparativo. Llegan del padre porque es quien las
+   * tiene cargadas; de ahí salen las provincias y ciudades que se ofrecen, sin
+   * pedir nada más al servidor.
+   */
+  @Input() ubicaciones: UbicacionMapa[] = [];
+
+  /**
+   * Lo que el mapa está dibujando ahora mismo: las ubicaciones que quedan tras
+   * semana, provincia, ciudad, mercaderista y día.
+   *
+   * Las tarjetas de resumen se suman de aquí, no del total del archivo. Al
+   * abrir la ruta del lunes de un mercaderista, el kilometraje y los minutos
+   * que interesan son los de esa jornada; ver los 649.107 min de todo el mes
+   * no dice nada de lo que se está mirando.
+   */
+  @Input() ubicacionesFiltradas: UbicacionMapa[] = [];
+
+  provinciaActual = '';
+  ciudadActual = '';
 
   mercadistas: string[] = [];
+
+  /** Provincias presentes en el archivo comparativo. */
+  get provincias(): string[] {
+    const valores = new Set<string>();
+    for (const ub of this.ubicaciones) {
+      if ((ub.provincia || '').trim()) valores.add(ub.provincia.trim());
+    }
+    return [...valores].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  /** Ciudades, acotadas a la provincia elegida. */
+  get ciudades(): string[] {
+    const valores = new Set<string>();
+    for (const ub of this.ubicaciones) {
+      if (this.provinciaActual && (ub.provincia || '').trim() !== this.provinciaActual) continue;
+      if ((ub.ciudad || '').trim()) valores.add(ub.ciudad.trim());
+    }
+    return [...valores].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  /**
+   * Mercadistas que trabajan en la zona elegida.
+   *
+   * Sin esto, elegir una provincia filtraba el mapa pero la lista seguía
+   * mostrando a los ochenta, y había que adivinar cuáles quedaban dentro.
+   */
+  get mercadistasVisibles(): string[] {
+    if (!this.provinciaActual && !this.ciudadActual) return this.mercadistas;
+    const enZona = new Set<string>();
+    for (const ub of this.ubicaciones) {
+      if (this.provinciaActual && (ub.provincia || '').trim() !== this.provinciaActual) continue;
+      if (this.ciudadActual && (ub.ciudad || '').trim() !== this.ciudadActual) continue;
+      enZona.add(ub.mercadista);
+    }
+    return this.mercadistas.filter((m) => enZona.has(m));
+  }
+
+  seleccionarProvincia(provincia: string): void {
+    this.provinciaActual = provincia;
+    // Cambiar de provincia puede dejar la ciudad elegida fuera de lista.
+    if (this.ciudadActual && !this.ciudades.includes(this.ciudadActual)) {
+      this.ciudadActual = '';
+    }
+    this.emitirZona();
+  }
+
+  seleccionarCiudad(ciudad: string): void {
+    this.ciudadActual = ciudad;
+    this.emitirZona();
+  }
+
+  private emitirZona(): void {
+    // Si el mercadista abierto ya no está en la zona, se cierra su detalle.
+    if (this.mercadistaActual && !this.mercadistasVisibles.includes(this.mercadistaActual)) {
+      this.mercadistaActual = null;
+      this.detalleActual = null;
+    }
+    this.zonaSeleccionada.emit({
+      provincia: this.provinciaActual,
+      ciudad: this.ciudadActual,
+    });
+  }
   mercadistaActual: string | null = null;
   diaActual: string | null = null;
   semanaActual = '';
@@ -171,15 +265,31 @@ export class ListaMercadistasComparativaComponent implements OnInit {
     this.mercadistaActual = null;
     this.diaActual = null;
     this.semanaActual = '';
+    this.provinciaActual = '';
+    this.ciudadActual = '';
     this.detalleActual = null;
     this.actualizarTotales();
     this.semanaSeleccionada.emit('');
     this.todosFiltrosLimpiados.emit();
   }
 
+  /** Cuántos mercaderistas hay en lo que el mapa enseña ahora mismo. */
+  get mercadistasEnVista(): number {
+    const visibles = this.ubicacionesFiltradas ?? [];
+    if (visibles.length === 0) return this.estadisticas?.total_mercadistas ?? 0;
+    return new Set(visibles.map((u) => u.mercadista)).size;
+  }
+
+  ngOnChanges(cambios: SimpleChanges): void {
+    // El padre recalcula la lista visible en cada filtro; las tarjetas la siguen.
+    if (cambios['ubicacionesFiltradas']) this.actualizarTotales();
+  }
+
   private actualizarTotales(): void {
-    if (!this.detalleActual?.dias) {
-      // Sin mercadista seleccionado: usar estadísticas globales
+    const visibles = this.ubicacionesFiltradas ?? [];
+    if (visibles.length === 0) {
+      // Todavía sin datos en el mapa (carga inicial o filtro sin resultados):
+      // se enseña el total del archivo para no dejar las tarjetas en blanco.
       this.totalUbicaciones = Math.max((this.estadisticas?.total_ubicaciones ?? 0) - 1, 0);
       this.totalKilometrosRuta = this.estadisticas?.total_km_entre_sucursales ?? 0;
       this.totalTiempoTrabajo = this.estadisticas?.total_tiempo_trabajo_min ?? 0;
@@ -187,15 +297,7 @@ export class ListaMercadistasComparativaComponent implements OnInit {
       return;
     }
 
-    // Con mercadista seleccionado: sumar según día activo (null o '' = todos los días)
-    const dias = this.detalleActual.dias;
-    let ubicaciones: any[];
-    if (this.diaActual && this.diaActual !== '' && dias[this.diaActual]) {
-      ubicaciones = dias[this.diaActual];
-    } else {
-      ubicaciones = (Object.values(dias) as any[][]).flat();
-    }
-
+    const ubicaciones = visibles;
     this.totalUbicaciones = ubicaciones.length;
     this.totalTiempoTrabajo = ubicaciones.reduce((s, u) => s + (Number(u.tiempo_servicio) || 0), 0);
     this.totalTiempoEntreSucursales = ubicaciones.reduce((s, u) => s + (Number(u.tiempo_entre_sucursal) || 0), 0);

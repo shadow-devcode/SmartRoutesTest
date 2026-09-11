@@ -3,9 +3,12 @@
   <!-- ── Sidebar ──────────────────────────────────────────────── -->
   <aside class="sidebar-panel">
     <app-lista-mercadistas-comparativa
+      [ubicaciones]="todasUbicaciones"
+      [ubicacionesFiltradas]="ubicaciones"
       (mercadistaSeleccionado)="onMercadistaSeleccionado($event)"
       (diaSeleccionado)="onDiaSeleccionado($event)"
       (semanaSeleccionada)="onSemanaSeleccionada($event)"
+      (zonaSeleccionada)="onZonaSeleccionada($event)"
       (todosFiltrosLimpiados)="onLimpiarFiltros()">
     </app-lista-mercadistas-comparativa>
   </aside>
@@ -26,9 +29,14 @@
             <span class="ubicaciones-count">{{ ubicaciones.length }} ubicaciones totales</span>
           </div>
 
-          <!-- Botón de carga -->
-          <button class="btn-upload" (click)="abrirModal()">
-            📤 Subir nuevo Excel
+          <!-- La carga que se hace desde aquí es la plantilla semanal del
+               negocio. El Excel ya procesado por el motor se sube en
+               «Carga de Excel», que es donde se eligen sus parámetros. -->
+          <button
+            class="btn-upload btn-upload--plantilla"
+            (click)="abrirModal('plantilla')"
+            title="Excel con una fila por punto y los días en columnas (entrada, salida y tiempo trabajado)">
+            📋 Subir plantilla semanal
           </button>
         </div>
       </div>
@@ -83,7 +91,9 @@
 
     <!-- Cabecera del modal -->
     <div class="modal-header">
-      <h2>Cargar nuevo Excel comparativo</h2>
+      <h2>
+        {{ formatoCarga === 'plantilla' ? 'Cargar plantilla semanal' : 'Cargar nuevo Excel comparativo' }}
+      </h2>
       <button
         class="modal-close"
         (click)="cerrarModal()"
@@ -96,12 +106,23 @@
     <!-- ── IDLE: seleccionar archivo ─────────────────────────── -->
     <div class="modal-body" *ngIf="etapaCarga === 'idle'">
       <div class="upload-zone">
-        <div class="upload-icon">📂</div>
-        <p class="upload-title">Selecciona el Excel comparativo</p>
-        <p class="upload-subtitle">
+        <div class="upload-icon">{{ formatoCarga === 'plantilla' ? '📋' : '📂' }}</div>
+        <p class="upload-title">
+          {{ formatoCarga === 'plantilla'
+            ? 'Selecciona la plantilla semanal'
+            : 'Selecciona el Excel comparativo' }}
+        </p>
+        <p class="upload-subtitle" *ngIf="formatoCarga === 'procesado'">
           Debe ser un archivo ya procesado que contenga la hoja
           <strong>Horarios_Detalle</strong>. Los datos se cargarán
           directamente en el mapa sin reprocesamiento.
+        </p>
+        <p class="upload-subtitle" *ngIf="formatoCarga === 'plantilla'">
+          Una fila por punto de venta con <strong>MERCADERISTA</strong>,
+          <strong>LATITUD</strong>, <strong>LONGITUD</strong> y, por cada día,
+          <strong>ENTRADA</strong>, <strong>SALIDA</strong> y
+          <strong>TIEMPO TRABAJADO</strong>. Se convierte a rutas y la semana se
+          repite en las cuatro del mes.
         </p>
         <label class="btn btn-primary">
           <input

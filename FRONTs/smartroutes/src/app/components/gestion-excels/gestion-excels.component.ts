@@ -52,6 +52,15 @@ export class GestionExcelsComponent implements OnInit {
   puntosError = '';
   puntosSuccess = '';
 
+  /**
+   * Excel cuyo borrado está esperando confirmación.
+   *
+   * La pregunta se dibuja como el resto de los cuadros de esta página. El
+   * `window.confirm` del navegador la sacaba fuera de la app, encabezada por la
+   * URL del servidor y sin poder destacar que el borrado no tiene vuelta atrás.
+   */
+  aEliminar: RouteDatasetRow | null = null;
+
   constructor(
     private readonly adminUsers: AdminUsersService,
     private readonly puntosApi: PuntosSinCoordenadasApiService,
@@ -214,11 +223,17 @@ export class GestionExcelsComponent implements OnInit {
       this.errorMsg = 'Debe existir al menos un Excel en el sistema.';
       return;
     }
-    const ok = window.confirm(
-      `¿Eliminar del sistema el Excel «${row.display_name}»? Esta acción no se puede deshacer.`
-    );
-    if (!ok) return;
-    this.eliminar(row);
+    this.aEliminar = row;
+  }
+
+  cancelarEliminar(): void {
+    this.aEliminar = null;
+  }
+
+  confirmarBorrado(): void {
+    const row = this.aEliminar;
+    this.aEliminar = null;
+    if (row) this.eliminar(row);
   }
 
   loadPuntosSinCoordenadas(): void {

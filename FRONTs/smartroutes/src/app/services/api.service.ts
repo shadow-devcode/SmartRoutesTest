@@ -195,4 +195,9 @@ export class ApiService {
   uploadExcelComparativa(file: File) {
     return this.comparativa.uploadExcel(file);
   }
+
+  /** Plantilla semanal del cliente: el servidor la convierte antes de guardarla. */
+  uploadPlantillaComparativa(file: File) {
+    return this.comparativa.uploadPlantilla(file);
+  }
 }

@@ -65,6 +65,22 @@ def km_entre_sucursales_row(row) -> float:
         return 0.0
 
 
+def minutos_entre_sucursales_row(row) -> float:
+    """Minutos de viaje desde la parada anterior; valor seguro para JSON.
+
+    Mismo tratamiento que los km: la columna puede venir vacía en Excels
+    antiguos, y un NaN en el JSON rompe al cliente.
+    """
+    v = row.get("Tiempo entre sucursal (min)", 0)
+    if v is None or pd.isna(v):
+        return 0.0
+    try:
+        x = float(v)
+        return 0.0 if x != x else x
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def lat_lon_desde_celda_excel(v):
     """Convierte celda de latitud/longitud a float o None (acepta comillas y texto sucio)."""
     if v is None or pd.isna(v):

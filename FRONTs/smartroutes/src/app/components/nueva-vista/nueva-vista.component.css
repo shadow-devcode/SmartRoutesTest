@@ -909,3 +909,77 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Ocupación: cifra + barra. El número solo no dice si un 25% es mucho o poco;
+   la barra lo sitúa de un vistazo contra el tope del mes. */
+.ocup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 5.5rem;
+}
+
+.ocup__cifra {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ocup__cifra--total {
+  color: #1e293b;
+}
+
+.ocup__barra {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.ocup__relleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #93c5fd;
+}
+
+/* La barra del total va en el azul fuerte: es la lectura principal de la fila. */
+.ocup__relleno--total {
+  background: #2563eb;
+}
+
+.ocup__relleno--lleno {
+  background: #f59e0b;
+}
+
+.ocup__nota {
+  font-size: 0.68rem;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+/* Prioridad del criterio de orden (1, 2, 3…). Solo aparece cuando hay más de
+   uno: con una sola columna ordenada el número no añade nada. */
+.sort-rango {
+  font-size: 0.62rem;
+  font-weight: 700;
+  margin-left: 0.1rem;
+  vertical-align: super;
+}
+
+.btn-quitar-orden {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-quitar-orden:hover {
+  background: #f1f5f9;
+}

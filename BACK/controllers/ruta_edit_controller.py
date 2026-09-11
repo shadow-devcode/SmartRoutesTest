@@ -106,6 +106,31 @@ def mover_a_pendientes():
     )
 
 
+@ruta_bp.route("/intercambiar-dias", methods=["PUT"])
+@_maneja_errores_ruta_edit("PUT /api/ruta/intercambiar-dias")
+def intercambiar_dias():
+    """Intercambia las jornadas completas de dos días del mismo mercadista."""
+    hp = active_horarios_path(auth_loaded=is_auth_loaded())
+    if not hp:
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Body JSON requerido"}), 400
+
+    mercadista = data.get("mercadista")
+    dia_a = data.get("dia_a")
+    dia_b = data.get("dia_b")
+    semana = (data.get("semana") or "").strip() or "semana 1"
+    if not mercadista or not dia_a or not dia_b:
+        return jsonify({"error": "Faltan mercadista, dia_a o dia_b"}), 400
+
+    return jsonify(
+        res.intercambiar_dias(
+            hp, semana=semana, mercadista=mercadista, dia_a=dia_a, dia_b=dia_b
+        )
+    )
+
+
 @ruta_bp.route("/mover-visita", methods=["PUT"])
 @_maneja_errores_ruta_edit("PUT /api/ruta/mover-visita")
 def mover_visita():

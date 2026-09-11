@@ -368,6 +368,37 @@
   color: #92400e;
 }
 
+.ge-modal--confirm {
+  width: min(26rem, 94vw);
+  padding: 1.4rem 1.5rem 1.25rem;
+}
+
+.ge-modal--confirm .ge-modal-title {
+  margin-bottom: 0.6rem;
+}
+
+/* Nombre del Excel: un solo token largo sin espacios, así que se le permite
+   partir por donde sea antes que salirse de la caja. */
+.ge-modal-nombre {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ge-modal-aviso {
+  margin: 0.35rem 0 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
 .ge-modal-backdrop {
   position: fixed;
   inset: 0;

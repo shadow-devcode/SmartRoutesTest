@@ -24,4 +24,15 @@ def serializar_valor(valor):
     if hasattr(valor, "isoformat"):
         return valor.isoformat()
 
+    # Ruido binario de los números de Excel. Una celda con =2,5*60 guarda
+    # 149.99999999999994 y Excel la enseña como 150 porque solo muestra 15
+    # cifras significativas; la vista previa mostraba el número crudo y parecía
+    # que el archivo estaba mal. Se recortan a 12 cifras, que es más precisión
+    # de la que tiene cualquier dato del negocio y menos de la que hace falta
+    # para que asome el error de coma flotante. Las coordenadas no se tocan:
+    # -0.10995693 tiene nueve cifras.
+    if isinstance(valor, float):
+        ajustado = float(f"{valor:.12g}")
+        return int(ajustado) if ajustado.is_integer() else ajustado
+
     return valor

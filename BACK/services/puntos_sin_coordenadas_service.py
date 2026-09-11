@@ -11,6 +11,7 @@ import pandas as pd
 from route_engine.mapbox import obtener_direccion_desde_coordenadas
 from services.pendientes_service import PENDIENTES_COLS, leer_hoja_pendientes
 from services.ruta_edit_service import _agregar_pendiente_sin_duplicar, _sanitizar_df_para_excel
+from utils.excel_atomic import escritura_atomica
 from utils.excel_cache import invalidate_excel_cache, read_excel_cached
 from utils.excel_lock import with_excel_file_lock
 
@@ -115,9 +116,12 @@ def actualizar_y_mover_a_pendientes(
 
     df_sin = df_sin.drop(idx_fila).reset_index(drop=True)
 
-    with pd.ExcelWriter(hp, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-        _sanitizar_df_para_excel(df_sin).to_excel(writer, sheet_name=SIN_COORD_SHEET, index=False)
-        _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name="Pendientes_Sin_Asignar", index=False)
+    # Sobre una copia temporal que sustituye al original de golpe: quien
+    # lea mientras tanto nunca verá el .xlsx a medio escribir.
+    with escritura_atomica(hp) as _destino:
+        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            _sanitizar_df_para_excel(df_sin).to_excel(writer, sheet_name=SIN_COORD_SHEET, index=False)
+            _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name="Pendientes_Sin_Asignar", index=False)
 
     invalidate_excel_cache(hp)
 

@@ -39,6 +39,8 @@ export interface UbicacionMapa {
   semana?: string;
   /** Km desde la parada anterior (columna Excel); la API lo envía en todas-ubicaciones / por día */
   km_entre_sucursales?: number;
+  /** Minutos de viaje desde la parada anterior; suma el resumen de la vista */
+  tiempo_entre_sucursal?: number;
 }
 
 export interface Estadisticas {
@@ -95,6 +97,11 @@ export interface ProvinciaPorcentaje {
   minutos: number;
   minutos_servicio?: number;
   minutos_viaje?: number;
+  /** Ocupación de la persona sumando TODAS sus provincias (sin filtrar). */
+  total_mercadista_minutos?: number;
+  total_mercadista_porcentaje?: number;
+  /** En cuántas provincias reparte su mes. */
+  provincias_mercadista?: number;
   semana1_puntos?: number;
   semana2_puntos?: number;
   semana3_puntos?: number;
