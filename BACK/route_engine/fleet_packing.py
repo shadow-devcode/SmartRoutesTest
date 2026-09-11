@@ -41,6 +41,7 @@ from collections import defaultdict
 
 from route_engine.config import (
     cuota_dia,
+    RADIO_CENTRO_ZONA_KM,
     RADIO_ZONA_KM,
     carga_jornada,
     cuota_mes,
@@ -104,16 +105,26 @@ class _Caja:
 
     def admite_geografia(self, coords_nuevas):
         """
-        ¿Siguen cabiendo todos los puntos en un círculo de DIAMETRO_MAX_KM?
+        ¿Está el punto dentro del radio de la zona, medido desde su centro?
 
-        Se comprueba contra todas las coordenadas ya presentes, no contra un
-        centroide: un centroide se desplaza al añadir puntos y deja pasar
-        cadenas A→B→C que acaban abarcando el triple del radio.
+        Antes se comprobaba contra TODAS las coordenadas ya presentes: ninguna
+        pareja de puntos podía distar más de 60 km. Medirlo así congelaba las
+        zonas anchas —una vez que una zona tenía dos puntos separados, ningún
+        punto nuevo entraba, por cerca que estuviera del resto— y eso fabricaba
+        mercaderistas con un solo punto al 5% de ocupación teniendo un
+        compañero a 2 km con media semana libre (ver `RADIO_CENTRO_ZONA_KM`).
+
+        El centro se desplaza al añadir puntos, sí, pero acotado: todos los
+        puntos están dentro del radio del centro vigente, de modo que la zona
+        crece alrededor de su núcleo en vez de encadenarse A→B→C.
         """
+        if not self.coords:
+            return True
+        lat = sum(c[0] for c in self.coords) / len(self.coords)
+        lon = sum(c[1] for c in self.coords) / len(self.coords)
         for nueva in coords_nuevas:
-            for ya in self.coords:
-                if haversine_km(nueva[0], nueva[1], ya[0], ya[1]) > DIAMETRO_MAX_KM:
-                    return False
+            if haversine_km(nueva[0], nueva[1], lat, lon) > RADIO_CENTRO_ZONA_KM:
+                return False
         return True
 
     def distancia_a(self, coords_nuevas):

@@ -486,6 +486,23 @@ NUM_SEMANAS_POR_MERCADISTA = 4
 # es la distancia real entre puntos, no la frontera administrativa.
 RADIO_ZONA_KM = float(os.environ.get("RADIO_ZONA_KM", "30"))
 
+# Radio de la zona de un mercaderista medido DESDE SU CENTRO.
+#
+# Antes el límite se comprobaba entre todos los pares de puntos: ninguno podía
+# estar a más de 60 km de otro del mismo dueño. Esa forma de medirlo fabricaba
+# mercaderistas al 5% de ocupación. Caso real: HERMANOS BORBOR, un punto de 8
+# visitas de 60 min, acabó con una persona para él solo estando a 1,9 km de un
+# punto del Mercadista 46 —que tenía el miércoles con 382 min libres y el jueves
+# con 292—, porque también estaba a 72 km de otros dos puntos de esa persona.
+# Y el Mercadista 46 ya arrastraba 75 km de dispersión propia, así que su zona
+# quedaba congelada: no podía crecer nunca más aunque le sobraran mes y días.
+#
+# Midiendo desde el centro, una zona ancha sigue admitiendo puntos cercanos a su
+# núcleo. Medido de extremo a extremo sobre el rutero nacional: 71 -> 68
+# mercaderistas, los de ocupación por debajo del 60% pasan de 23 a 15 y los de
+# menos del 30% de 8 a 5, a cambio de un punto de cobertura (97,2% -> 96,2%).
+RADIO_CENTRO_ZONA_KM = float(os.environ.get("RADIO_CENTRO_ZONA_KM", "40"))
+
 # Alcance ampliado, permitido SOLO para recuperar plazas casi vacías.
 #
 # El radio de 30 km (60 de diámetro) es el correcto para una ruta normal, pero
