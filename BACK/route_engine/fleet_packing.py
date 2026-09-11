@@ -171,50 +171,85 @@ class _Caja:
         return mejor
 
 
-def _consolidar_cajas_flojas(cajas, capacidad, carga_punto, coords_punto):
+def _consolidar_cajas_flojas(cajas, capacidad, carga_punto, coords_punto,
+                             patrones_punto=None, minutos_punto=None, tope_dia=None):
     """
-    Funde las cajas que quedaron a medio llenar, ampliando el diámetro.
+    Disuelve las zonas que quedaron a medio llenar repartiendo sus puntos.
 
     Una comarca con 600 min de trabajo al mes necesita igualmente una persona si
-    nadie más puede llegar hasta ella: con 26 zonas eso regalaba hasta 13 plazas.
-    La planificación real de la empresa resuelve esto exactamente así —13 de sus
-    78 mercaderistas cubren radios de más de 60 km, y el mayor llega a 323 km—,
-    de modo que ampliar el alcance para las cajas flojas no es una licencia: es
-    lo que se hace de verdad.
+    nadie más puede llegar hasta ella. Eso produce la cola que de verdad duele:
+    mercaderistas al 5-20% de ocupación. La planificación real de la empresa lo
+    resuelve exactamente así —13 de sus 78 mercaderistas cubren radios de más de
+    60 km, y el mayor llega a 323 km—, de modo que estirar el alcance de una zona
+    floja no es una licencia: es lo que se hace.
 
-    Solo se tocan las cajas por debajo del umbral, y solo se funden entre ellas:
-    una caja bien llena nunca se ensancha.
+    Se empieza por la más vacía y se intenta colocar TODOS sus puntos en otras
+    zonas, una a una, la más cercana primero. Si se vacía entera, esa persona
+    desaparece. Antes solo se fundían zonas flojas ENTRE SÍ y de una en una: dos
+    zonas al 40% se unían, pero una al 12% rodeada de zonas al 80% —con hueco de
+    sobra para sus tres puntos— se quedaba como estaba.
     """
     if DIAMETRO_CONSOLIDACION_KM <= DIAMETRO_MAX_KM:
         return cajas
 
     umbral = capacidad * UMBRAL_CAJA_FLOJA
-    flojas = sorted((c for c in cajas if c.carga < umbral), key=lambda c: c.carga)
-    llenas = [c for c in cajas if c.carga >= umbral]
-    if len(flojas) < 2:
-        return cajas
+    patrones_punto = patrones_punto or {}
+    minutos_punto = minutos_punto or {}
+    tope = tope_dia or cuota_dia()
 
-    absorbidas = set()
-    for i, origen in enumerate(flojas):
-        if id(origen) in absorbidas:
+    # De la más vacía a la más llena: disolver primero a quien menos trabajo
+    # tiene es lo que elimina la cola de ocupaciones bajas.
+    for origen in sorted((c for c in cajas if c.carga < umbral), key=lambda c: c.carga):
+        if not origen.puntos:
             continue
-        for destino in flojas[i + 1:]:
-            if id(destino) in absorbidas or id(destino) == id(origen):
-                continue
-            if destino.carga + origen.carga > capacidad:
-                continue
-            # Nunca se funden dos personas de particiones distintas: eso
-            # rompería la regla del tipo de carga (una cadena por mercaderista).
-            if destino.grupo != origen.grupo:
-                continue
-            if not _compatible_ampliado(destino, origen):
-                continue
-            for pk in origen.puntos:
-                destino.agregar(pk, carga_punto[pk], [coords_punto[pk]])
-            absorbidas.add(id(origen))
-            break
 
-    return llenas + [c for c in flojas if id(c) not in absorbidas]
+        destinos = [c for c in cajas if c is not origen and c.puntos]
+        reparto = []
+        for pk in sorted(origen.puntos, key=lambda p: -carga_punto[p]):
+            coord = [coords_punto[pk]]
+            elegido, mejor_clave, mejor_patron = None, None, None
+            for destino in destinos:
+                if destino.grupo != origen.grupo and None not in (destino.grupo, origen.grupo):
+                    continue
+                if destino.hueco(capacidad) < carga_punto[pk]:
+                    continue
+                if not _compatible_ampliado_coords(destino, coord):
+                    continue
+                patron = destino.admite_dias(
+                    patrones_punto.get(pk), minutos_punto.get(pk, 0.0), tope
+                )
+                if patron is None:
+                    continue
+                clave = (destino.distancia_a(coord), -destino.hueco(capacidad))
+                if mejor_clave is None or clave < mejor_clave:
+                    elegido, mejor_clave, mejor_patron = destino, clave, patron
+            if elegido is None:
+                reparto = None  # un solo punto sin sitio deja la zona como está
+                break
+            reparto.append((pk, elegido, mejor_patron))
+
+        if not reparto:
+            continue
+
+        # Solo se toca nada cuando la zona entera encuentra acomodo: mover la
+        # mitad dejaría a esa persona igual de vacía y con menos puntos.
+        for pk, destino, patron in reparto:
+            destino.agregar(pk, carga_punto[pk], [coords_punto[pk]],
+                            patron_dias=patron, minutos_visita=minutos_punto.get(pk, 0.0))
+        origen.puntos = []
+        origen.carga = 0.0
+        origen.coords = []
+
+    return [c for c in cajas if c.puntos]
+
+
+def _compatible_ampliado_coords(destino, coords_nuevas):
+    """¿Caben esas coordenadas en el diámetro ampliado de la zona?"""
+    for a in coords_nuevas:
+        for b in destino.coords:
+            if haversine_km(a[0], a[1], b[0], b[1]) > DIAMETRO_CONSOLIDACION_KM:
+                return False
+    return True
 
 
 def _compatible_ampliado(destino, origen):
@@ -420,9 +455,14 @@ def planificar_flota_por_capacidad(
                 minutos_visita=minutos_visita_punto.get(mejor, 0.0),
             )
 
-    nuevas = [c for c in cajas if c.nombre is None]
-    nuevas = _consolidar_cajas_flojas(nuevas, capacidad, carga_punto, coords_punto)
-    cajas = [c for c in cajas if c.nombre is not None] + nuevas
+    # La consolidación mira también a los mercaderistas que ya existían: una
+    # zona floja puede vaciarse en el hueco libre de uno de ellos, que es
+    # justamente capacidad ya contratada.
+    cajas = _consolidar_cajas_flojas(
+        cajas, capacidad, carga_punto, coords_punto,
+        patrones_punto=patrones_punto, minutos_punto=minutos_visita_punto,
+        tope_dia=tope_dia_plan,
+    )
 
     propiedad = {}
 
