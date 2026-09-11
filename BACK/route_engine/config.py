@@ -369,6 +369,19 @@ DIAS_FIN_SEMANA = ["Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
 # Interruptor de la cuadrilla. Sirve para comparar una ejecución con y sin ella
 # sin tocar código (CUADRILLA_FIN_SEMANA=0 la apaga).
 CUADRILLA_FIN_SEMANA_ACTIVA = os.environ.get("CUADRILLA_FIN_SEMANA", "1") != "0"
+
+# Pasar a jornada de miércoles-domingo a mercaderistas YA CONTRATADOS con mes
+# libre, en vez de abrir plazas nuevas para lo que no cabe de lunes a viernes.
+#
+# Apagado por defecto porque es un canje de negocio, no una mejora gratuita.
+# Medido sobre el rutero nacional (441 puntos, 500.055 min/mes):
+#     apagado   -> 65 mercaderistas, 96,0% de cobertura
+#     encendido -> 59 mercaderistas, 91,0% de cobertura
+# Cada persona que se convierte aporta sus mismos cinco días: gana sábado y
+# domingo, que no usa nadie más, pero quita cinco días de lunes a viernes al
+# reparto. Contratar suma cinco días nuevos; convertir, cero. Por eso convertir
+# ahorra plantilla y contratar cubre más visitas.
+CONVERTIR_A_FIN_DE_SEMANA = os.environ.get("CONVERTIR_A_FIN_DE_SEMANA", "0") == "1"
 DAY_COLUMNS_FIN_SEMANA = ["MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO"]
 
 # Los siete días en orden natural. Sirve para fechar (lunes + desplazamiento) y
@@ -388,6 +401,13 @@ def registrar_mercadistas_fin_semana(nombres) -> None:
     for nombre in nombres or []:
         if nombre:
             _mercadistas_fin_semana.add(str(nombre))
+
+
+def desregistrar_mercadistas_fin_semana(nombres) -> None:
+    """Deshace un registro. Lo usa la conversión de plantilla para volver atrás
+    cuando pasar a alguien al fin de semana no mejora el resultado."""
+    for nombre in nombres or []:
+        _mercadistas_fin_semana.discard(str(nombre))
 
 
 def limpiar_mercadistas_fin_semana() -> None:
@@ -501,7 +521,13 @@ RADIO_ZONA_KM = float(os.environ.get("RADIO_ZONA_KM", "30"))
 # núcleo. Medido de extremo a extremo sobre el rutero nacional: 71 -> 68
 # mercaderistas, los de ocupación por debajo del 60% pasan de 23 a 15 y los de
 # menos del 30% de 8 a 5, a cambio de un punto de cobertura (97,2% -> 96,2%).
-RADIO_CENTRO_ZONA_KM = float(os.environ.get("RADIO_CENTRO_ZONA_KM", "40"))
+# 60 km es el óptimo medido, no una cifra redonda: se probó el pipeline entero
+# con 40, 50, 60, 70, 85 y 100. Hasta 60 cada ampliación absorbe zonas sueltas
+# (68 -> 65 mercaderistas) y además acorta las rutas, porque cada punto puede
+# irse con quien de verdad lo tiene cerca. A partir de ahí se degrada: con 70
+# vuelve a 69 personas y la cobertura baja del 96,0% al 94,8%, porque las zonas
+# se hacen tan anchas que sus jornadas ya no cuadran.
+RADIO_CENTRO_ZONA_KM = float(os.environ.get("RADIO_CENTRO_ZONA_KM", "60"))
 
 # Alcance ampliado, permitido SOLO para recuperar plazas casi vacías.
 #

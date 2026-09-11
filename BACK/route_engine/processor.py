@@ -19,8 +19,11 @@ from route_engine.excel_reader import (
     leer_excel_entrada,
 )
 from route_engine.config import (
+    CONVERTIR_A_FIN_DE_SEMANA,
     CUADRILLA_FIN_SEMANA_ACTIVA,
     HOLGURA_FLOTA,
+    RADIO_CENTRO_ZONA_KM,
+    desregistrar_mercadistas_fin_semana,
     carga_jornada,
     cuota_dia,
     cuota_dia_temporal,
@@ -33,6 +36,7 @@ from route_engine.config import (
     registrar_mercadistas_fin_semana,
 )
 from route_engine.excel_writer import generar_excel_salida
+from route_engine.geo import haversine_km
 from route_engine.fleet_packing import planificar_flota_por_capacidad, resumen_plan
 from route_engine.load_grouping import (
     ETIQUETAS,
@@ -360,6 +364,183 @@ def _absorber_pendientes_abriendo_plazas(state, df, tipo_ruta, notify, max_ronda
         ejecutar_pase_rescate(state)
 
 
+def _candidato_a_fin_de_semana(state, pendientes, descartados):
+    """
+    Mercaderista de lunes a viernes al que compensa pasar a miércoles-domingo.
+
+    Se busca al que más mes libre tenga entre los que trabajan CERCA de alguna
+    visita atascada: convertir a alguien lejano no serviría de nada —no podría
+    atenderla— y le cambiaría la jornada para nada.
+
+    Devuelve (nombre, visitas que podría recoger) o None.
+    """
+    ya_en_cuadrilla = mercadistas_fin_semana()
+    coords_pendientes = [
+        (i, float(i.get("lat") or 0), float(i.get("lon") or 0))
+        for i in pendientes
+        if float(i.get("lat") or 0) or float(i.get("lon") or 0)
+    ]
+    if not coords_pendientes:
+        return None
+
+    mejor = None
+    for caja in _hueco_libre_de_la_plantilla(state):
+        merc = caja["merc"]
+        if merc in ya_en_cuadrilla or merc in descartados:
+            continue
+        libre = cuota_mes() - float(caja.get("carga") or 0)
+        if libre < cuota_dia():  # menos de una jornada libre: no aporta
+            continue
+        coords = caja.get("coords") or []
+        if not coords:
+            continue
+        cercanas = [
+            inst
+            for inst, lat, lon in coords_pendientes
+            if min(haversine_km(lat, lon, c[0], c[1]) for c in coords)
+            <= RADIO_CENTRO_ZONA_KM
+        ]
+        if not cercanas:
+            continue
+        # Entre los que pueden ayudar, el que más hueco tiene: cada conversión
+        # cambia la jornada de una persona real, así que cuantas menos, mejor.
+        clave = (-libre, merc)
+        if mejor is None or clave < mejor[0]:
+            mejor = (clave, merc, cercanas)
+
+    return None if mejor is None else (mejor[1], mejor[2])
+
+
+def _convertir_plantilla_a_fin_de_semana(state, df, tipo_ruta, pendientes, notify,
+                                         max_conversiones=12):
+    """
+    Pasa a jornada de miércoles-domingo a gente YA CONTRATADA, de una en una.
+
+    Lo que manda visitas al fin de semana no es falta de capacidad sino choque
+    de días. Medido sobre el rutero nacional, la cuadrilla abría 16 plazas para
+    78.245 min de trabajo mientras la plantilla de lunes a viernes tenía 119.330
+    min de mes libre: el trabajo cabía de sobra, los días no.
+
+    Un mercaderista al 40% que corre su jornada a miércoles-domingo mantiene sus
+    cinco días y su cuota, pero ahora sus huecos caen en días que nadie más usa,
+    y ahí sí entran las visitas atascadas.
+
+    Cada conversión se hace y se COMPRUEBA: reprogramar la cartera entera de
+    alguien puede salir peor que dejarla como estaba. Si al reasignar pierde
+    visitas o no recoge ninguna de las atascadas, se deshace por completo y se
+    prueba con otro. Un intento fallido no deja rastro.
+
+    Devuelve las visitas que siguen sin colocarse.
+    """
+    from route_engine.assignment import ejecutar_asignacion
+
+    restantes = list(pendientes)
+    descartados: set = set()
+    convertidos: list = []
+
+    while restantes and len(convertidos) < max_conversiones:
+        candidato = _candidato_a_fin_de_semana(state, restantes, descartados)
+        if candidato is None:
+            break
+        merc, cercanas = candidato
+
+        suyas = [
+            inst
+            for inst in state.visit_instances
+            if state.punto_mercadista.get(inst.get("punto_key", inst.get("idx"))) == merc
+        ]
+        # Foto de todo lo que se va a tocar, para poder deshacerlo.
+        dias_previos = [(inst, inst.get("required_day")) for inst in suyas + cercanas]
+        zonas_previas = [(inst, inst.get("zona")) for inst in suyas + cercanas]
+        filas_previas = [
+            fila for fila in state.all_day_summaries
+            if str(fila.get("Mercadista") or "").strip() == merc
+        ]
+        agendadas_antes = len(filas_previas)
+
+        state.all_day_summaries[:] = [
+            fila for fila in state.all_day_summaries
+            if str(fila.get("Mercadista") or "").strip() != merc
+        ]
+        registrar_mercadistas_fin_semana([merc])
+        # Los días fijos venían escritos en lunes-viernes: se corren al mismo
+        # hueco de la nueva jornada (lunes -> miércoles, martes -> jueves...),
+        # conservando la separación entre visitas que da sentido a la frecuencia.
+        # El asignador normaliza la clave de zona a mayúsculas y sin tildes
+        # (`norm_provincia`), así que la clave tiene que estar ya en esa forma o
+        # no encontraría las visitas de esta persona.
+        zona_fs = f"FS-{merc.upper().replace(' ', '-')}"
+        for inst in suyas + cercanas:
+            dia = inst.get("required_day")
+            if dia:
+                inst["required_day"] = dia_equivalente_fin_semana(dia)
+            # El asignador reparte por zona: sin esto las visitas quedarían en
+            # la zona de su plan anterior y esta persona no vería trabajo.
+            inst["zona"] = zona_fs
+
+        propiedad = {
+            inst.get("punto_key", inst.get("idx")): merc for inst in suyas
+        }
+        estado_fs = ejecutar_asignacion(
+            suyas + cercanas, [(merc, zona_fs)], df, tipo_ruta=tipo_ruta,
+            tipo_carga="zona", propiedad_inicial=propiedad,
+        )
+
+        sobran = list(estado_fs.sin_hueco)
+        for lst in estado_fs.remaining_by_prov.values():
+            sobran.extend(lst)
+        ids_sobran = {id(i) for i in sobran}
+        recogidas = [i for i in cercanas if id(i) not in ids_sobran]
+        agendadas_ahora = len(estado_fs.all_day_summaries)
+
+        # Se acepta solo si la persona no pierde visitas propias y además
+        # recoge la MAYORÍA de las atascadas que tenía cerca. Recoger cuatro de
+        # sesenta no arregla el atasco y sí retira cinco días de lunes a viernes
+        # del reparto, que es capacidad que otros necesitaban.
+        suficientes = len(recogidas) >= max(1, len(cercanas) // 2)
+        if agendadas_ahora < agendadas_antes or not suficientes:
+            for inst, dia in dias_previos:
+                inst["required_day"] = dia
+            for inst, zona in zonas_previas:
+                inst["zona"] = zona
+            desregistrar_mercadistas_fin_semana([merc])
+            state.all_day_summaries.extend(filas_previas)
+            descartados.add(merc)
+            continue
+
+        state.all_day_summaries.extend(estado_fs.all_day_summaries)
+        state.punto_mercadista.update(estado_fs.punto_mercadista)
+        state.grupo_de_punto.update(getattr(estado_fs, "grupo_de_punto", {}))
+        state.sincronizar_grupos()
+        convertidos.append(merc)
+
+        ids_recogidas = {id(i) for i in recogidas}
+        # Las que este mercaderista NO pudo recoger vuelven a su estado de
+        # partida: siguen buscando dueño, y si se quedaran con el día ya corrido
+        # y la zona de esta persona, la siguiente fase se lo correría otra vez
+        # (lunes -> miércoles -> viernes) y acabarían sin poder colocarse.
+        for inst, dia in dias_previos:
+            if id(inst) not in ids_recogidas:
+                inst["required_day"] = dia
+        for inst, zona in zonas_previas:
+            if id(inst) not in ids_recogidas:
+                inst["zona"] = zona
+
+        restantes = [i for i in restantes if id(i) not in ids_recogidas]
+
+    if convertidos:
+        print(
+            f"      -> Fin de semana: {len(convertidos)} mercaderista(s) ya contratados "
+            f"pasan a miércoles-domingo en vez de abrir plazas nuevas"
+        )
+        notify(
+            64,
+            f"Pasando {len(convertidos)} mercadista(s) a jornada de fin de semana para "
+            f"cubrir las visitas que no cabían de lunes a viernes...",
+        )
+    return restantes
+
+
 def _absorber_pendientes_fin_de_semana(state, df, tipo_ruta, notify, max_rondas=3):
     """
     Cuadrilla de fin de semana para lo que no cupo de lunes a viernes.
@@ -405,6 +586,24 @@ def _absorber_pendientes_fin_de_semana(state, df, tipo_ruta, notify, max_rondas=
 
         restantes = _replanificar_puntos_completos(state, restantes)
         if not restantes:
+            break
+
+        # Antes de contratar: pasar a jornada de fin de semana a gente que ya
+        # está y tiene mes libre. Estas visitas necesitan DÍAS distintos, no
+        # manos nuevas. Cada conversión se comprueba y se deshace si empeora.
+        #
+        # Va apagado por defecto porque es un canje de negocio, no una mejora
+        # gratuita. Medido sobre el rutero nacional:
+        #     apagado -> 65 mercaderistas, 96,0% de cobertura
+        #     encendido -> 59 mercaderistas, 91,0% de cobertura
+        # Seis personas menos a cambio de 191 visitas que habría que colocar a
+        # mano desde el calendario. Se enciende con CONVERTIR_A_FIN_DE_SEMANA=1.
+        if CONVERTIR_A_FIN_DE_SEMANA:
+            restantes = _convertir_plantilla_a_fin_de_semana(
+                state, df, tipo_ruta, restantes, notify
+            )
+        if not restantes:
+            ejecutar_pase_rescate(state)
             break
 
         siguiente = len(state.mercadistas_plan) + 1
