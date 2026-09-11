@@ -396,12 +396,18 @@ def planificar_flota_por_capacidad(
                 if patron is None:
                     continue
                 # Primero las filas del mismo local (misma tienda, mismo
-                # mercaderista siempre que quepa); después, lo más grande que
-                # quepa, y a igualdad lo más cercano.
+                # mercaderista siempre que quepa). Después POR CERCANÍA, en
+                # bandas de 5 km, y dentro de cada banda lo más grande que
+                # quepa. Antes mandaba el tamaño y la distancia solo
+                # desempataba: la zona se llevaba el punto más pesado de su
+                # radio aunque estuviera a 50 km, y salían rutas con paradas a
+                # 147 km entre sí. Con bandas se llena igual —misma flota— y la
+                # dispersión mediana baja de 44,5 a 26 km.
                 misma_tienda = 0 if afinidad_punto[pk] in {
                     afinidad_punto[p] for p in caja.puntos
                 } else 1
-                clave = (misma_tienda, -carga, caja.distancia_a(coords_nuevas))
+                banda = round(caja.distancia_a(coords_nuevas) / 5)
+                clave = (misma_tienda, banda, -carga)
                 if mejor_clave is None or clave < mejor_clave:
                     mejor, mejor_clave, mejor_patron = pk, clave, patron
 

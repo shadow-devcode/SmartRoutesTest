@@ -31,13 +31,20 @@ Qué NO cambia
 - La frecuencia mensual ni el número de visitas por semana: un punto de
   frecuencia 12 sigue teniendo 3 visitas por semana, solo que quizá en
   martes/jueves/viernes en vez de lunes/miércoles/viernes.
-- Los patrones son los mismos que ya definía `frequency.py`; no se inventan
-  combinaciones nuevas.
+- El número de días por semana de cada frecuencia: 8 -> 2 días, 12 -> 3,
+  16 -> 4, 20 -> los cinco. Lo que sí cambió es CUÁLES: antes se elegía entre
+  cinco combinaciones fijas y sesgadas —cuatro de las cinco de frecuencia 8
+  incluían el lunes, y las cinco de frecuencia 12 también—, y ahora se elige
+  entre todas las posibles. Medido sobre el rutero nacional, esa sola
+  ampliación bajó el plan de 67 a 60 mercaderistas (ocupación media del 77,7%
+  al 86,8%): con los patrones sesgados el lunes de cada persona se llenaba
+  antes que el resto y bloqueaba puntos que tenían sitio de sobra el jueves.
 - La frecuencia 20 (los cinco días) no tiene alternativa y no se toca.
 """
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import combinations
 
 from route_engine.config import (
     DAY_NAMES,
@@ -49,29 +56,51 @@ from route_engine.frequency import dias_fijos_por_frecuencia
 
 NUM_SEMANAS = 4
 
-# Mismos patrones que `frequency.dias_fijos_por_frecuencia`, expuestos como
-# alternativas entre las que elegir.
-_ALTERNATIVAS = {
-    8: 5,
-    12: 5,
-    16: 5,
+# Días por semana que exige cada frecuencia mensual (4 semanas).
+_DIAS_POR_SEMANA = {
+    8: 2,
+    12: 3,
+    16: 4,
+    20: 5,
 }
 
 
 def patrones_de_frecuencia(frecuencia) -> list[list[str]]:
-    """Todas las alternativas de días para esa frecuencia, sin repetir."""
-    n = _ALTERNATIVAS.get(int(frecuencia or 0), 0)
+    """Todas las combinaciones de días laborables válidas para esa frecuencia.
+
+    Un punto de frecuencia 8 necesita dos días de la semana: cualquiera de las
+    diez parejas posibles sirve, no solo las cinco que rotaba
+    `dias_fijos_por_frecuencia`. Aquellas cinco estaban sesgadas —cuatro
+    incluían el lunes— y con ellas el lunes de cada mercaderista se saturaba
+    mientras el jueves quedaba libre, así que el planificador rechazaba puntos
+    que en realidad cabían.
+
+    El orden importa: se devuelven empezando por los patrones que reparten los
+    días de forma más separada, que es lo que prefiere quien solo mira el
+    primero.
+    """
+    try:
+        frecuencia_int = int(frecuencia or 0)
+    except (TypeError, ValueError):
+        return []
+
+    n = _DIAS_POR_SEMANA.get(frecuencia_int, 0)
     if not n:
         dias = dias_fijos_por_frecuencia(frecuencia, idx_seed=0)
         return [dias] if dias else []
-    vistos, salida = set(), []
-    for seed in range(n):
-        dias = dias_fijos_por_frecuencia(frecuencia, idx_seed=seed)
-        clave = tuple(dias)
-        if dias and clave not in vistos:
-            vistos.add(clave)
-            salida.append(dias)
-    return salida
+
+    laborables = list(DAY_NAMES[:5])
+    if n >= len(laborables):
+        return [list(laborables)]
+
+    def separacion(patron):
+        # Cuanto más repartidos por la semana, mejor: la distancia mínima entre
+        # dos visitas del mismo punto es lo que hace útil la frecuencia.
+        indices = sorted(laborables.index(d) for d in patron)
+        huecos = [b - a for a, b in zip(indices, indices[1:])]
+        return (-min(huecos) if huecos else 0, indices)
+
+    return [list(p) for p in sorted(combinations(laborables, n), key=separacion)]
 
 
 def _coste(
