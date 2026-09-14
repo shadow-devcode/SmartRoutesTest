@@ -14,25 +14,6 @@ from exceptions.handlers import BadRequestError, ForbiddenError, UnauthorizedErr
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
-# TRAZA TEMPORAL (quitar cuando se cierre el diagnóstico de "se cierra la sesión
-# al recargar"): deja constancia de qué pide el navegador en las rutas de sesión
-# y si la cookie `rt` llegó con la petición.
-@auth_bp.before_request
-def _traza_sesion():
-    import sys as _sys
-    print(
-        f"[AUTH] {request.method} {request.path} | cookie rt: "
-        f"{'sí' if request.cookies.get(_COOKIE_NAME) else 'NO'} | "
-        f"origen: {request.headers.get('Origin') or '-'}",
-        file=_sys.stderr,
-        flush=True,
-    )
-
-# Nombre de la cookie. Path=/ para que el navegador la envíe en cualquier ruta del origen
-# (útil con proxy de ng serve y restauración tras F5).
-_COOKIE_NAME = "rt"
-_COOKIE_PATH = "/"
-
 
 def _get_client_ip() -> str | None:
     """

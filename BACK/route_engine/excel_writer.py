@@ -56,7 +56,13 @@ from route_engine.excel_descarga import (
     _construir_hoja_rutas_semana,
     build_horarios_excel_download_bytes,
 )
-from route_engine.horarios_postproceso import _postprocesar_horarios
+from route_engine.horarios_postproceso import (  # noqa: F401  (reexport)
+    _aplicar_tope_combinado_diario,
+    _ordenar_jornada_por_cercania,
+    _postprocesar_horarios,
+    _recalcular_ruta,
+    _reubicar_en_otro_dia,
+)
 from route_engine.frecuencia import (
     _info_puntos_desde_df,
     _semana_a_int,
