@@ -40,7 +40,12 @@ from route_engine.excel_reader import (
     parse_coordenada_a_float,
 )
 from route_engine.geo import normalizar_coord_geografica, haversine_km
-from route_engine.mapbox import _geocode_cache, calcular_tiempo_entre, provincia_display
+from route_engine.mapbox import (
+    _geocode_cache,
+    calcular_tiempo_entre,
+    provincia_display,
+    ruta_por_carretera,
+)
 from route_engine.scheduling import (
     calcular_horario_almuerzo,
     mostrar_progreso,
@@ -618,6 +623,120 @@ def _prioridad_sobrante(motivo: str) -> int:
     if m.startswith("red de seguridad") or m.startswith("rescue"):
         return 1
     return 2
+
+
+def recalcular_tramos_por_carretera(horarios_df):
+    """
+    Sustituye la estimación de desplazamiento por los kilómetros y minutos
+    REALES de carretera de cada jornada.
+
+    El motor planifica con una estimación —distancia en línea recta corregida
+    por un factor— porque necesita comparar miles de combinaciones sin salir a
+    la red. Pero lo que se entrega tiene que ser lo que el mercaderista va a
+    recorrer de verdad, y en una ciudad la diferencia entre la recta y la calle
+    no es un factor fijo: un río, una quebrada o una vía de un solo sentido la
+    duplican.
+
+    Se consulta la misma API que dibuja la «Vista Carretera» del mapa, con las
+    paradas del día en su orden de visita, de modo que los kilómetros del Excel
+    y los del mapa son el mismo número. Una consulta por jornada, y como las
+    cuatro semanas repiten la misma ruta, el cache las reduce a una.
+
+    Si no hay token de Mapbox, o la consulta falla, la jornada se queda con su
+    estimación: mejor un número aproximado que ninguno.
+
+    Devuelve (jornadas_actualizadas, jornadas_totales).
+    """
+    columnas = {"Mercadista", "Día", "Fecha", "Latitud", "Longitud", "Orden Ruta"}
+    if horarios_df.empty or not columnas.issubset(set(horarios_df.columns)):
+        return 0, 0
+
+    col_km = "kilometros entre sucurlas (km)"
+    col_viaje = "Tiempo entre sucursal (min)"
+    actualizadas = 0
+    grupos = list(horarios_df.groupby(["Mercadista", "Fecha", "Día"], sort=False))
+
+    for _clave, grupo in grupos:
+        orden = grupo.sort_values("Orden Ruta", kind="stable")
+        coords = []
+        indices = []
+        for idx, fila in orden.iterrows():
+            lat = parse_coordenada_a_float(fila.get("Latitud"))
+            lon = parse_coordenada_a_float(fila.get("Longitud"))
+            if lat is None or lon is None or (lat == 0 and lon == 0):
+                coords = []
+                break
+            coords.append((lat, lon))
+            indices.append(idx)
+        if len(coords) < 2:
+            continue
+
+        tramos = ruta_por_carretera(coords)
+        if not tramos:
+            continue
+
+        # El primer punto del día no tiene tramo anterior: su desplazamiento es
+        # cero y el tramo i-1 corresponde a la parada i.
+        horarios_df.at[indices[0], col_km] = 0.0
+        horarios_df.at[indices[0], col_viaje] = 0.0
+        for posicion, (minutos, km) in enumerate(tramos, start=1):
+            horarios_df.at[indices[posicion], col_km] = km
+            horarios_df.at[indices[posicion], col_viaje] = minutos
+        actualizadas += 1
+
+        _recomponer_horarios_del_dia(horarios_df, indices)
+
+    return actualizadas, len(grupos)
+
+
+def _recomponer_horarios_del_dia(horarios_df, indices):
+    """Reescribe las horas de la jornada encadenando servicio y viaje reales.
+
+    Sin esto, las columnas de kilómetros dirían una cosa y las horas otra: la
+    visita de las 11:30 seguiría marcada a las 11:30 aunque llegar hasta allí
+    cueste ahora veinte minutos más.
+
+    La hora de inicio de la jornada se respeta; lo que se recalcula es el
+    encadenamiento a partir de ella.
+    """
+    if "Horario" not in horarios_df.columns:
+        return
+    primera = str(horarios_df.at[indices[0], "Horario"] or "").strip()
+    inicio = _minutos_desde_horario(primera)
+    if inicio is None:
+        return
+
+    reloj = inicio
+    for posicion, idx in enumerate(indices):
+        if posicion > 0:
+            try:
+                reloj += float(horarios_df.at[idx, "Tiempo entre sucursal (min)"] or 0)
+            except (TypeError, ValueError):
+                pass
+        try:
+            servicio = float(horarios_df.at[idx, "Tiempo Servicio (min)"] or 0)
+        except (TypeError, ValueError):
+            servicio = 0.0
+        fin = reloj + servicio
+        horarios_df.at[idx, "Horario"] = (
+            f"{int(reloj) // 60:02d}:{int(reloj) % 60:02d} - "
+            f"{int(fin) // 60:02d}:{int(fin) % 60:02d}"
+        )
+        reloj = fin
+
+
+def _minutos_desde_horario(texto):
+    """Minutos desde medianoche de la hora de inicio de un 'HH:MM - HH:MM'."""
+    if not texto:
+        return None
+    inicio = texto.split("-")[0].strip().split(",")[0].strip()
+    partes = inicio.split(":")
+    if len(partes) != 2:
+        return None
+    try:
+        return int(partes[0]) * 60 + int(partes[1])
+    except ValueError:
+        return None
 
 
 def reconciliar_pendientes_por_frecuencia(horarios_df, df, state) -> int:
@@ -1250,6 +1369,24 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
 
     horarios_df = _postprocesar_horarios(horarios_df, visit_instances, state)
     horarios_df = drop_spurious_total_rows_horarios_df(horarios_df)
+
+    # Kilómetros y minutos REALES de carretera, ya con las rutas cerradas. El
+    # motor planifica con una estimación para poder comparar miles de
+    # combinaciones sin salir a la red; lo que se entrega debe ser lo que se
+    # recorre de verdad.
+    jornadas_ok, jornadas_total = recalcular_tramos_por_carretera(horarios_df)
+    if jornadas_total:
+        if jornadas_ok:
+            print(
+                f"      -> Desplazamiento por carretera: {jornadas_ok} de "
+                f"{jornadas_total} jornada(s) recalculadas con distancias reales"
+            )
+        else:
+            print(
+                "      [!] No se pudo consultar la distancia por carretera "
+                "(¿falta MAPBOX_ACCESS_TOKEN?); se mantiene la estimación en "
+                "línea recta corregida."
+            )
 
     # Reconciliación de frecuencia: tras fijar el set agendado definitivo,
     # asegurar que por cada punto (agendadas + pendientes) == FRECUENCIA MES.

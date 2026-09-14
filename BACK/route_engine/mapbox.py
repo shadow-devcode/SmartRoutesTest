@@ -52,6 +52,72 @@ def obtener_tiempo_mapbox_seconds(lat1, lon1, lat2, lon2, api_key=None):
         return (None, "N/A")
 
 
+# Tramos por carretera ya consultados: clave = coordenadas de la jornada
+# redondeadas. Una misma ruta se repite las cuatro semanas, así que el cache
+# divide por cuatro las llamadas a Mapbox.
+_ruta_cache: dict = {}
+
+
+def ruta_por_carretera(coords, api_key=None):
+    """Tramos reales de una jornada: [(minutos, km), ...] entre paradas seguidas.
+
+    Usa la API de Directions con todas las paradas del día en orden, que es la
+    misma que dibuja la «Vista Carretera» del mapa: así los kilómetros del Excel
+    y los del mapa son el mismo número.
+
+    Devuelve None si no se puede consultar (sin token, sin red, respuesta
+    inesperada). El motor entonces se queda con su estimación, que es lo que
+    había antes: mejor un número aproximado que ninguno.
+
+    `coords` es la lista de (lat, lon) en el orden de visita. Mapbox admite
+    hasta 25 paradas por consulta; una jornada real tiene tres o cuatro.
+    """
+    if api_key is None:
+        api_key = MAPBOX_ACCESS_TOKEN
+    if not coords or len(coords) < 2:
+        return []
+    if not api_key or api_key == "pk.YOUR_MAPBOX_ACCESS_TOKEN":
+        return None
+    if len(coords) > 25:
+        return None
+
+    try:
+        clave = tuple((round(float(la), 6), round(float(lo), 6)) for la, lo in coords)
+    except (TypeError, ValueError):
+        return None
+    if clave in _ruta_cache:
+        return _ruta_cache[clave]
+
+    puntos = ";".join(f"{lo},{la}" for la, lo in clave)
+    url = f"https://api.mapbox.com/directions/v5/mapbox/driving/{puntos}"
+    params = {
+        "access_token": api_key,
+        "overview": "false",       # no hace falta la geometría, solo los tramos
+        "annotations": "duration,distance",
+    }
+    try:
+        r = requests.get(url, params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        rutas = data.get("routes") or []
+        if data.get("code") != "Ok" or not rutas:
+            _ruta_cache[clave] = None
+            return None
+        tramos = []
+        for leg in rutas[0].get("legs", []):
+            segundos = float(leg.get("duration") or 0)
+            metros = float(leg.get("distance") or 0)
+            tramos.append((round(segundos / 60.0, 2), round(metros / 1000.0, 2)))
+        if len(tramos) != len(clave) - 1:
+            _ruta_cache[clave] = None
+            return None
+        _ruta_cache[clave] = tramos
+        return tramos
+    except Exception:
+        _ruta_cache[clave] = None
+        return None
+
+
 def calcular_tiempo_entre(prev_lat, prev_lon, lat, lon):
     """
     Devuelve (minutos entre sucursales, km entre sucursales).
