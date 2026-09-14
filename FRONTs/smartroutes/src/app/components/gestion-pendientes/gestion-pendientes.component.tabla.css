@@ -1,43 +1,3 @@
-/* Tablas de pendientes y rutas: cabecera, scroll, subtotales y leyenda. */
-
-.gp-select {
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.88rem;
-  color: var(--text-primary);
-  background: #fff;
-}
-
-.gp-input {
-  flex: 1 1 22rem;
-  min-width: 15rem;
-}
-
-.gp-input:focus,
-.gp-select:focus {
-  outline: none;
-  border-color: var(--brand-from);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-.gp-check {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.88rem;
-  color: #475569;
-  cursor: pointer;
-}
-
-/* ── Tabla ────────────────────────────────────────────────── */
-.gp-table-wrap {
-  overflow: auto;
-  max-height: 60vh;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
 .gp-table-wrap::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -279,4 +239,46 @@
 /* ── Bloque de rutas asignadas (segunda tarjeta de la página) ───────────── */
 .gp-card--rutas {
   margin-top: 1.35rem;
+}
+
+.gp-card__icon--rutas {
+  background: #1e3a8a;
+}
+
+/* Resumen compacto dentro de la tarjeta, para no competir con el de arriba */
+.gp-stats--inline {
+  margin-bottom: 1.1rem;
+}
+
+.gp-stat--sm {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+}
+
+.gp-stat--sm .gp-stat__value {
+  font-size: 1.35rem;
+}
+
+.gp-stat--sm .gp-stat__label {
+  font-size: 0.72rem;
+}
+
+/* Los marcadores de rutas son azules; su leyenda debe coincidir. */
+.gp-leyenda-punto--ruta {
+  background: radial-gradient(circle at 30% 30%, #60a5fa 0%, #2563eb 70%, #1e3a8a 100%);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45);
+}
+
+/* La tabla con el formato del Excel tiene 13 columnas: se compacta un poco y
+   se desplaza en horizontal dentro de su propio marco. */
+.gp-table--excel {
+  font-size: 0.84rem;
+}
+
+.gp-table--excel th,
+.gp-table--excel td {
+  padding: 0.5rem 0.6rem;
+  white-space: nowrap;
 }

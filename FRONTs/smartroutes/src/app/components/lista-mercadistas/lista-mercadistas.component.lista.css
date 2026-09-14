@@ -1,182 +1,3 @@
-/* Lista de mercaderistas: item, cabecera y estado abierto. */
-
-/* Lista de mercaderistas y sus visitas: item, cabecera, detalle por día y ubicaciones. */
-
-.mercadistas-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  /* Con 80 mercadistas la lista empujaba el resto del panel fuera de la
-     pantalla: se queda con su propia caja de scroll y los filtros de arriba
-     siguen a la vista. El padding evita que la barra tape el borde de las
-     tarjetas y el foco quede recortado. */
-  max-height: 55vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
-}
-
-.mercadistas-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.mercadistas-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.mercadistas-list::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.35);
-  border-radius: 3px;
-}
-
-.mercadistas-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.55);
-}
-
-.mercadista-item {
-  background: var(--sr-surface);
-  border: 1px solid var(--sr-border);
-  border-radius: var(--sr-radius-sm);
-  /* Imprescindible con la lista scrolleable: en un flex column con altura
-     acotada los hijos se encogen por defecto y las 80 tarjetas quedaban
-     aplastadas en líneas de 2 px. Cada una conserva su alto y el sobrante se
-     resuelve con scroll. */
-  flex: 0 0 auto;
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    border-color var(--sr-duration) var(--sr-ease),
-    box-shadow var(--sr-duration) var(--sr-ease),
-    transform var(--sr-duration) var(--sr-ease);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-
-.mercadista-item:hover {
-  border-color: rgba(37, 99, 235, 0.25);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-  transform: translateY(-1px);
-}
-
-.mercadista-item.active {
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.15);
-}
-
-/* Usuario con una sola ruta: no puede cambiar de mercadista */
-.mercadista-item.solo-tu-ruta:hover {
-  transform: none;
-}
-
-.mercadista-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 18px;
-  gap: 14px;
-  transition: background var(--sr-duration) var(--sr-ease);
-  cursor: pointer;
-}
-
-.mercadista-header--solo {
-  cursor: default;
-}
-
-.mercadista-header:focus-visible {
-  outline: 2px solid var(--sr-accent-deep);
-  outline-offset: 2px;
-}
-
-.mercadista-chevron-btn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  margin: -8px -6px -8px 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  color: inherit;
-  transition: background var(--sr-duration) var(--sr-ease);
-}
-
-.mercadista-chevron-btn:hover {
-  background: rgba(37, 99, 235, 0.1);
-}
-
-.mercadista-chevron-btn:focus-visible {
-  outline: 2px solid var(--sr-accent-deep);
-  outline-offset: 2px;
-}
-
-.mercadista-item:hover .mercadista-header {
-  background: rgba(37, 99, 235, 0.04);
-}
-
-.mercadista-item.active .mercadista-header {
-  background: rgba(37, 99, 235, 0.06);
-}
-
-.color-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 2px 8px rgba(15, 23, 42, 0.18);
-}
-
-.mercadista-header__text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.mercadista-nombre {
-  font-weight: 600;
-  font-size: 0.9375rem;
-  color: var(--sr-text);
-  letter-spacing: -0.02em;
-  line-height: 1.35;
-  text-transform: capitalize;
-}
-
-.mercadista-hint {
-  font-size: 0.6875rem;
-  color: var(--sr-muted);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-.mercadista-hint--on {
-  color: #2563eb;
-}
-
-.chevron {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-right: 2px solid var(--sr-muted);
-  border-bottom: 2px solid var(--sr-muted);
-  transform: rotate(-45deg);
-  transition: transform 0.28s var(--sr-ease), border-color var(--sr-duration) var(--sr-ease);
-  margin-top: -2px;
-  opacity: 0.65;
-}
-
-.mercadista-item:hover .chevron {
-  opacity: 1;
-  border-color: var(--sr-accent-deep);
-}
-
-.chevron--open {
-  transform: rotate(45deg);
-  margin-top: 2px;
-}
-
 /* Detalle del Mercadista */
 .mercadista-detalle {
   padding: 0 14px 16px 14px;
@@ -300,3 +121,230 @@
   font-weight: 800;
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.ubicacion-km {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 6px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.09);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 6px;
+  line-height: 1.25;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  text-align: center;
+  min-width: 42px;
+}
+
+.ubicacion-info {
+  flex: 1;
+  font-size: 0.8125rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ubicacion-info--clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  transition: background-color 0.15s ease;
+}
+
+.ubicacion-info--clickable:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+.ubicacion-nombre {
+  font-weight: 700;
+  color: var(--sr-text);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ubicacion-direccion {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--sr-muted);
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.ubicacion-direccion__text {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ubicacion-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #60a5fa;
+  opacity: 0.9;
+}
+
+.ubicacion-icon--sm {
+  width: 11px;
+  height: 11px;
+  margin-top: 0;
+  color: #2563eb;
+  opacity: 0.85;
+}
+
+.ubicacion-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.ubicacion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--sr-muted);
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ubicacion-horario,
+.ubicacion-tiempo {
+  color: var(--sr-muted);
+  font-size: 0.72rem;
+  margin: 3px 0 0;
+}
+
+/* Ruta editable (orden del día) */
+.ruta-editable {
+  background: rgba(37, 99, 235, 0.05);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.ruta-editable-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ruta-editable-header strong {
+  color: #2563eb;
+  font-size: 14px;
+}
+
+.ruta-editable-hint {
+  margin: 0 0 10px 0;
+  font-size: 11px;
+  color: #666;
+}
+
+.hint-drag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(37, 99, 235, 0.1);
+  border-radius: 4px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.ubicaciones-list-drag {
+  min-height: 8px;
+}
+
+.ubicacion-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: #999;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ubicacion-drag-handle:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.ubicacion-drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-icon {
+  font-size: 14px;
+  letter-spacing: -2px;
+  user-select: none;
+}
+
+.ubicacion-item-editable {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* Columna compacta de ↑↓ en el item editable (sin el botón Mover) */
+.ubicacion-reorden {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: stretch;
+  padding: 2px 0;
+}
+
+/* Botón Mover dentro del bloque de info (no compite por espacio horizontal) */
+.btn-mover-visita--inline {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+/* CDK Drag and Drop */
+.ubicacion-item-editable.cdk-drag-dragging {
+  opacity: 0.85;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ubicaciones-list-drag .cdk-drag-placeholder {
+  opacity: 0.4;
+  background: rgba(37, 99, 235, 0.12);
+  border: 2px dashed #2563eb;
+  border-radius: 4px;
+  min-height: 50px;
+}

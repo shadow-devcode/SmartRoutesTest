@@ -1,5 +1,3 @@
-/* Página: cabecera, tarjetas de estadísticas y selector de vista. */
-
 /* Gestión de pendientes — mismo lenguaje que Gestión de Excels / Gestión de
    usuarios: fondo azul, hero centrado, tarjetas blancas de radio 16. */
 
@@ -250,3 +248,40 @@
 }
 
 .gp-input,
+.gp-select {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: #fff;
+}
+
+.gp-input {
+  flex: 1 1 22rem;
+  min-width: 15rem;
+}
+
+.gp-input:focus,
+.gp-select:focus {
+  outline: none;
+  border-color: var(--brand-from);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.gp-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+/* ── Tabla ────────────────────────────────────────────────── */
+.gp-table-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}

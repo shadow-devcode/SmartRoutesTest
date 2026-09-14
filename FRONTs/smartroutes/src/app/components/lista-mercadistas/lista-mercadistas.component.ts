@@ -42,7 +42,6 @@ import { formatearFrecuenciaMes, formatearTituloPorPalabra } from '../../utils/f
     './lista-mercadistas.component.lista.css',
     './lista-mercadistas.component.visitas.css',
     './lista-mercadistas.component.arrastre.css',
-    './lista-mercadistas.component.acciones.css',
     './lista-mercadistas.component.modal.css',
     './lista-mercadistas.component.pendientes.css',
   ]

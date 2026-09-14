@@ -1,122 +1,3 @@
-/* Filtros: pila de tarjetas, selector de provincias, chips de mercaderista y día, y banner de alcance. */
-
-.filters-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px 16px 8px;
-  background: var(--sr-bg);
-}
-
-.section--routes {
-  padding: 0 16px 12px;
-  background: transparent;
-  border: none;
-}
-
-.filter-card {
-  background: var(--sr-surface);
-  border-radius: var(--sr-radius);
-  border: 1px solid var(--sr-border);
-  box-shadow: var(--sr-shadow);
-  padding: 18px 18px 16px;
-  transition: box-shadow var(--sr-duration) var(--sr-ease);
-}
-
-.filter-card:hover {
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.05);
-}
-
-.filter-card--routes {
-  padding-bottom: 14px;
-}
-
-.filter-card__head {
-  margin-bottom: 14px;
-}
-
-.filter-card__head--routes {
-  margin-bottom: 10px;
-}
-
-.filter-card__eyebrow {
-  display: block;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--sr-muted);
-  margin-bottom: 4px;
-}
-
-.filter-card__title {
-  margin: 0 0 6px 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--sr-text);
-  letter-spacing: -0.02em;
-}
-
-.filter-card__desc {
-  margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--sr-muted);
-}
-
-.filter-card__desc--muted {
-  opacity: 0.85;
-}
-
-.filter-card--provincias .filter-card__head {
-  margin-bottom: 12px;
-}
-
-.provincias-filter-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.provincias-filter-custom {
-  position: relative;
-  z-index: 2;
-}
-
-.provincias-filter-custom--open {
-  z-index: 25;
-}
-
-.provincias-filter-label-text {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--sr-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.provincias-filter-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 14px;
-  border: 1px solid var(--sr-border);
-  border-radius: var(--sr-radius);
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-family: inherit;
-  color: var(--sr-text);
-  background-color: var(--sr-surface);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color var(--sr-duration) var(--sr-ease),
-    box-shadow var(--sr-duration) var(--sr-ease);
-}
-
 .provincias-filter-trigger__text {
   flex: 1;
   min-width: 0;
@@ -290,3 +171,177 @@
 }
 
 /* Lista de Mercadistas */
+.mercadistas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Con 80 mercadistas la lista empujaba el resto del panel fuera de la
+     pantalla: se queda con su propia caja de scroll y los filtros de arriba
+     siguen a la vista. El padding evita que la barra tape el borde de las
+     tarjetas y el foco quede recortado. */
+  max-height: 55vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.mercadistas-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mercadistas-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mercadistas-list::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 3px;
+}
+
+.mercadistas-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+.mercadista-item {
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius-sm);
+  /* Imprescindible con la lista scrolleable: en un flex column con altura
+     acotada los hijos se encogen por defecto y las 80 tarjetas quedaban
+     aplastadas en líneas de 2 px. Cada una conserva su alto y el sobrante se
+     resuelve con scroll. */
+  flex: 0 0 auto;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease),
+    transform var(--sr-duration) var(--sr-ease);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.mercadista-item:hover {
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.mercadista-item.active {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.15);
+}
+
+/* Usuario con una sola ruta: no puede cambiar de mercadista */
+.mercadista-item.solo-tu-ruta:hover {
+  transform: none;
+}
+
+.mercadista-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  gap: 14px;
+  transition: background var(--sr-duration) var(--sr-ease);
+  cursor: pointer;
+}
+
+.mercadista-header--solo {
+  cursor: default;
+}
+
+.mercadista-header:focus-visible {
+  outline: 2px solid var(--sr-accent-deep);
+  outline-offset: 2px;
+}
+
+.mercadista-chevron-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -8px -6px -8px 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: inherit;
+  transition: background var(--sr-duration) var(--sr-ease);
+}
+
+.mercadista-chevron-btn:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.mercadista-chevron-btn:focus-visible {
+  outline: 2px solid var(--sr-accent-deep);
+  outline-offset: 2px;
+}
+
+.mercadista-item:hover .mercadista-header {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.mercadista-item.active .mercadista-header {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+.mercadista-header__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mercadista-nombre {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  text-transform: capitalize;
+}
+
+.mercadista-hint {
+  font-size: 0.6875rem;
+  color: var(--sr-muted);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.mercadista-hint--on {
+  color: #2563eb;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-right: 2px solid var(--sr-muted);
+  border-bottom: 2px solid var(--sr-muted);
+  transform: rotate(-45deg);
+  transition: transform 0.28s var(--sr-ease), border-color var(--sr-duration) var(--sr-ease);
+  margin-top: -2px;
+  opacity: 0.65;
+}
+
+.mercadista-item:hover .chevron {
+  opacity: 1;
+  border-color: var(--sr-accent-deep);
+}
+
+.chevron--open {
+  transform: rotate(45deg);
+  margin-top: 2px;
+}

@@ -1,5 +1,3 @@
-/* Panel lateral: cabecera, estadísticas y estados. */
-
 ﻿:host {
   display: block;
   height: 100%;
@@ -179,4 +177,73 @@
   height: 40px;
   animation: spin 1s linear infinite;
   margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.filters-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 8px;
+  background: var(--sr-bg);
+}
+
+.section--routes {
+  padding: 0 16px 12px;
+  background: transparent;
+  border: none;
+}
+
+.filter-card {
+  background: var(--sr-surface);
+  border-radius: var(--sr-radius);
+  border: 1px solid var(--sr-border);
+  box-shadow: var(--sr-shadow);
+  padding: 18px 18px 16px;
+  transition: box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.filter-card--routes {
+  padding-bottom: 14px;
+}
+
+.filter-card__head {
+  margin-bottom: 14px;
+}
+
+.filter-card__head--routes {
+  margin-bottom: 10px;
+}
+
+.filter-card__eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+  margin-bottom: 4px;
+}
+
+.filter-card__title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+}
+
+.filter-card__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sr-muted);
 }

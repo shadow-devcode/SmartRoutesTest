@@ -1,63 +1,3 @@
-/* Filtros, cabeceras de tarjeta y controles de orden. */
-
-  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
-  color: #333;
-  margin: 0 0 20px 0;
-  font-weight: 600;
-}
-
-.filtros-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.filtro-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.filtro-group label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #555;
-}
-
-.filtro-group select {
-  padding: 10px 14px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
-  min-width: min(200px, 100%);
-  width: 100%;
-  background: white;
-}
-
-.btn-limpiar {
-  padding: 10px 20px;
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.btn-limpiar:hover {
-  background: #e5e5e5;
-}
-
-/* Filtro inline para pendientes */
-.pendientes-filtro {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
 .pendientes-filtro label {
   font-size: 14px;
   font-weight: 600;
@@ -170,3 +110,190 @@
   overflow-y: auto;
   border-radius: 8px;
   border: 1px solid #eee;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.78rem, 1.5vw, 0.875rem);
+}
+
+.data-table th,
+.data-table td {
+  padding: clamp(0.45rem, 1.5vw, 0.75rem) clamp(0.5rem, 2vw, 1rem);
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #1d4ed8;
+  color: white;
+  font-weight: 600;
+}
+
+.data-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.empty-msg {
+  color: #888;
+  font-style: italic;
+  padding: 20px;
+  margin: 0;
+}
+
+/* Botones de ordenación en cabeceras de tabla */
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  opacity: 0.88;
+  transition: opacity 0.15s;
+}
+
+.sort-btn:hover,
+.sort-btn--active {
+  opacity: 1;
+}
+
+.sort-icon {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.sort-btn--active .sort-icon {
+  opacity: 1;
+}
+
+/* Resumen mes: sub-títulos de tabla y columna total */
+.subtabla-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 10px 0;
+}
+
+.subtabla-title--sep {
+  margin-top: 22px;
+}
+
+.data-table th.col-total,
+.data-table td.col-total {
+  background: rgba(37, 99, 235, 0.07);
+  font-weight: 700;
+  color: #1d4ed8;
+  border-left: 2px solid rgba(37, 99, 235, 0.2);
+}
+
+.data-table tfoot th {
+  background: #f4f5fb;
+  color: #333;
+  font-weight: 700;
+  border-top: 2px solid #e0e0e0;
+}
+
+.data-table tfoot th.col-total {
+  background: rgba(37, 99, 235, 0.15);
+  color: #1d4ed8;
+}
+
+/* Info Section */
+.info-section {
+  background: white;
+  border-radius: 16px;
+  padding: clamp(1rem, 4vw, 1.875rem);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.info-section h2 {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: #333;
+  margin: 0 0 24px 0;
+  font-weight: 600;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.info-item {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid #2563eb;
+}
+
+.info-item strong {
+  display: block;
+  color: #333;
+  font-size: 14px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.info-item p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+
+  .nav-buttons {
+    flex-direction: column;
+  }
+
+  .nav-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filtros-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filtro-group {
+    width: 100%;
+  }
+
+  .filtro-group select {
+    min-width: 0;
+  }
+
+  .input-filtro-punto {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .pendientes-filtro {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-limpiar {
+    width: 100%;
+  }
+}

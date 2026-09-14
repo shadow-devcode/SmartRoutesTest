@@ -1,5 +1,3 @@
-/* Panel lateral: cabecera, tarjetas de estadísticas y estados de carga, error y sin datos. */
-
 ﻿:host {
   display: block;
   height: 100%;
@@ -245,3 +243,119 @@
 }
 
 /* Contenedor de filtros */
+.filters-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 8px;
+  background: var(--sr-bg);
+}
+
+.section--routes {
+  padding: 0 16px 12px;
+  background: transparent;
+  border: none;
+}
+
+.filter-card {
+  background: var(--sr-surface);
+  border-radius: var(--sr-radius);
+  border: 1px solid var(--sr-border);
+  box-shadow: var(--sr-shadow);
+  padding: 18px 18px 16px;
+  transition: box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.filter-card--routes {
+  padding-bottom: 14px;
+}
+
+.filter-card__head {
+  margin-bottom: 14px;
+}
+
+.filter-card__head--routes {
+  margin-bottom: 10px;
+}
+
+.filter-card__eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+  margin-bottom: 4px;
+}
+
+.filter-card__title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+}
+
+.filter-card__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sr-muted);
+}
+
+.filter-card__desc--muted {
+  opacity: 0.85;
+}
+
+.filter-card--provincias .filter-card__head {
+  margin-bottom: 12px;
+}
+
+.provincias-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.provincias-filter-custom {
+  position: relative;
+  z-index: 2;
+}
+
+.provincias-filter-custom--open {
+  z-index: 25;
+}
+
+.provincias-filter-label-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sr-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.provincias-filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--sr-text);
+  background-color: var(--sr-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease);
+}

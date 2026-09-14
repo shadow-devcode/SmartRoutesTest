@@ -1,66 +1,3 @@
-/* Aviso informativo, tabla de parámetros y formulario de configuración. */
-
-  font-size: 12px;
-  color: #a0aec0;
-  margin: 0;
-}
-
-/* ════════════════════════════════════════════════════════
-   Banner informativo
-   ════════════════════════════════════════════════════════ */
-.info-banner {
-  background: #ebf8ff;
-  border-left: 4px solid #63b3ed;
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-size: 13px;
-  color: #2c5282;
-  margin-bottom: 10px;
-}
-
-/* ── Hint de scroll horizontal ───────────────────────────── */
-.scroll-hint {
-  text-align: center;
-  font-size: 11px;
-  color: #a0aec0;
-  margin-bottom: 6px;
-  letter-spacing: 0.03em;
-}
-
-/* ════════════════════════════════════════════════════════
-   Tabla de datos
-   ════════════════════════════════════════════════════════ */
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e0 #f7fafc;
-}
-
-.table-wrapper::-webkit-scrollbar {
-  height: 7px;
-}
-.table-wrapper::-webkit-scrollbar-track {
-  background: #f7fafc;
-  border-radius: 4px;
-}
-.table-wrapper::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
-  border-radius: 4px;
-}
-.table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
-}
-
-.data-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 /* ── Cabecera ────────────────────────────────────────────── */
 .data-table thead {
   background: #1d4ed8;
@@ -170,3 +107,143 @@ td.col-num {
 .btn-page:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #718096;
+}
+
+/* ════════════════════════════════════════════════════════
+   Sección de ejecución
+   ════════════════════════════════════════════════════════ */
+.execute-content {
+  padding: 8px 0;
+}
+
+.execute-content p {
+  font-size: 15px;
+  color: #4a5568;
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+
+.execute-note {
+  font-size: 13px;
+  color: #718096;
+  background: #fffbeb;
+  border-left: 4px solid #f6ad55;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 24px !important;
+}
+
+/* ════════════════════════════════════════════════════════
+   Barra de progreso
+   ════════════════════════════════════════════════════════ */
+.progress-content {
+  padding: 8px 0;
+}
+
+.progress-message {
+  font-size: 16px;
+  font-weight: 500;
+  color: #2d3748;
+  margin: 0 0 18px;
+  min-height: 24px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 14px;
+  background: #edf2f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.6s ease;
+  position: relative;
+}
+
+/* Brillo animado sobre la barra */
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  animation: shimmer 1.8s infinite;
+}
+
+@keyframes shimmer {
+  to { left: 200%; }
+}
+
+.progress-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.progress-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #e53e3e;
+  border: 2px solid #e53e3e;
+  padding: 10px 28px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #e53e3e;
+  color: #fff;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.progress-pct {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.progress-hint {
+  font-size: 12px;
+  color: #a0aec0;
+}
+
+/* ════════════════════════════════════════════════════════
+   Sección de éxito
+   ════════════════════════════════════════════════════════ */
+.success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+  padding: 24px 0;
+}
+
+.success-icon {
+  font-size: 64px;
+  line-height: 1;
+}
