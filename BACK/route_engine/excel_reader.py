@@ -82,27 +82,121 @@ def leer_excel_entrada(input_file):
     return df
 
 
+# Nombres con los que cada columna imprescindible aparece en los archivos
+# reales. Se comparan en mayúsculas, sin tildes y con los espacios colapsados.
+_ALIAS_COLUMNAS = {
+    "LATITUD": ("LATITUD", "LAT", "LATITUDE"),
+    "LONGITUD": ("LONGITUD", "LONG", "LNG", "LON", "LONGITUDE"),
+    "DESCRIPCION": (
+        "DESCRIPCION",
+        "DESCRIPCION DEL PDV",
+        "NOMBRE",
+        "NOMBRE DEL PDV",
+        "NOMBRE PDV",
+        "PUNTO DE VENTA",
+        "PDV",
+        "CLIENTE",
+        "LOCAL",
+    ),
+    "ID": ("ID", "CODIGO", "CODIGO PUNTO", "CODIGO_PUNTO", "ID_PUNTO", "ID PUNTO", "PUNTO_ID"),
+    "TIEMPO DE SERVICIO": (
+        "TIEMPO DE SERVICIO",
+        "TIEMPO SERVICIO",
+        "TIEMPO DE SERVICIO (MIN)",
+        "TIEMPO SERVICIO (MIN)",
+        "TIEMPO DE SERVICIO MIN",
+        "TIEMPO DE ATENCION",
+        "MINUTOS DE SERVICIO",
+        "MINUTOS",
+        "DURACION",
+    ),
+    "FRECUENCIA MES": (
+        "FRECUENCIA MES",
+        "FRECUENCIA",
+        "FRECUENCIA MENSUAL",
+        "FRECUENCIA AL MES",
+        "VISITAS MES",
+        "VISITAS AL MES",
+    ),
+}
+
+
+def _clave_columna(col) -> str:
+    """Nombre de columna comparable: sin tildes, sin dobles espacios, en mayúsculas."""
+    if not isinstance(col, str):
+        return ""
+    texto = col.strip().upper()
+    for original, limpio in (("Á", "A"), ("É", "E"), ("Í", "I"), ("Ó", "O"), ("Ú", "U")):
+        texto = texto.replace(original, limpio)
+    return " ".join(texto.replace("_", " ").split())
+
+
 def _normalizar_columnas_clave(df):
     """
-    Unifica nombres de columnas para DESCRIPCION, LATITUD, LONGITUD
-    (permite variantes como Latitud, Longitud, Descripción, etc.).
+    Unifica los nombres de las columnas imprescindibles.
+
+    El mismo dato llega con nombres distintos según quién prepare el archivo
+    ("TIEMPO DE SERVICIO", "Tiempo Servicio (min)", "DURACION"...). Sin este
+    mapeo el motor leía 0 minutos y repartía un rutero vacío sin avisar.
     """
     mapeo = {}
     for col in df.columns:
-        if not isinstance(col, str):
+        clave = _clave_columna(col)
+        if not clave:
             continue
-        c = col.strip().upper().replace("Ó", "O").replace("Í", "I")
-        if c in ("LATITUD", "LAT"):
-            mapeo[col] = "LATITUD"
-        elif c in ("LONGITUD", "LONG", "LNG"):
-            mapeo[col] = "LONGITUD"
-        elif c == "DESCRIPCION":
-            mapeo[col] = "DESCRIPCION"
-        elif c in ("ID", "CODIGO", "CODIGO_PUNTO", "ID_PUNTO", "ID PUNTO", "PUNTO_ID"):
-            mapeo[col] = "ID"
+        for destino, alias in _ALIAS_COLUMNAS.items():
+            if clave in alias and destino not in mapeo.values():
+                mapeo[col] = destino
+                break
     if mapeo:
         df = df.rename(columns=mapeo)
     return df
+
+
+def validar_columnas_esenciales(df) -> str | None:
+    """Mensaje de error si el Excel no sirve para planificar, o None si sirve.
+
+    Sin tiempo de servicio no hay nada que repartir: el motor daba por bueno el
+    archivo, dejaba todos los puntos fuera del plan y devolvía un rutero con un
+    solo mercaderista y todo en pendientes, sin decir por qué.
+    """
+    if df is None or df.empty:
+        return "El archivo no tiene filas de datos."
+
+    faltan = [c for c in ("LATITUD", "LONGITUD") if c not in df.columns]
+    if faltan:
+        return (
+            f"Falta la columna {' y '.join(faltan)}. Sin coordenadas no se pueden "
+            "agrupar los puntos ni trazar rutas."
+        )
+
+    if "TIEMPO DE SERVICIO" not in df.columns:
+        return (
+            "Falta la columna TIEMPO DE SERVICIO (también vale «Tiempo Servicio "
+            "(min)», «Minutos de servicio» o «Duración»). Sin ella no se sabe "
+            "cuánto dura cada visita y no se puede repartir el trabajo."
+        )
+
+    tiempos = pd.to_numeric(df["TIEMPO DE SERVICIO"], errors="coerce").fillna(0)
+    con_tiempo = int((tiempos > 0).sum())
+    if con_tiempo == 0:
+        return (
+            "La columna TIEMPO DE SERVICIO está vacía o en cero en las "
+            f"{len(df)} filas. Sin minutos de visita no hay trabajo que repartir."
+        )
+    if con_tiempo < len(df) * 0.5:
+        return (
+            f"Solo {con_tiempo} de {len(df)} filas tienen TIEMPO DE SERVICIO. "
+            "Revisa el archivo: el resto quedaría fuera del rutero."
+        )
+
+    if "DESCRIPCION" not in df.columns or df["DESCRIPCION"].notna().sum() == 0:
+        return (
+            "Falta la columna DESCRIPCION con el nombre del punto de venta "
+            "(también vale «Nombre», «Punto de venta» o «PDV»)."
+        )
+
+    return None
 
 
 def corregir_coordenadas_df(df):

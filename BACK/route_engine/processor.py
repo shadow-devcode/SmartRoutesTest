@@ -17,6 +17,7 @@ from route_engine.excel_reader import (
     filtrar_por_canal_y_cadenas,
     inicializar_columnas,
     leer_excel_entrada,
+    validar_columnas_esenciales,
 )
 from route_engine.config import (
     CONVERTIR_A_FIN_DE_SEMANA,
@@ -829,6 +830,13 @@ def _procesar_minoristas(
     print("[1/6] Leyendo archivo de entrada...")
     df = leer_excel_entrada(input_file)
     print(f"      -> {len(df)} ubicaciones encontradas")
+
+    # Se comprueba antes de nada: sin tiempo de servicio o sin coordenadas el
+    # motor devolvía un rutero con un solo mercaderista y todo en pendientes,
+    # sin explicar por qué.
+    problema = validar_columnas_esenciales(df)
+    if problema:
+        raise ValueError(problema)
 
     # Recorte por canal y cadenas: se hace aquí, antes de expandir frecuencias
     # y de dimensionar la flota, para que todo lo que viene después (plantilla,
