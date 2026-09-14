@@ -14,6 +14,7 @@ from route_engine.config import (
     max_dia_flex,
     max_servicio_dia,
     viaje_en_agenda,
+    tope_jornada_real,
 )
 from route_engine.frequency import semanas_por_frecuencia
 from route_engine.geo import estimar_minutos_viaje
@@ -261,6 +262,25 @@ class VisitaConfirmador:
             self.travel_total_dia + tiempo_entre_minutes,
         )
         if carga_si_agrego > self.tope_dia:
+            if not (dia_vacio and visita_mayor_que_jornada):
+                return False
+
+        # 4.c) Tope del RELOJ de la jornada: servicio MÁS desplazamiento, mida
+        # lo que mida la cuota.
+        #
+        # Con el modelo "sin tiempo de desplazamiento" la comprobación anterior
+        # ignora la carretera, así que un día podía cerrar con 480 min de
+        # servicio y otros 500 de coche encima. Medido antes de este tope: 506
+        # de 1.313 jornadas pasaban de 480 min reales, 27 pasaban de 720, y la
+        # peor llegaba a 994 (435 de servicio + 559 de viaje). El día tiene las
+        # horas que tiene.
+        reloj_si_agrego = (
+            self.servicio_total
+            + float(it["tiempo"] or 0)
+            + self.travel_total_dia
+            + tiempo_entre_minutes
+        )
+        if reloj_si_agrego > tope_jornada_real():
             if not (dia_vacio and visita_mayor_que_jornada):
                 return False
 

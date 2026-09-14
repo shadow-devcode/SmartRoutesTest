@@ -14,7 +14,15 @@ MAPBOX_ACCESS_TOKEN = os.environ.get("MAPBOX_ACCESS_TOKEN", "")
 # rurales se acerca a 1.1. Multiplicamos haversine por este factor para
 # acercarnos a la distancia real sin llamar a Mapbox Directions por cada par.
 # Se puede ajustar vía variable de entorno DISTANCE_FACTOR_CARRETERA.
-DISTANCE_FACTOR_CARRETERA = float(os.environ.get("DISTANCE_FACTOR_CARRETERA", "1.4"))
+# Cuánto más larga es la calle que la línea recta. Con él se estima la
+# distancia mientras se planifica, porque consultar la carretera real para cada
+# una de las decenas de miles de combinaciones que se evalúan sería inviable.
+#
+# 1,60 no es una cifra elegida a ojo: sale de comparar los 2.093 tramos reales
+# del ruteo nacional con su línea recta (mediana 1,46, media 1,68). El 1,40 que
+# había se quedaba corto, y esa diferencia era la que hacía que una jornada
+# aprobada con la estimación se desbordara al recalcularla con la carretera.
+DISTANCE_FACTOR_CARRETERA = float(os.environ.get("DISTANCE_FACTOR_CARRETERA", "1.6"))
 
 # ---------------------------------------------------------------------------
 # UNIDAD DE MEDIDA DE LA JORNADA
@@ -268,6 +276,34 @@ def min_semana() -> int:
 
 def min_mes() -> int:
     return min_semana() * SEMANAS_MES
+
+
+def tope_jornada_real() -> int:
+    """
+    Tope del RELOJ de la jornada: servicio + desplazamiento.
+
+    Es distinto de la cuota. La cuota mensual mide la capacidad que la empresa
+    contrata y, con el modelo "sin tiempo de desplazamiento", se cuenta solo con
+    el tiempo dentro de las tiendas. Pero el día tiene las horas que tiene: si
+    alguien hace 435 min de servicio y 559 de carretera, su jornada dura 994
+    minutos, cuente lo que cuente para la cuota.
+
+    Sin este tope, el motor daba por buenas 506 de 1.313 jornadas imposibles
+    (39%), con tramos sueltos de 71 km —429 minutos de coche— dentro de un
+    mismo día.
+
+    Por defecto 520: los 480 de jornada más algo de margen.
+    """
+    override = os.environ.get("TOPE_JORNADA_REAL_MIN")
+    if override:
+        try:
+            return int(override)
+        except ValueError:
+            pass
+    return int(cuota_dia() + MARGEN_JORNADA_REAL_MIN)
+
+
+MARGEN_JORNADA_REAL_MIN = float(os.environ.get("MARGEN_JORNADA_REAL_MIN", "40"))
 
 
 def max_servicio_dia() -> int:

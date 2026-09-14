@@ -55,7 +55,7 @@ def recalcular(path: str, aplicar: bool) -> int:
     print(f"{path}")
     print(f"  antes : {km_antes:,.0f} km | {min_antes:,.0f} min de desplazamiento")
     print("  consultando la carretera de cada jornada...")
-    actualizadas, total, tarde = recalcular_tramos_por_carretera(visitas)
+    actualizadas, total, tarde, retiradas = recalcular_tramos_por_carretera(visitas)
 
     km_ahora = visitas["kilometros entre sucurlas (km)"].sum()
     min_ahora = visitas["Tiempo entre sucursal (min)"].sum()

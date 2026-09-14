@@ -21,6 +21,7 @@ from route_engine.config import (
     cuota_dia,
     cuota_mes,
     hora_fin_jornada,
+    tope_jornada_real,
     jornada_incluye_viaje,
     max_dia_flex,
     max_servicio_dia,
@@ -649,7 +650,8 @@ def recalcular_tramos_por_carretera(horarios_df):
     Si no hay token de Mapbox, o la consulta falla, la jornada se queda con su
     estimación: mejor un número aproximado que ninguno.
 
-    Devuelve (jornadas_actualizadas, jornadas_totales, jornadas_que_se_pasan).
+    Devuelve (jornadas_actualizadas, jornadas_totales, jornadas_que_se_pasan,
+    filas_retiradas).
     """
     columnas = {"Mercadista", "Día", "Fecha", "Latitud", "Longitud", "Orden Ruta"}
     if horarios_df.empty or not columnas.issubset(set(horarios_df.columns)):
@@ -659,6 +661,7 @@ def recalcular_tramos_por_carretera(horarios_df):
     col_viaje = "Tiempo entre sucursal (min)"
     actualizadas = 0
     tarde = 0
+    retiradas: list = []
     limite = hora_fin_jornada()
     grupos = list(horarios_df.groupby(["Mercadista", "Fecha", "Día"], sort=False))
 
@@ -698,13 +701,57 @@ def recalcular_tramos_por_carretera(horarios_df):
         actualizadas += 1
 
         # Con los kilómetros reales una jornada puede estirarse más allá de lo
-        # que se planificó. No se recorta: eso escondería el problema. Se
-        # cuentan para avisar, que es lo que permite decidir qué hacer con
-        # ellas.
+        # planificado. Las visitas que ya no caben en el reloj del día se
+        # retiran —las últimas de la ruta, que son las que sobran— y vuelven a
+        # pendientes. Dejarlas escritas sería entregar un plan que no se puede
+        # cumplir; recortar solo la hora sería mentir sobre él.
+        sobrantes = _visitas_que_no_caben_en_el_dia(horarios_df, indices)
+        if sobrantes:
+            retiradas.extend(sobrantes)
+            indices = [i for i in indices if i not in set(sobrantes)]
+            if len(indices) < 2:
+                continue
         if _recomponer_horarios_del_dia(horarios_df, indices) > limite:
             tarde += 1
 
-    return actualizadas, len(grupos), tarde
+    if retiradas:
+        horarios_df.drop(index=retiradas, inplace=True)
+
+    return actualizadas, len(grupos), tarde, retiradas
+
+
+def _visitas_que_no_caben_en_el_dia(horarios_df, indices):
+    """Índices de las visitas que sobran del día una vez medido de verdad.
+
+    El reloj de la jornada es servicio más desplazamiento. Con la distancia
+    estimada el día cuadraba; con la de carretera puede no caber, y entonces
+    hay que quitar visitas. Se quitan las ÚLTIMAS de la ruta: son las que menos
+    trastocan el resto del día, porque lo anterior ya estaba encadenado.
+    """
+    from route_engine.config import tope_jornada_real
+
+    tope = tope_jornada_real()
+    total = 0.0
+    for idx in indices:
+        try:
+            total += float(horarios_df.at[idx, "Tiempo Servicio (min)"] or 0)
+            total += float(horarios_df.at[idx, "Tiempo entre sucursal (min)"] or 0)
+        except (TypeError, ValueError):
+            pass
+    if total <= tope:
+        return []
+
+    sobrantes = []
+    for idx in reversed(indices):
+        if total <= tope or len(indices) - len(sobrantes) <= 1:
+            break
+        try:
+            total -= float(horarios_df.at[idx, "Tiempo Servicio (min)"] or 0)
+            total -= float(horarios_df.at[idx, "Tiempo entre sucursal (min)"] or 0)
+        except (TypeError, ValueError):
+            pass
+        sobrantes.append(idx)
+    return sobrantes
 
 
 def _recomponer_horarios_del_dia(horarios_df, indices):
@@ -1408,7 +1455,21 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
     # motor planifica con una estimación para poder comparar miles de
     # combinaciones sin salir a la red; lo que se entrega debe ser lo que se
     # recorre de verdad.
-    jornadas_ok, jornadas_total, jornadas_tarde = recalcular_tramos_por_carretera(horarios_df)
+    (
+        jornadas_ok,
+        jornadas_total,
+        jornadas_tarde,
+        filas_retiradas,
+    ) = recalcular_tramos_por_carretera(horarios_df)
+    if filas_retiradas:
+        # Vuelven a pendientes: la reconciliación de frecuencia, que corre justo
+        # después, ya se encarga de dejar el invariante
+        # «agendadas + pendientes == frecuencia mes» en su sitio.
+        print(
+            f"      [!] {len(filas_retiradas)} visita(s) retiradas: con los tiempos "
+            f"reales de carretera no cabían en el reloj de su jornada "
+            f"(tope {tope_jornada_real()} min). Vuelven a pendientes."
+        )
     if jornadas_total:
         if jornadas_ok:
             print(
