@@ -30,7 +30,12 @@ from services.pendientes_service import (
 )
 from utils.excel_atomic import escritura_atomica
 from utils.dataset_config import cuota_dia_del_dataset, incluye_viaje_del_dataset
-from utils.excel_cache import invalidate_excel_cache, read_excel_cached
+from utils.excel_cache import (
+    actualizar_excel_cache,
+    invalidate_excel_cache,
+    read_excel_cached,
+)
+from utils.excel_libro import cargar_libro, registrar_libro
 from utils.excel_lock import with_excel_file_lock
 from utils.route_helpers import a_numero, clave_pendiente, clave_ub
 
@@ -196,33 +201,46 @@ def _sanitizar_df_para_excel(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _guardar_horarios_pendientes(hp: str, df_horarios: pd.DataFrame, df_pend: pd.DataFrame) -> None:
-    # Sobre una copia temporal que sustituye al original de golpe: quien
-    # lea mientras tanto nunca verá el .xlsx a medio escribir.
-    with escritura_atomica(hp) as _destino:
-        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-            _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
-            try:
-                format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
-            except Exception:
-                pass
-            _sanitizar_df_para_excel(df_pend).to_excel(writer, sheet_name=PENDIENTES_SHEET, index=False)
-    invalidate_excel_cache(hp)
+    _escribir_hojas(hp, {"Horarios_Detalle": df_horarios, PENDIENTES_SHEET: df_pend})
 
 
 def _guardar_horarios(hp: str, df_horarios: pd.DataFrame) -> None:
-    """Persiste solo Horarios_Detalle. Sanitiza igual que la variante con
-    pendientes: día/semana/mercadista destino llegan del body del request y
-    sin esto quedarían como fórmula ejecutable al abrir el Excel."""
-    # Sobre una copia temporal que sustituye al original de golpe: quien
-    # lea mientras tanto nunca verá el .xlsx a medio escribir.
-    with escritura_atomica(hp) as _destino:
-        with pd.ExcelWriter(_destino, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-            _sanitizar_df_para_excel(df_horarios).to_excel(writer, sheet_name="Horarios_Detalle", index=False)
+    """Persiste solo Horarios_Detalle, sanitizada contra fórmulas."""
+    _escribir_hojas(hp, {"Horarios_Detalle": df_horarios})
+
+
+def _escribir_hojas(hp: str, hojas: dict) -> None:
+    """Vuelca esas hojas en el Excel reutilizando el libro ya cargado.
+
+    Se escribe sobre una copia temporal que sustituye al original de golpe, de
+    modo que quien lea mientras tanto nunca vea el .xlsx a medio escribir. El
+    libro se reutiliza entre ediciones: abrirlo cuesta 1,67 s en el rutero
+    nacional y todas las escrituras pasan por el mismo lock.
+    """
+    libro = cargar_libro(hp)
+    for nombre, df in hojas.items():
+        datos = _sanitizar_df_para_excel(df)
+        # La hoja se recrea en su MISMA posición: el orden del libro es el que
+        # ve quien lo abre, y Horarios_Detalle debe seguir siendo la primera.
+        posicion = libro.sheetnames.index(nombre) if nombre in libro.sheetnames else None
+        if posicion is not None:
+            del libro[nombre]
+        hoja = libro.create_sheet(nombre, posicion)
+        hoja.append(list(datos.columns))
+        for fila in datos.itertuples(index=False, name=None):
+            hoja.append(["" if pd.isna(v) else v for v in fila])
+        if nombre == "Horarios_Detalle":
             try:
-                format_horarios_detalle_worksheet(writer.book["Horarios_Detalle"])
+                format_horarios_detalle_worksheet(hoja)
             except Exception:
                 pass
+
+    with escritura_atomica(hp) as destino:
+        libro.save(destino)
+    registrar_libro(hp, libro)
     invalidate_excel_cache(hp)
+    for nombre, df in hojas.items():
+        actualizar_excel_cache(hp, nombre, df)
 
 
 def _mask_grupo(df: pd.DataFrame, mercadista: str, dia: str, fecha: str) -> pd.Series:

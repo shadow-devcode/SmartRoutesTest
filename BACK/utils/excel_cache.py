@@ -31,6 +31,22 @@ def invalidate_excel_cache(path: str) -> None:
             del _EXCEL_CACHE[k]
 
 
+def actualizar_excel_cache(path: str, sheet_name: str, df: pd.DataFrame) -> None:
+    """Deja en el cache la hoja que se acaba de escribir.
+
+    Quien guarda ya tiene el DataFrame en memoria. Sin esto, la escritura
+    invalida el cache y la siguiente lectura vuelve a parsear el .xlsx entero:
+    1,29 s en el rutero nacional, pagados en cada arrastre del calendario.
+    """
+    try:
+        st = os.stat(path)
+    except OSError:
+        return
+    key = (os.path.abspath(path), sheet_name)
+    with _EXCEL_CACHE_LOCK:
+        _EXCEL_CACHE[key] = (st.st_mtime, st.st_size, df.copy())
+
+
 def read_excel_cached(path: str, sheet_name: str) -> pd.DataFrame:
     """Lee una hoja de Excel con cache invalidado por mtime+size del archivo.
 

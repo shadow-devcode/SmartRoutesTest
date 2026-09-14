@@ -771,7 +771,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
             return;
           }
           this.calMensaje = `Orden del ${fila.dia.toLowerCase()} · ${fila.fecha}`;
-          this.cargarRutas(true);
+          this.cargarRutasDeMercadista(this.calMercadista);
           setTimeout(() => {
             this.calMensaje = '';
             this.cdr.markForCheck();
@@ -897,7 +897,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
           }
           this.calMensaje = `${punto.descripcion} → ${dia.toLowerCase()} · ${semana}`;
           // Relectura en segundo plano para traer horario, tiempos y km.
-          this.cargarRutas(true);
+          this.cargarRutasDeMercadista(this.calMercadista);
           this.cargar(true);
           setTimeout(() => {
             this.calMensaje = '';
@@ -1044,7 +1044,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
             return;
           }
           this.calMensaje = resp?.message ?? `${origen.dia} ↔ ${diaDestino}`;
-          this.cargarRutas(true);
+          this.cargarRutasDeMercadista(this.calMercadista);
           setTimeout(() => {
             this.calMensaje = '';
             this.cdr.markForCheck();
@@ -1128,7 +1128,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
           }
           const cuantas = resp?.visitas_movidas ?? quitadas.length;
           this.calMensaje = `${fila.descripcion} → pendientes (${cuantas})`;
-          this.cargarRutas(true);
+          this.cargarRutasDeMercadista(this.calMercadista);
           this.cargar(true);
           setTimeout(() => {
             this.calMensaje = '';
@@ -1285,7 +1285,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
           this.calMensaje = `${fila.descripcion} → ${diaDestino.toLowerCase()} · ${semanaDestino}`;
           // Relectura en segundo plano: el servidor recalcula horarios, tiempos
           // y km, y esos números no se pueden adivinar en el cliente.
-          this.cargarRutas(true);
+          this.cargarRutasDeMercadista(this.calMercadista);
           setTimeout(() => {
             this.calMensaje = '';
             this.cdr.markForCheck();
@@ -1450,6 +1450,40 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
         this.rutasTotalVisitas = resp.total_visitas ?? 0;
         this.rutasMinutos = resp.minutos_asignados ?? 0;
       }
+      this.cdr.markForCheck();
+    });
+  }
+
+  /**
+   * Recarga del servidor SOLO las filas del mercaderista que se acaba de
+   * editar, y las sustituye en la tabla completa.
+   *
+   * El calendario enseña a una persona a la vez, así que traerse el rutero
+   * entero tras cada arrastre es traer 1.708 KB y 3.382 filas para usar 52.
+   * Medido en el servidor: 2,44 s frente a 0,59 s, y el navegador además tiene
+   * que volver a filtrar y redibujar todo.
+   */
+  private cargarRutasDeMercadista(mercadista: string): void {
+    if (!mercadista) {
+      this.cargarRutas(true);
+      return;
+    }
+    this.mercadistasApi.getRutasAsignadas({ mercadista }).subscribe((resp) => {
+      if (!resp.success) {
+        // Si la carga parcial falla se cae a la completa: mejor lenta que con
+        // la pantalla desincronizada del servidor.
+        this.cargarRutas(true);
+        return;
+      }
+      const suyas = resp.filas ?? [];
+      this.rutasFilas = [
+        ...this.rutasFilas.filter((f) => f.mercadista !== mercadista),
+        ...suyas,
+      ];
+      const puntosAjenos = this.rutas.filter((p) => p.mercadista !== mercadista);
+      this.rutas = [...puntosAjenos, ...(resp.puntos ?? [])];
+      this.refrescarVista();
+      this.recalcularOpcionesRuta();
       this.cdr.markForCheck();
     });
   }
