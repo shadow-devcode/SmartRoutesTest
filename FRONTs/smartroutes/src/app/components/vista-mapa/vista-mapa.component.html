@@ -59,6 +59,16 @@
           [title]="vistaComparativaActiva ? 'Cerrar vista comparativa' : 'Mostrar dos mapas en paralelo'">
           🗺️ <span class="tab-text">{{ vistaComparativaActiva ? 'Cerrar' : 'Comparativa' }}</span>
         </button>
+        <!-- Trae los cambios hechos en otras pantallas sin recargar la página,
+             conservando el mercaderista, el día y la semana que estés viendo. -->
+        <button
+          class="tab-button tab-button--recargar"
+          (click)="recargarTodo()"
+          [disabled]="recargando"
+          title="Vuelve a leer las rutas del servidor sin recargar la página">
+          <span class="tab-icono" [class.tab-icono--girando]="recargando">🔄</span>
+          <span class="tab-text">{{ recargando ? 'Actualizando…' : 'Actualizar' }}</span>
+        </button>
       </div>
     </div>
 

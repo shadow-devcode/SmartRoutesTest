@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, of } from 'rxjs';
 import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
@@ -21,6 +21,8 @@ import { ubicacionTieneCoordValida } from '../../utils/coords';
 })
 export class VistaMapaComponent implements OnInit, OnDestroy {
   @ViewChild(MapaComponent) mapaComponent!: MapaComponent;
+  /** Los dos paneles laterales: el segundo solo existe en modo comparación. */
+  @ViewChildren(ListaMercadistasComponent) paneles!: QueryList<ListaMercadistasComponent>;
 
   ubicaciones: UbicacionMapa[] = [];
   todasUbicaciones: UbicacionMapa[] = [];
@@ -231,6 +233,27 @@ export class VistaMapaComponent implements OnInit, OnDestroy {
   /** Recarga las ubicaciones del mapa sin resetear filtros (tras guardar orden o mover visita) */
   recargarMapa(): void {
     this.cargarTodasUbicaciones(this.semanaSeleccionada || undefined, false);
+  }
+
+  /** ¿Hay una recarga manual en curso? Deshabilita el botón mientras tanto. */
+  recargando = false;
+
+  /**
+   * Vuelve a leer del servidor el mapa y los paneles, sin recargar la página.
+   *
+   * Los cambios hechos en otra pestaña —mover una visita en gestión de
+   * pendientes, procesar un Excel nuevo— no llegan solos a esta pantalla.
+   * Recargar la página los traía, pero perdía el mercaderista, el día y la
+   * semana que estuvieras mirando, y volvía a pedirlo todo desde cero.
+   */
+  recargarTodo(): void {
+    if (this.recargando) return;
+    this.recargando = true;
+    this.paneles?.forEach((panel) => panel.recargarDesdeServidor());
+    this.recargarAmbosMapas();
+    // Las peticiones van por su cuenta; el botón se libera en cuanto han
+    // salido todas, que es lo único que este componente sabe con certeza.
+    setTimeout(() => (this.recargando = false), 1200);
   }
 
   /** Tras mover/asignar una visita, refresca AMBOS mapas (leen el mismo Excel)

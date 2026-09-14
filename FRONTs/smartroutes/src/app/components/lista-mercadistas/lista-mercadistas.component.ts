@@ -189,7 +189,29 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
     return this.auth.isUserMercadistaScope() && this.mercadistas.length === 1;
   }
 
-  private cargarDatos(): void {
+  /**
+   * Vuelve a leer del servidor todo lo que enseña el panel, conservando lo que
+   * el usuario tiene seleccionado.
+   *
+   * Lo usa el botón «Actualizar» del mapa: los cambios hechos en otra pestaña
+   * —mover una visita en gestión de pendientes, procesar un Excel nuevo— no
+   * llegan solos, y hasta ahora la única forma de verlos era recargar la página
+   * entera, que además pierde el mercaderista y el día que estabas mirando.
+   */
+  recargarDesdeServidor(): void {
+    this.cargarDatos(true);
+    this.cargarEstadisticas();
+    if (this.auth.canEditMapaRutas()) {
+      this.cargarPendientes();
+    }
+    // El detalle del mercaderista abierto es lo que dibuja la ruta: sin esto se
+    // vería la lista actualizada y el recuadro de la derecha con datos viejos.
+    if (this.mercadistaActual) {
+      this.cargarDetalleMercadista(this.mercadistaActual);
+    }
+  }
+
+  private cargarDatos(conservarFiltroProvincia = false): void {
     this.cargando = true;
     this.errorApi = false;
     this.sinDatos = false;
@@ -201,7 +223,11 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
         this.mercadistas = mercadistas;
         this.provinciasDisponibles = payload.provincias || [];
         this.mercadistaProvincias = payload.mercadistaProvincias || {};
-        this.provinciaFiltroSelect = '';
+        // Al recargar a mano se conserva la provincia elegida; en la carga
+        // inicial se parte sin filtro.
+        if (!conservarFiltroProvincia) {
+          this.provinciaFiltroSelect = '';
+        }
         this.provinciasDropdownAbierto = false;
         this.cargando = false;
         if (this.mercadistas.length === 0) {

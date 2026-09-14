@@ -5,6 +5,7 @@ Contraseñas con BCrypt; tokens JWT.
 import hashlib
 import secrets
 import sys
+import time
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -22,6 +23,12 @@ from models import User
 from repositories.user_repository import UserRepository
 from repositories.refresh_token_repository import RefreshTokenRepository
 from repositories.login_attempt_repository import LoginAttemptRepository
+
+
+# Hash -> instante (monotónico) en que ese refresh token fue rotado. Ver
+# `_es_carrera_de_rotacion`: distingue dos peticiones legítimas simultáneas de
+# un replay tardío. Se limpia solo, y no sobrevive a un reinicio a propósito.
+_ROTADOS_RECIENTES: dict[str, float] = {}
 
 
 class AuthService:
@@ -149,6 +156,63 @@ class AuthService:
             },
         }
 
+    def _es_carrera_de_rotacion(self, token_hash: str) -> bool:
+        """¿Este token concreto se acaba de rotar, hace menos que la gracia?
+
+        Se consulta por el hash EXACTO del token presentado. Una primera versión
+        miraba si el usuario tenía algún token vigente reciente, y eso daba por
+        buena una reutilización tardía en cuanto la persona tuviera otra sesión
+        abierta en otro dispositivo: justo el caso que hay que rechazar.
+
+        El registro vive en memoria del proceso a propósito, no en la base:
+        - Es exacto y no exige tocar el esquema de una base en producción.
+        - Falla del lado seguro. Si el proceso se reinicia —o si en el futuro se
+          sirve con varios workers y la rotación quedó anotada en otro—, el
+          registro no está y se aplica la revocación completa de siempre. Se
+          pierde comodidad, nunca seguridad.
+        """
+        gracia = settings.JWT_REFRESH_ROTATION_GRACE_SECONDS
+        if gracia <= 0:
+            return False
+        ahora = time.monotonic()
+        # Limpieza perezosa: el registro solo guarda la ventana de gracia.
+        for h, momento in list(_ROTADOS_RECIENTES.items()):
+            if ahora - momento > gracia:
+                _ROTADOS_RECIENTES.pop(h, None)
+        momento = _ROTADOS_RECIENTES.get(token_hash)
+        return momento is not None and (ahora - momento) <= gracia
+
+    def _emitir_sesion(self, user_id: int) -> dict[str, Any]:
+        """Access + refresh nuevos para un usuario ya identificado.
+
+        En una carrera de rotación se emite un refresh PROPIO en vez de intentar
+        devolver el del sucesor: del sucesor solo se guarda el hash, así que su
+        valor en claro ya no existe. Las dos pestañas acaban con tokens válidos
+        e independientes, y ninguna pisa a la otra.
+        """
+        user = self.user_repo.get_by_id_with_role(user_id)
+        if not user or not user.is_active:
+            raise UnauthorizedError("Usuario no válido")
+
+        access_token, expires_in = self._create_access_token(user.id, user.role.name)
+        refresh_raw, _, _ = self._create_refresh_token(user.id)
+        self.session.commit()
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_raw,
+            "token_type": "Bearer",
+            "expires_in": expires_in,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role.name,
+                "assigned_mercadista": user.assigned_mercadista,
+                "assigned_route_dataset_id": getattr(user, "assigned_route_dataset_id", None),
+            },
+        }
+
     def refresh(self, refresh_token: str) -> dict[str, Any]:
         """Intercambia refresh token por nuevo access token (y opcionalmente nuevo refresh)."""
         if not refresh_token:
@@ -157,13 +221,19 @@ class AuthService:
         token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
         rt = self.refresh_repo.find_valid_by_hash_for_update(token_hash)
         if not rt:
-            # Detección de reuse/replay: si el hash coincide con un token YA
-            # revocado (rotado en un refresh anterior), alguien está
-            # reutilizando un refresh token viejo -> probable robo. Se revoca
-            # toda la familia de sesiones del usuario para forzar relogin en
-            # todos los dispositivos.
+            # El hash coincide con un token YA revocado (rotado en un refresh
+            # anterior). Hay dos causas posibles y conviene distinguirlas.
             reused = self.refresh_repo.find_by_hash(token_hash)
             if reused and reused.revoked:
+                if self._es_carrera_de_rotacion(token_hash):
+                    # Dos peticiones legítimas salieron a la vez con la misma
+                    # cookie —dos pestañas, o una recarga mientras el refresh
+                    # anterior viajaba—. Revocar aquí cerraba la sesión del
+                    # usuario justo al recargar la página.
+                    return self._emitir_sesion(reused.user_id)
+                # Sucesor viejo o inexistente: esto sí es un replay de un token
+                # robado. Se revoca la familia entera para forzar relogin en
+                # todos los dispositivos.
                 self.refresh_repo.revoke_all_for_user(reused.user_id)
                 self.session.commit()
                 print(
@@ -177,8 +247,11 @@ class AuthService:
         if not user or not user.is_active:
             raise UnauthorizedError("Usuario no válido")
 
-        # Opcional: revocar el refresh usado (rotación) y emitir uno nuevo
+        # Revocar el refresh usado (rotación) y emitir uno nuevo. Queda anotado
+        # el instante para que una segunda petición legítima con la misma cookie
+        # —otra pestaña, una recarga— no se confunda con un robo.
         rt.revoked = True
+        _ROTADOS_RECIENTES[token_hash] = time.monotonic()
         access_token, expires_in = self._create_access_token(user.id, user.role.name)
         refresh_raw, _, _ = self._create_refresh_token(user.id)
         self.session.commit()

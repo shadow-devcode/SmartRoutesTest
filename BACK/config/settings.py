@@ -68,6 +68,21 @@ class Settings:
     JWT_SECRET_KEY: str = _get_env("JWT_SECRET_KEY", _JWT_SECRET_PLACEHOLDER)
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = _get_env_int("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", 15)
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = _get_env_int("JWT_REFRESH_TOKEN_EXPIRE_DAYS", 7)
+
+    # Segundos durante los que un refresh token recién rotado sigue valiendo.
+    #
+    # La cookie de sesión es una sola y el navegador puede pedir dos refreshes a
+    # la vez: dos pestañas que se recargan, o una recarga mientras la petición
+    # anterior aún viajaba. La primera rota el token; la segunda llega con el
+    # viejo y, sin esta ventana, se interpretaba como robo y se cerraban TODAS
+    # las sesiones del usuario. Ese era el motivo de que recargar la página te
+    # devolviera al login.
+    #
+    # Pasada la ventana —o si el sucesor ya fue rotado a su vez, que es la
+    # huella de un replay real— se mantiene la revocación completa.
+    JWT_REFRESH_ROTATION_GRACE_SECONDS: int = _get_env_int(
+        "JWT_REFRESH_ROTATION_GRACE_SECONDS", 30
+    )
     JWT_ALGORITHM: str = _get_env("JWT_ALGORITHM", "HS256")
 
     # Fuerza bruta

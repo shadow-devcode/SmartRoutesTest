@@ -434,3 +434,34 @@
     padding: 6px 8px;
   }
 }
+
+/* Botón de actualizar: separado del grupo de vistas porque no cambia de vista,
+   sino que vuelve a pedir los datos. */
+.tab-button--recargar {
+  margin-left: auto;
+}
+
+.tab-button--recargar:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.tab-icono {
+  display: inline-block;
+}
+
+.tab-icono--girando {
+  animation: tab-girar 0.9s linear infinite;
+}
+
+@keyframes tab-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-icono--girando {
+    animation: none;
+  }
+}
