@@ -983,3 +983,49 @@
 .btn-quitar-orden:hover {
   background: #f1f5f9;
 }
+
+/* Botón de actualizar: solo el icono, porque la fila de filtros ya va cargada
+   de controles con texto. */
+.btn-recargar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-recargar:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.btn-recargar:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.btn-recargar__icono {
+  display: inline-block;
+}
+
+.btn-recargar__icono--girando {
+  animation: btn-recargar-girar 0.9s linear infinite;
+}
+
+@keyframes btn-recargar-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-recargar__icono--girando {
+    animation: none;
+  }
+}

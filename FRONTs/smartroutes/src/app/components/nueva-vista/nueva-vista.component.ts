@@ -204,6 +204,30 @@ export class NuevaVistaComponent implements OnInit {
     this.cargarPuntosSinCoordenadas();
   }
 
+  /** ¿Hay una recarga manual en curso? Deshabilita el botón mientras tanto. */
+  recargando = false;
+
+  /**
+   * Vuelve a pedir al servidor todo lo que enseña el dashboard.
+   *
+   * Los cambios hechos en otras pantallas —mover visitas en el calendario,
+   * procesar un Excel nuevo— no llegan solos aquí. Recargar la página los
+   * traía, pero perdía los filtros de mercaderista y provincia y el orden de
+   * las columnas; esto los conserva.
+   */
+  recargarDashboard(): void {
+    if (this.recargando) return;
+    this.recargando = true;
+    this.cargarEstadisticas();
+    this.cargarFrecuenciaPuntos();
+    this.cargarProvinciasPorcentaje();
+    this.cargarPendientes();
+    this.cargarPuntosSinCoordenadas();
+    // Las peticiones van por su cuenta; el botón se libera en cuanto han salido
+    // todas, que es lo único que este componente sabe con certeza.
+    setTimeout(() => (this.recargando = false), 1200);
+  }
+
   private cargarEstadisticas(): void {
     this.cargando = true;
     this.apiService.getEstadisticas().subscribe({

@@ -404,6 +404,18 @@
             title="Vuelve al orden original de la tabla">
             ✕ Quitar orden ({{ ordenes.length }})
           </button>
+          <!-- Trae los cambios hechos en otras pantallas sin recargar la
+               página, conservando filtros y orden. Solo el icono: va en una
+               fila ya cargada de controles. -->
+          <button
+            type="button"
+            class="btn-recargar"
+            (click)="recargarDashboard()"
+            [disabled]="recargando"
+            aria-label="Actualizar los datos del dashboard"
+            title="Actualizar los datos sin recargar la página">
+            <span class="btn-recargar__icono" [class.btn-recargar__icono--girando]="recargando">🔄</span>
+          </button>
         </div>
       </div>
       <div class="table-loading" *ngIf="cargandoFiltros">Cargando...</div>
