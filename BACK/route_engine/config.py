@@ -299,6 +299,25 @@ def max_servicio_overflow() -> int:
 # casco urbano.
 TRAVEL_ACCESO_FIJO_MIN = float(os.environ.get("TRAVEL_ACCESO_FIJO_MIN", "5"))
 
+# ---------------------------------------------------------------------------
+# COSTE DE DESPLAZAMIENTO: LA REGLA DE LA EMPRESA
+# ---------------------------------------------------------------------------
+# Cada medio kilómetro recorrido cuesta tres minutos, es decir 6 min/km.
+# Es la regla con la que el negocio planifica, y sustituye al modelo de
+# velocidades por tramo que traía el motor: aquel calculaba 1 km en 8,3 min
+# (5 min fijos de acceso + trayecto a 18 km/h) pero 20 km en 44 min, mientras
+# que la regla de la empresa da 120 min para esos mismos 20 km.
+#
+# No lleva tiempo fijo de acceso aparte: 6 min/km ya es una velocidad de 10
+# km/h, muy por debajo de la de circulación, precisamente porque absorbe
+# aparcar, localizar el punto y entrar.
+#
+# Se aplica de forma proporcional, no por bloques empezados: así el coste
+# crece de forma continua con la distancia. Con bloques, dos destinos a 0,6 y
+# a 1,0 km costarían lo mismo y el optimizador podría preferir el más lejano.
+MINUTOS_POR_TRAMO_VIAJE = float(os.environ.get("MINUTOS_POR_TRAMO_VIAJE", "3"))
+KM_POR_TRAMO_VIAJE = float(os.environ.get("KM_POR_TRAMO_VIAJE", "0.5"))
+
 # (hasta_km, velocidad_kmh). El último tramo aplica de ahí en adelante.
 VELOCIDAD_POR_TRAMO_KMH = (
     (2.0, 18.0),     # casco urbano denso: semáforos, tráfico
@@ -334,18 +353,42 @@ def travel_estimado_por_visita_plan_min() -> int:
 # relajado y el extremo se usan en las pasadas de relleno y rescate cuando
 # quedan huecos de jornada por llenar.
 #
-# Con el modelo de viaje actual estos minutos equivalen a un alcance de:
-#   30 min ->  6.9 km   45 min -> 13.9 km   60 min -> 21.6 km  (línea recta)
-# Los valores anteriores (20/35/50) daban 3.9 / 9.1 / 16.3 km. Un alcance de
-# 3.9 km es demasiado corto frente al radio de zona (30 km): al buscar con qué
-# llenar el resto del día, el motor no veía ningún punto y la jornada se
-# quedaba con una sola visita y media jornada libre (910 jornadas así en la
-# salida real). El desplazamiento supone solo el 7,6% del tiempo total, así que
-# hay margen de sobra: cambiar 30 min de carretera por una visita de 240 min es
-# un buen negocio. El tope combinado de 480 min/día sigue acotándolo todo.
-MAX_TRAVEL_MINUTES = int(os.environ.get("MAX_TRAVEL_MINUTES", "30"))
-MAX_TRAVEL_MINUTES_RELAXED = int(os.environ.get("MAX_TRAVEL_MINUTES_RELAXED", "45"))
-MAX_TRAVEL_MINUTES_EXTREME = int(os.environ.get("MAX_TRAVEL_MINUTES_EXTREME", "60"))
+# Lo que acotan de verdad es el ALCANCE GEOGRÁFICO: hasta dónde tiene sentido
+# ir a buscar la siguiente visita. Por eso se expresan en kilómetros y se
+# convierten a minutos con la regla vigente (4 min por cada 0,5 km): si el
+# coste del viaje cambia, el alcance no debe cambiar con él.
+#
+# Antes estaban escritos directamente en minutos (30/45/60) con un modelo de
+# velocidades que los traducía a unos 10/14/20 km. Al pasar a la regla de la
+# empresa, esos mismos 30 minutos pasaron a significar 3,75 km: el motor dejó
+# de ver puntos con los que llenar el día y la cobertura cayó del 96,7% al
+# 83,8%, con 616 visitas sin colocar. El alcance no había cambiado en la
+# realidad, solo la forma de contarlo.
+ALCANCE_TRAMO_KM = float(os.environ.get("ALCANCE_TRAMO_KM", "10"))
+ALCANCE_TRAMO_RELAJADO_KM = float(os.environ.get("ALCANCE_TRAMO_RELAJADO_KM", "15"))
+ALCANCE_TRAMO_EXTREMO_KM = float(os.environ.get("ALCANCE_TRAMO_EXTREMO_KM", "20"))
+
+
+def _minutos_de_alcance(km: float) -> int:
+    """Minutos que cuesta ese alcance con la regla de viaje vigente."""
+    if KM_POR_TRAMO_VIAJE <= 0:
+        return 0
+    return int(round(km / KM_POR_TRAMO_VIAJE * MINUTOS_POR_TRAMO_VIAJE))
+
+
+MAX_TRAVEL_MINUTES = int(
+    os.environ.get("MAX_TRAVEL_MINUTES", str(_minutos_de_alcance(ALCANCE_TRAMO_KM)))
+)
+MAX_TRAVEL_MINUTES_RELAXED = int(
+    os.environ.get(
+        "MAX_TRAVEL_MINUTES_RELAXED", str(_minutos_de_alcance(ALCANCE_TRAMO_RELAJADO_KM))
+    )
+)
+MAX_TRAVEL_MINUTES_EXTREME = int(
+    os.environ.get(
+        "MAX_TRAVEL_MINUTES_EXTREME", str(_minutos_de_alcance(ALCANCE_TRAMO_EXTREMO_KM))
+    )
+)
 
 # Dias laborales
 DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]

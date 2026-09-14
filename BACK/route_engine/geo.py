@@ -122,43 +122,29 @@ def km_por_carretera(lat1, lon1, lat2, lon2):
 
 def minutos_viaje_desde_km(dist_km):
     """
-    Minutos de desplazamiento para una distancia YA corregida por carretera.
+    Minutos de desplazamiento para una distancia por carretera.
 
     Fuente ÚNICA de verdad del coste de viaje del motor. Antes había dos
-    modelos que no coincidían (hasta 15x de diferencia entre el pre-filtro y
-    el cálculo real), lo que hacía que se aceptaran candidatos que el cálculo
+    modelos que no coincidían (hasta 15x de diferencia entre el pre-filtro y el
+    cálculo real), lo que hacía que se aceptaran candidatos que el cálculo
     definitivo rechazaba y que la jornada se inflara artificialmente.
 
-    Modelo: trayecto + un fijo de acceso (estacionar, localizar el punto,
-    entrar). Cada tramo de distancia se recorre a SU propia velocidad y se
-    acumula, como los tramos de un impuesto: los primeros 2 km siempre a
-    velocidad de casco urbano, los siguientes 8 a velocidad urbana, etc. La
-    velocidad crece con la distancia porque un trayecto largo usa vías rápidas.
+    La regla es la del negocio: cada medio kilómetro recorrido cuesta cuatro
+    minutos (ver `MINUTOS_POR_TRAMO_VIAJE` y `KM_POR_TRAMO_VIAJE`). Sustituye al
+    modelo de velocidades por tramo que había antes, que calculaba 1 km en
+    8,3 min pero 20 km en 44; con esta regla esos 20 km cuestan 160 min.
 
-    Acumular por tramos (en vez de elegir una única velocidad según la
-    distancia total) es lo que mantiene la función ESTRICTAMENTE CRECIENTE.
-    Con velocidad única había un salto en cada frontera —10 km costaban 29 min
-    y 10.1 km solo 20— y el optimizador de rutas habría preferido el punto más
-    lejano por ser "más barato".
+    Se aplica proporcionalmente y no por bloques empezados, de modo que el coste
+    crece de forma continua: con bloques, dos destinos a 0,6 y a 1,0 km
+    costarían lo mismo y el optimizador podría preferir el más lejano.
     """
-    from route_engine.config import TRAVEL_ACCESO_FIJO_MIN, VELOCIDAD_POR_TRAMO_KMH
+    from route_engine.config import KM_POR_TRAMO_VIAJE, MINUTOS_POR_TRAMO_VIAJE
 
     if dist_km is None or dist_km <= 0:
         return 0.0
-
-    minutos = TRAVEL_ACCESO_FIJO_MIN
-    restante = float(dist_km)
-    desde_km = 0.0
-    for hasta_km, kmh in VELOCIDAD_POR_TRAMO_KMH:
-        if restante <= 0:
-            break
-        ancho = hasta_km - desde_km
-        tramo = min(restante, ancho)
-        minutos += (tramo / kmh) * 60.0
-        restante -= tramo
-        desde_km = hasta_km
-
-    return minutos
+    if KM_POR_TRAMO_VIAJE <= 0:
+        return 0.0
+    return float(dist_km) / KM_POR_TRAMO_VIAJE * MINUTOS_POR_TRAMO_VIAJE
 
 
 def estimar_minutos_viaje(lat1, lon1, lat2, lon2):

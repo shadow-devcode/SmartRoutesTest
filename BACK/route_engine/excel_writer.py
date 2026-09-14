@@ -39,7 +39,11 @@ from route_engine.excel_reader import (
     minutos_normalizados,
     parse_coordenada_a_float,
 )
-from route_engine.geo import normalizar_coord_geografica, haversine_km
+from route_engine.geo import (
+    haversine_km,
+    minutos_viaje_desde_km,
+    normalizar_coord_geografica,
+)
 from route_engine.mapbox import (
     _geocode_cache,
     calcular_tiempo_entre,
@@ -645,7 +649,7 @@ def recalcular_tramos_por_carretera(horarios_df):
     Si no hay token de Mapbox, o la consulta falla, la jornada se queda con su
     estimación: mejor un número aproximado que ninguno.
 
-    Devuelve (jornadas_actualizadas, jornadas_totales).
+    Devuelve (jornadas_actualizadas, jornadas_totales, jornadas_que_se_pasan).
     """
     columnas = {"Mercadista", "Día", "Fecha", "Latitud", "Longitud", "Orden Ruta"}
     if horarios_df.empty or not columnas.issubset(set(horarios_df.columns)):
@@ -654,6 +658,8 @@ def recalcular_tramos_por_carretera(horarios_df):
     col_km = "kilometros entre sucurlas (km)"
     col_viaje = "Tiempo entre sucursal (min)"
     actualizadas = 0
+    tarde = 0
+    limite = hora_fin_jornada()
     grupos = list(horarios_df.groupby(["Mercadista", "Fecha", "Día"], sort=False))
 
     for _clave, grupo in grupos:
@@ -679,14 +685,26 @@ def recalcular_tramos_por_carretera(horarios_df):
         # cero y el tramo i-1 corresponde a la parada i.
         horarios_df.at[indices[0], col_km] = 0.0
         horarios_df.at[indices[0], col_viaje] = 0.0
-        for posicion, (minutos, km) in enumerate(tramos, start=1):
+        for posicion, (_minutos_mapbox, km) in enumerate(tramos, start=1):
             horarios_df.at[indices[posicion], col_km] = km
-            horarios_df.at[indices[posicion], col_viaje] = minutos
+            # Los kilómetros salen de la carretera real; los minutos, de la
+            # regla de la empresa (4 min por cada 0,5 km). La duración que
+            # devuelve Mapbox es la de un coche en tráfico libre y no recoge
+            # aparcar, localizar el punto ni entrar, que es donde se va el
+            # tiempo de una visita comercial.
+            horarios_df.at[indices[posicion], col_viaje] = round(
+                minutos_viaje_desde_km(km), 2
+            )
         actualizadas += 1
 
-        _recomponer_horarios_del_dia(horarios_df, indices)
+        # Con los kilómetros reales una jornada puede estirarse más allá de lo
+        # que se planificó. No se recorta: eso escondería el problema. Se
+        # cuentan para avisar, que es lo que permite decidir qué hacer con
+        # ellas.
+        if _recomponer_horarios_del_dia(horarios_df, indices) > limite:
+            tarde += 1
 
-    return actualizadas, len(grupos)
+    return actualizadas, len(grupos), tarde
 
 
 def _recomponer_horarios_del_dia(horarios_df, indices):
@@ -697,14 +715,14 @@ def _recomponer_horarios_del_dia(horarios_df, indices):
     cueste ahora veinte minutos más.
 
     La hora de inicio de la jornada se respeta; lo que se recalcula es el
-    encadenamiento a partir de ella.
+    encadenamiento a partir de ella. Devuelve el minuto en que termina.
     """
     if "Horario" not in horarios_df.columns:
         return
     primera = str(horarios_df.at[indices[0], "Horario"] or "").strip()
     inicio = _minutos_desde_horario(primera)
     if inicio is None:
-        return
+        return 0
 
     reloj = inicio
     for posicion, idx in enumerate(indices):
@@ -723,6 +741,8 @@ def _recomponer_horarios_del_dia(horarios_df, indices):
             f"{int(fin) // 60:02d}:{int(fin) % 60:02d}"
         )
         reloj = fin
+
+    return reloj
 
 
 def _minutos_desde_horario(texto):
@@ -1388,13 +1408,20 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
     # motor planifica con una estimación para poder comparar miles de
     # combinaciones sin salir a la red; lo que se entrega debe ser lo que se
     # recorre de verdad.
-    jornadas_ok, jornadas_total = recalcular_tramos_por_carretera(horarios_df)
+    jornadas_ok, jornadas_total, jornadas_tarde = recalcular_tramos_por_carretera(horarios_df)
     if jornadas_total:
         if jornadas_ok:
             print(
                 f"      -> Desplazamiento por carretera: {jornadas_ok} de "
                 f"{jornadas_total} jornada(s) recalculadas con distancias reales"
             )
+            if jornadas_tarde:
+                limite_txt = f"{hora_fin_jornada() // 60:02d}:{hora_fin_jornada() % 60:02d}"
+                print(
+                    f"      [!] {jornadas_tarde} jornada(s) terminan después de las "
+                    f"{limite_txt} con los tiempos reales de carretera. No se "
+                    f"recortan: revisar si esas visitas deben pasar a otro día."
+                )
         else:
             print(
                 "      [!] No se pudo consultar la distancia por carretera "

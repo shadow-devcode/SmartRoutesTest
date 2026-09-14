@@ -96,7 +96,21 @@ export class AuthService {
         .subscribe();
     });
 
-    this.tryRestoreSession();
+    // La restauración sale del constructor a propósito.
+    //
+    // `tryRestoreSession` hace un POST, y el interceptor HTTP empieza con
+    // `inject(AuthService)`. Lanzarlo aquí dentro pide al inyector un servicio
+    // que todavía se está construyendo: Angular corta con una dependencia
+    // circular, la petición nunca llega a salir y el `catchError` la traduce a
+    // «no hay sesión». Ese era el motivo de que al recargar la página se
+    // volviera al login con la cookie intacta: en el servidor no aparecía
+    // ninguna llamada a /auth/refresh porque el navegador jamás la hacía.
+    //
+    // Con el `setTimeout` el constructor termina antes, el servicio queda
+    // registrado en el inyector y el interceptor puede inyectarlo sin ciclo.
+    // El guard no se adelanta: espera a `sessionReady$`, que solo emite cuando
+    // la restauración ha terminado.
+    setTimeout(() => this.tryRestoreSession());
   }
 
   /**
