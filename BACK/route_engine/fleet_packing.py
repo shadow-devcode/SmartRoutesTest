@@ -331,18 +331,22 @@ def planificar_flota_por_capacidad(
     }
     tope_dia_plan = cuota_dia()
 
-    # --- 2) Orden: first-fit decreasing, tiendas juntas --------------------
-    # Se ordena por carga del LOCAL y, dentro de él, por carga de la fila. Así
-    # las filas de una misma tienda se procesan seguidas y tienden a caer en el
-    # mismo mercaderista sin necesidad de forzarlo (cuando no caben, se separan,
-    # que es exactamente lo que hace el plan real con 48 de sus 362 locales).
+    # --- 2) Orden de siembra: de fuera hacia dentro ------------------------
+    # Las zonas nacen en los puntos más alejados del centro de masa del mapa.
+    # Un punto periférico tiene pocos vecinos: si se deja para el final ya no
+    # cabe en ninguna zona y abre una para él solo.
     carga_local = defaultdict(float)
     for pk, carga in carga_punto.items():
         carga_local[afinidad_punto[pk]] += carga
 
+    lat_media = sum(coords_punto[pk][0] for pk in carga_punto) / len(carga_punto)
+    lon_media = sum(coords_punto[pk][1] for pk in carga_punto) / len(carga_punto)
     orden = sorted(
         carga_punto.keys(),
-        key=lambda pk: (-carga_local[afinidad_punto[pk]], afinidad_punto[pk], -carga_punto[pk]),
+        key=lambda pk: (
+            -haversine_km(coords_punto[pk][0], coords_punto[pk][1], lat_media, lon_media),
+            afinidad_punto[pk],
+        ),
     )
 
     # --- 3) Empaquetado: sembrar y llenar ----------------------------------
@@ -441,19 +445,14 @@ def planificar_flota_por_capacidad(
                 )
                 if patron is None:
                     continue
-                # Primero las filas del mismo local (misma tienda, mismo
-                # mercaderista siempre que quepa). Después POR CERCANÍA, en
-                # bandas de 5 km, y dentro de cada banda lo más grande que
-                # quepa. Antes mandaba el tamaño y la distancia solo
-                # desempataba: la zona se llevaba el punto más pesado de su
-                # radio aunque estuviera a 50 km, y salían rutas con paradas a
-                # 147 km entre sí. Con bandas se llena igual —misma flota— y la
-                # dispersión mediana baja de 44,5 a 26 km.
+                # Manda la CERCANÍA: de los puntos que caben, entra siempre el
+                # más próximo a los que la zona ya tiene. Las filas del mismo
+                # local van primero —un punto no se parte entre dos personas si
+                # cabe entero— y la carga solo desempata a igual distancia.
                 misma_tienda = 0 if afinidad_punto[pk] in {
                     afinidad_punto[p] for p in caja.puntos
                 } else 1
-                banda = round(caja.distancia_a(coords_nuevas) / 5)
-                clave = (misma_tienda, banda, -carga)
+                clave = (misma_tienda, caja.distancia_a(coords_nuevas), -carga)
                 if mejor_clave is None or clave < mejor_clave:
                     mejor, mejor_clave, mejor_patron = pk, clave, patron
 
