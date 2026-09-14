@@ -14,6 +14,11 @@ from exceptions.handlers import BadRequestError, ForbiddenError, UnauthorizedErr
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
+# Nombre de la cookie. Path=/ para que el navegador la envíe en cualquier ruta
+# del origen, también al restaurar la sesión tras recargar la página.
+_COOKIE_NAME = "rt"
+_COOKIE_PATH = "/"
+
 
 def _get_client_ip() -> str | None:
     """
