@@ -795,6 +795,13 @@
           (click)="confirmarDialogo()">
           {{ calConfirmacion.aceptar }}
         </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-brand"
+          *ngIf="calConfirmacion.alternativa"
+          (click)="confirmarAlternativa()">
+          {{ calConfirmacion.alternativa.texto }}
+        </button>
       </div>
     </div>
   </div>

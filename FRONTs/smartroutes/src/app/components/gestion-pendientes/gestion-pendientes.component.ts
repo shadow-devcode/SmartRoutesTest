@@ -227,6 +227,8 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     aceptar: string;
     peligro: boolean;
     accion: () => void;
+    /** Segunda respuesta posible, además de aceptar y cancelar. */
+    alternativa?: { texto: string; accion: () => void };
   } | null = null;
   calGuardando = false;
   calError = '';
@@ -627,7 +629,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     }
 
     if (pendiente) {
-      this.asignarPendienteADia(pendiente, dia, semana);
+      this.ofrecerSemanas(pendiente, dia, semana);
       return;
     }
     if (!fila || (fila.dia === dia && fila.fecha === semana)) return;
@@ -711,7 +713,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
 
     const posicion = Number(destino.orden_ruta) || 1;
     if (pendiente) {
-      this.asignarPendienteADia(pendiente, destino.dia, destino.fecha, posicion);
+      this.ofrecerSemanas(pendiente, destino.dia, destino.fecha, posicion);
       return;
     }
     if (!fila || fila === destino) return;
@@ -794,6 +796,56 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
    * faltan doce no cabe de golpe en un día, y colocarlas de una en una es lo
    * que permite repartirlas por la semana.
    */
+  /**
+   * Un punto con visitas pendientes en varias semanas suele ir al mismo día en
+   * todas: se ofrece colocarlo de una vez en vez de arrastrarlo cuatro veces.
+   * Si solo le falta en una semana, se coloca sin preguntar.
+   */
+  private ofrecerSemanas(
+    punto: PuntoPendiente,
+    dia: string,
+    semana: string,
+    orden?: number,
+  ): void {
+    const semanas = [...(punto.semanas_pendientes ?? [])].sort();
+    if (semanas.length <= 1) {
+      this.asignarPendienteADia(punto, dia, semana, orden);
+      return;
+    }
+    // Fuera del `drop`: montar el cuadro dentro deja el puntero enganchado.
+    setTimeout(() => {
+      this.pedirConfirmacion(
+        `¿En cuántas semanas va ${punto.descripcion}?`,
+        `Le faltan visitas en ${semanas.length} semanas. Puedes ponerlo el ` +
+          `${dia.toLowerCase()} solo en la ${semana}, o el ${dia.toLowerCase()} de ` +
+          `las ${semanas.length} de golpe.`,
+        `Solo la ${semana}`,
+        () => this.asignarPendienteADia(punto, dia, semana, orden),
+        false,
+        {
+          texto: `Las ${semanas.length} semanas`,
+          accion: () => this.asignarPendienteEnSemanas(punto, dia, semanas, semana, orden),
+        },
+      );
+    });
+  }
+
+  /** Coloca el punto el mismo día en cada semana donde le falten visitas. */
+  private asignarPendienteEnSemanas(
+    punto: PuntoPendiente,
+    dia: string,
+    semanas: string[],
+    semanaArrastrada: string,
+    orden?: number,
+  ): void {
+    for (const semana of semanas) {
+      // El orden elegido solo vale para la semana donde se soltó; en las demás
+      // el día tiene su propia lista y la visita va al final.
+      const posicion = semana === semanaArrastrada ? orden : undefined;
+      this.asignarPendienteConfirmado(punto, dia, semana, false, posicion);
+    }
+  }
+
   private asignarPendienteADia(
     punto: PuntoPendiente,
     dia: string,
@@ -940,9 +992,17 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     aceptar: string,
     accion: () => void,
     peligro = false,
+    alternativa?: { texto: string; accion: () => void },
   ): void {
-    this.calConfirmacion = { titulo, detalle, aceptar, peligro, accion };
+    this.calConfirmacion = { titulo, detalle, aceptar, peligro, accion, alternativa };
     this.cdr.markForCheck();
+  }
+
+  confirmarAlternativa(): void {
+    const accion = this.calConfirmacion?.alternativa?.accion;
+    this.calConfirmacion = null;
+    this.cdr.markForCheck();
+    accion?.();
   }
 
   /**
