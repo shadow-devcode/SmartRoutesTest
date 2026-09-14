@@ -267,6 +267,18 @@ def ejecutar_red_seguridad(state):
             })
             continue
         carga_por_merc[merc] += carga_jornada(tiempo_min, mejor_travel_nuevo)
+        # Provincia, ciudad y calle salen del cache de geocodificación, igual
+        # que en el resto de inserciones. Escribirlas vacías dejaba visitas sin
+        # provincia en el dashboard aunque el punto la tuviera en sus otras
+        # visitas.
+        try:
+            clave_coord = (
+                round(float(inst.get("lat") or 0), 6),
+                round(float(inst.get("lon") or 0), 6),
+            )
+        except (TypeError, ValueError):
+            clave_coord = None
+        provincia, ciudad, calle = _geocode_cache.get(clave_coord, ("", "", ""))
         state.all_day_summaries.append({
             "Mercadista": merc,
             "Día": dia_asig,
@@ -274,9 +286,9 @@ def ejecutar_red_seguridad(state):
             "Descripción": inst.get("descripcion", ""),
             "Latitud": inst.get("lat"),
             "Longitud": inst.get("lon"),
-            "PROVINCIA": "",
-            "CIUDAD": "",
-            "CALLE": "",
+            "PROVINCIA": provincia,
+            "CIUDAD": ciudad,
+            "CALLE": calle,
             "Tiempo Servicio (min)": tiempo_min,
             "Duración (hh:mm)": format_duracion(tiempo_min),
             "Tiempo entre sucursal (min)": 0.0,
