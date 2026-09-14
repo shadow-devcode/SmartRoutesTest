@@ -886,7 +886,14 @@ def _procesar_minoristas(
     # con visitas cortas. Al revés —como estaba— las jornadas se llenaban de
     # visitas cortas y las de 240-480 min ya no cabían en ningún día, así que
     # abrían jornada propia y dejaban el resto del día vacío.
-    visit_instances.sort(key=lambda x: -float(x.get("tiempo") or 0))
+    # Primero la FRECUENCIA, después la duración. Cuando no cabe todo, lo que
+    # se queda fuera debe ser lo que menos veces se visita: perder una visita de
+    # un punto que se ve veinte veces al mes rompe su ritmo; perder una de un
+    # punto de frecuencia 4 cuesta mucho menos. Dentro de cada frecuencia sigue
+    # mandando la duración (first-fit decreasing), que es lo que empaqueta bien.
+    visit_instances.sort(
+        key=lambda x: (-int(x.get("frecuencia_mes") or 0), -float(x.get("tiempo") or 0))
+    )
     print("      -> Ordenamiento completado\n")
     _notify(38, "Organizando y priorizando las visitas...")
 

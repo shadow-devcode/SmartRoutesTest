@@ -218,7 +218,12 @@ def ejecutar_pase_rescate(state):
         # admiten, así que se colocan primero (first-fit decreasing). Al revés,
         # las cortas se comían los pocos huecos grandes y las largas ya no
         # entraban en ningún sitio.
-        pares.sort(key=lambda par: -float(par[0].get("tiempo") or 0))
+        pares.sort(
+            key=lambda par: (
+                -int(par[0].get("frecuencia_mes") or 0),
+                -float(par[0].get("tiempo") or 0),
+            )
+        )
 
         for inst, semana in pares:
             asignado = False

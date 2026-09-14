@@ -45,6 +45,9 @@ def recalcular_tramos_por_carretera(horarios_df):
 
     col_km = "kilometros entre sucurlas (km)"
     col_viaje = "Tiempo entre sucursal (min)"
+    # Cuántas visitas tiene cada punto en todo el mes: es su frecuencia real y
+    # sirve para decidir a quién se retira cuando un día no cabe.
+    frecuencia = _frecuencia_por_punto(horarios_df)
     actualizadas = 0
     tarde = 0
     retiradas: list = []
@@ -91,7 +94,7 @@ def recalcular_tramos_por_carretera(horarios_df):
         # retiran —las últimas de la ruta, que son las que sobran— y vuelven a
         # pendientes. Dejarlas escritas sería entregar un plan que no se puede
         # cumplir; recortar solo la hora sería mentir sobre él.
-        sobrantes = _visitas_que_no_caben_en_el_dia(horarios_df, indices)
+        sobrantes = _visitas_que_no_caben_en_el_dia(horarios_df, indices, frecuencia)
         if sobrantes:
             retiradas.extend(sobrantes)
             indices = [i for i in indices if i not in set(sobrantes)]
@@ -106,13 +109,42 @@ def recalcular_tramos_por_carretera(horarios_df):
     return actualizadas, len(grupos), tarde, retiradas
 
 
-def _visitas_que_no_caben_en_el_dia(horarios_df, indices):
+def _frecuencia_por_punto(horarios_df):
+    """{(descripción, lat, lon): visitas del mes} a partir de la agenda."""
+    if horarios_df.empty:
+        return {}
+    claves = [
+        (str(d).strip(), round(float(la or 0), 6), round(float(lo or 0), 6))
+        for d, la, lo in zip(
+            horarios_df["Descripción"], horarios_df["Latitud"], horarios_df["Longitud"]
+        )
+    ]
+    conteo: dict = {}
+    for clave in claves:
+        conteo[clave] = conteo.get(clave, 0) + 1
+    return conteo
+
+
+def _clave_de_fila(horarios_df, idx):
+    try:
+        return (
+            str(horarios_df.at[idx, "Descripción"]).strip(),
+            round(float(horarios_df.at[idx, "Latitud"] or 0), 6),
+            round(float(horarios_df.at[idx, "Longitud"] or 0), 6),
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _visitas_que_no_caben_en_el_dia(horarios_df, indices, frecuencia=None):
     """Índices de las visitas que sobran del día una vez medido de verdad.
 
     El reloj de la jornada es servicio más desplazamiento. Con la distancia
-    estimada el día cuadraba; con la de carretera puede no caber, y entonces
-    hay que quitar visitas. Se quitan las ÚLTIMAS de la ruta: son las que menos
-    trastocan el resto del día, porque lo anterior ya estaba encadenado.
+    estimada el día cuadraba; con la de carretera puede no caber. Se retira
+    primero lo de MENOR frecuencia: perder una visita de un punto que se ve
+    veinte veces al mes rompe su ritmo, y perder una de uno que se ve cuatro
+    cuesta mucho menos. A igual frecuencia se quita la última de la ruta, que
+    es la que menos trastoca lo ya encadenado.
     """
     from route_engine.config import tope_jornada_real
 
@@ -127,8 +159,14 @@ def _visitas_que_no_caben_en_el_dia(horarios_df, indices):
     if total <= tope:
         return []
 
+    frecuencia = frecuencia or {}
+    orden_retiro = sorted(
+        range(len(indices)),
+        key=lambda pos: (frecuencia.get(_clave_de_fila(horarios_df, indices[pos]), 0), -pos),
+    )
     sobrantes = []
-    for idx in reversed(indices):
+    for pos in orden_retiro:
+        idx = indices[pos]
         if total <= tope or len(indices) - len(sobrantes) <= 1:
             break
         try:
