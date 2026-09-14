@@ -1000,6 +1000,10 @@ def _sumar_tiempo_entre_sucursal_en_servicio(ws) -> None:
 # Nombre de la hoja que se lee primero al abrir el Excel descargado.
 SHEET_RUTAS_SEMANA = "Rutas_Semana"
 
+# Hojas que el sistema necesita en su copia pero que no se entregan al
+# descargar: no aportan nada a quien lee el rutero.
+HOJAS_SOLO_INTERNAS = ("Config_Procesamiento", "Categorias")
+
 
 def _construir_hoja_rutas_semana(wb, abs_path: str) -> None:
     """
@@ -1214,6 +1218,16 @@ def build_horarios_excel_download_bytes(abs_path: str) -> BytesIO:
         _construir_hoja_rutas_semana(wb, abs_path)
     except Exception as exc:
         print(f"      [!] No se pudo construir '{SHEET_RUTAS_SEMANA}': {exc}")
+
+    # Hojas internas fuera de la copia que se descarga. Las usa el sistema
+    # —`Config_Procesamiento` guarda con qué parámetros se generó el rutero y
+    # `Categorias` alimenta las consultas—, pero a quien recibe el archivo no le
+    # dicen nada. Se quitan solo del libro en memoria: el del sistema sigue
+    # intacto, así que la app las sigue leyendo.
+    for hoja_interna in HOJAS_SOLO_INTERNAS:
+        if hoja_interna in wb.sheetnames:
+            del wb[hoja_interna]
+
     bio = BytesIO()
     wb.save(bio)
     bio.seek(0)
