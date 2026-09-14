@@ -1,0 +1,386 @@
+/* Avisos del resultado y descarga del Excel. */
+
+.alert-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.alert-body {
+  flex: 1;
+}
+
+.alert-body strong {
+  display: block;
+  font-size: 15px;
+  color: #c53030;
+  margin-bottom: 4px;
+}
+
+.alert-body p {
+  font-size: 14px;
+  color: #742a2a;
+  margin: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   Botones
+   ════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 26px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: filter 0.15s, transform 0.1s;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-secondary {
+  background: #edf2f7;
+  color: #4a5568;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #718096;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-execute {
+  background: linear-gradient(135deg, #48bb78, #2f855a);
+  color: #fff;
+  padding: 14px 36px;
+  font-size: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(72, 187, 120, 0.35);
+}
+
+.btn-execute:hover {
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.45);
+}
+
+.btn-download {
+  background: linear-gradient(135deg, #2b6cb0, #2c5282);
+  color: #fff;
+  padding: 14px 36px;
+  font-size: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(43, 108, 176, 0.35);
+  text-decoration: none;
+}
+
+.btn-download:hover {
+  box-shadow: 0 6px 20px rgba(43, 108, 176, 0.5);
+  filter: brightness(1.1);
+}
+
+.btn-download:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.descarga-error {
+  margin-top: 12px;
+  color: #c53030;
+  font-size: 14px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Spinner ────────────────────────────────────────────── */
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ════════════════════════════════════════════════════════
+   Responsive
+   ════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .page-header h1 { font-size: 26px; }
+  .section-card { padding: 20px; }
+  .drop-zone { padding: 32px 16px; }
+  .btn-execute { width: 100%; }
+  .success-actions { flex-direction: column; align-items: stretch; }
+  .success-actions .btn { text-align: center; }
+}
+
+/* ════════════════════════════════════════════════════════
+   Configuración del procesamiento: formulario de desplegables
+   ════════════════════════════════════════════════════════ */
+/* Tres bloques con título, en el orden en que se decide: qué trabajo entra,
+   cómo se llena la jornada y cómo se guardará. Antes eran cinco desplegables
+   seguidos y el quinto se estiraba solo a lo ancho de la tarjeta. */
+.config-grupo {
+  margin: 1.4rem 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.config-grupo:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+
+.config-grupo__titulo {
+  margin: 0 0 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+/* Rejilla: todos los campos con el mismo ancho, salten o no de línea. */
+.config-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  align-items: end;
+  gap: 0.9rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.config-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* El nombre va suelto: es texto libre, no una elección. */
+.config-nombre {
+  max-width: 26rem;
+}
+
+.config-fila__label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.config-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: #1e293b;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+input.config-select {
+  cursor: text;
+}
+
+.config-select:hover {
+  border-color: #cbd5e1;
+}
+
+.config-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* ── Cadenas a planificar (multi-selección) ─────────────────────────────── */
+.cadenas {
+  margin: 0;
+}
+
+.cadenas__cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  max-width: 40rem;
+}
+
+.cadenas__conteo {
+  font-weight: 500;
+  color: #64748b;
+}
+
+.cadenas__acciones {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cadenas__accion {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.cadenas__accion:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.cadenas__lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+
+.cadena-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.cadena-chip:hover {
+  border-color: #94a3b8;
+  background: #fff;
+}
+
+.cadena-chip--on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.cadena-chip__marca {
+  display: inline-block;
+  width: 0.85rem;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* ── Grupos de cadenas (multicanal) ─────────────────────────────────────── */
+.grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 40rem;
+}
+
+.grupo {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #f8fafc;
+}
+
+.grupo__cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.55rem;
+}
+
+.grupo__nombre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.grupo__conteo {
+  flex: 1;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.grupo__quitar {
+  border: none;
+  background: none;
+  padding: 0 0.2rem;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.grupo__quitar:hover:not(:disabled) {
+  color: #b91c1c;
+}
+
+.grupo__quitar:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Cadena que ya vive en otro grupo: se ve, pero apagada. */
+.cadena-chip--ajena {
+  opacity: 0.45;
+}
+
+.grupos__resto {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.cadenas__ayuda {
+  margin: 0.6rem 0 0;
+  max-width: 40rem;
+  font-size: 0.82rem;
+  color: #b45309;
+}
+
+.config-alerta {
+  max-width: 34rem;
+  margin: 0.8rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+@media (max-width: 640px) {
+  .config-form {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,292 @@
+/* Sección de pendientes: tarjeta plegable, cabecera y listado. */
+
+.section--pendientes {
+  padding: 8px 16px 16px;
+}
+
+.filter-card--pendientes {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--sr-radius);
+  padding: 14px 16px 16px;
+  box-shadow: 0 1px 2px rgba(202, 138, 4, 0.08);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.filter-card--pendientes.filter-card--collapsed {
+  padding-bottom: 14px;
+}
+
+.filter-card__head--pendientes {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-card__head--pendientes:hover .filter-card__title {
+  color: #92400e;
+}
+
+.pendientes-head__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pendientes-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d97706;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  margin-left: 6px;
+  min-width: 22px;
+}
+
+.pendientes-badge--zero {
+  background: #d1d5db;
+  color: #4b5563;
+}
+
+.pendientes-content {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pendientes-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pendientes-filters-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Etiqueta encima del control: en línea, «Buscar por nombre» se comía el ancho
+   y el campo quedaba de cuatro letras, pegado al botón de recargar. */
+.pendientes-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: #78350f;
+}
+
+.pendientes-filter__control:disabled {
+  background: #fef3c7;
+  color: #a16207;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-limpiar-pendientes-filtros {
+  align-self: flex-end;
+  background: transparent;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-limpiar-pendientes-filtros:hover {
+  background: #fef3c7;
+}
+
+.pendientes-filter__label {
+  font-weight: 600;
+  font-size: 0.72rem;
+}
+
+.pendientes-filter__control {
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.82rem;
+  color: #78350f;
+  cursor: pointer;
+}
+
+.pendientes-filter__control:focus {
+  outline: none;
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18);
+}
+
+.btn-refrescar-pendientes {
+  background: #fff;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  color: #b45309;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-refrescar-pendientes:hover:not(:disabled) {
+  background: #fef3c7;
+  transform: rotate(45deg);
+}
+
+.btn-refrescar-pendientes:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.pendientes-loading,
+.pendientes-empty {
+  font-size: 0.82rem;
+  color: #78350f;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.pendientes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pendiente-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.pendiente-item:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 6px 16px rgba(217, 119, 6, 0.12);
+}
+
+.pendiente-item--active {
+  border-color: #d97706;
+  background: #fffbeb;
+  box-shadow: 0 8px 20px rgba(217, 119, 6, 0.2);
+}
+
+.pendiente-item__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.pendiente-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.pendiente-item__title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #422006;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pendiente-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.pendiente-pill {
+  display: inline-flex;
+  align-items: center;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid #fde68a;
+}
+
+.pendiente-pill--time {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.pendiente-pill--freq {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.pendiente-item__motivo {
+  margin-top: 5px;
+  font-size: 0.74rem;
+  color: #92400e;
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.btn-asignar-pendiente {
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.15s ease;
+  align-self: center;
+}
+
+.btn-asignar-pendiente:hover:not(:disabled) {
+  background: #b45309;
+  transform: translateY(-1px);
+}
+
+.btn-asignar-pendiente:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.modal-visita-motivo {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: #92400e;
+  font-style: italic;
+}

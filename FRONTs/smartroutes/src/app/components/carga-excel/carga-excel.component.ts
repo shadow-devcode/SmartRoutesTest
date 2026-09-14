@@ -32,7 +32,12 @@ const MAX_FALLOS_CONEXION = 4;
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './carga-excel.component.html',
-  styleUrl: './carga-excel.component.css',
+  styleUrls: [
+    './carga-excel.component.pagina.css',
+    './carga-excel.component.formulario.css',
+    './carga-excel.component.ejecucion.css',
+    './carga-excel.component.resultado.css',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CargaExcelComponent implements OnInit, OnDestroy {

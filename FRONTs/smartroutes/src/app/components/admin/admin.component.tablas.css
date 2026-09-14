@@ -1,0 +1,142 @@
+/* Tabla de usuarios y acciones. */
+
+.solid-danger:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+/* ─── Tablas ─── */
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 0.25rem;
+  border-radius: var(--radius-md);
+}
+
+.table-wrap.table-theme-purple {
+  background: var(--table-row);
+  border: 1px solid rgba(29, 78, 216, 0.18);
+  box-shadow: 0 2px 12px rgba(29, 78, 216, 0.08);
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.users-table th,
+.users-table td {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(29, 78, 216, 0.1);
+}
+
+.table-theme-purple .users-table th {
+  background: var(--table-purple);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.users-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-theme-purple .users-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.table-theme-purple .users-table tbody tr:hover td {
+  background: var(--table-row-hover);
+}
+
+.table-theme-purple .users-table td {
+  color: var(--table-text);
+  background: var(--table-row);
+}
+
+.users-table tr.inactive td {
+  opacity: 0.55;
+}
+
+.merca-nombre {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.select-ruta--light {
+  width: 100%;
+  max-width: 15rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  background: #fff;
+  color: var(--table-text);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.select-ruta--light:focus {
+  outline: none;
+  border-color: var(--table-purple);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.select-ruta--light:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.table-theme-purple .btn-table-light {
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: var(--table-purple-dark);
+  background: rgba(37, 99, 235, 0.07);
+}
+
+.table-theme-purple .btn-table-light:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: var(--table-purple);
+}
+
+.table-theme-purple .btn-table-danger {
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.65);
+}
+
+.table-theme-purple .btn-table-danger:hover:not(:disabled) {
+  background: rgba(254, 202, 202, 0.9);
+  border-color: #dc2626;
+}
+
+.row-actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(29, 78, 216, 0.08);
+  color: var(--table-purple-dark);
+  border: 1px solid rgba(29, 78, 216, 0.2);
+}
+
+.pill.admin {
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+}
+
+/* ─── Modales (superficie clara) ─── */

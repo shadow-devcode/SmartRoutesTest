@@ -1,0 +1,292 @@
+/* Filtros: pila de tarjetas, selector de provincias, chips de mercaderista y día, y banner de alcance. */
+
+.filters-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 8px;
+  background: var(--sr-bg);
+}
+
+.section--routes {
+  padding: 0 16px 12px;
+  background: transparent;
+  border: none;
+}
+
+.filter-card {
+  background: var(--sr-surface);
+  border-radius: var(--sr-radius);
+  border: 1px solid var(--sr-border);
+  box-shadow: var(--sr-shadow);
+  padding: 18px 18px 16px;
+  transition: box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.filter-card--routes {
+  padding-bottom: 14px;
+}
+
+.filter-card__head {
+  margin-bottom: 14px;
+}
+
+.filter-card__head--routes {
+  margin-bottom: 10px;
+}
+
+.filter-card__eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+  margin-bottom: 4px;
+}
+
+.filter-card__title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+}
+
+.filter-card__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sr-muted);
+}
+
+.filter-card__desc--muted {
+  opacity: 0.85;
+}
+
+.filter-card--provincias .filter-card__head {
+  margin-bottom: 12px;
+}
+
+.provincias-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.provincias-filter-custom {
+  position: relative;
+  z-index: 2;
+}
+
+.provincias-filter-custom--open {
+  z-index: 25;
+}
+
+.provincias-filter-label-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sr-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.provincias-filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--sr-text);
+  background-color: var(--sr-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.provincias-filter-trigger__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provincias-filter-trigger__chevron {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: transform var(--sr-duration) var(--sr-ease);
+}
+
+.provincias-filter-trigger--open .provincias-filter-trigger__chevron {
+  transform: rotate(180deg);
+}
+
+.provincias-filter-trigger:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.provincias-filter-trigger:focus {
+  outline: none;
+  border-color: var(--sr-accent-deep);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.provincias-filter-trigger:focus-visible {
+  outline: none;
+  border-color: var(--sr-accent-deep);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.provincias-filter-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius);
+  box-shadow: var(--sr-shadow), 0 12px 40px rgba(15, 23, 42, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.provincias-filter-option {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--sr-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--sr-duration) var(--sr-ease), color var(--sr-duration) var(--sr-ease);
+}
+
+.provincias-filter-option:hover,
+.provincias-filter-option:focus-visible {
+  outline: none;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--sr-accent-deep);
+}
+
+.provincias-filter-option--active {
+  background: var(--sr-accent-deep);
+  color: #fff;
+}
+
+.provincias-filter-option--active:hover,
+.provincias-filter-option--active:focus-visible {
+  background: var(--sr-accent);
+  color: #fff;
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chips-row--wrap {
+  align-items: flex-start;
+}
+
+.filter-chip {
+  appearance: none;
+  border: 1px solid var(--sr-border);
+  background: var(--sr-surface);
+  color: var(--sr-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--sr-duration) var(--sr-ease),
+    color var(--sr-duration) var(--sr-ease),
+    border-color var(--sr-duration) var(--sr-ease),
+    transform var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-chip:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--sr-accent-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.filter-chip:focus-visible {
+  outline: 2px solid var(--sr-accent);
+  outline-offset: 2px;
+}
+
+.filter-chip--active {
+  background: #2563eb;
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.filter-chip--active:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+.filter-chip--day {
+  padding-inline: 12px;
+}
+
+.scope-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px 0;
+  padding: 11px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sr-muted);
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: var(--sr-radius-sm);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+}
+
+.scope-banner__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Lista de Mercadistas */

@@ -1,0 +1,232 @@
+/* Contenedor, cabecera, distintivos de filtro y leyenda. */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:host {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-container {
+  display: grid;
+  grid-template-columns: var(--sr-sidebar-w, clamp(260px, 19vw, 400px)) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Sidebar Panel: contenedor de altura fija. El scroll lo maneja el componente
+   interno (.sidebar dentro de lista-mercadistas-comparativa). */
+.sidebar-panel {
+  background: #f8f9fa;
+  border-right: 1px solid #e0e0e0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Main Panel */
+.main-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  position: relative;
+}
+
+/* Map Header */
+.map-header {
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  padding: var(--sr-pad-section, clamp(12px, 1.8vw, 20px)) var(--sr-pad-section, clamp(14px, 2vw, 28px));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+/* Tabs Menu */
+.tabs-menu {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.tab-button {
+  padding: clamp(8px, 1vw, 12px) clamp(14px, 1.6vw, 22px);
+  border: 2px solid #e0e0e0;
+  background: white;
+  color: #666;
+  border-radius: 8px;
+  font-size: clamp(0.8125rem, 0.2vw + 0.78rem, 0.9375rem);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-button:hover {
+  background: #f5f5f5;
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.tab-button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.map-header h1 {
+  font-size: clamp(1.125rem, 0.5vw + 1rem, 1.5rem);
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.filter-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.filter-badge {
+  background: #2563eb;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.ubicaciones-count {
+  background: #f0f0f0;
+  color: #666;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Map Wrapper */
+.map-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spinner-large {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* ── Leyenda de colores por día ───────────────────────────── */
+.leyenda-dias {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #555;
+}
+
+.leyenda-dias-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: white;
+  font-weight: 500;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+/* ── Botón subir Excel ────────────────────────────────────── */
+.btn-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-upload:hover {

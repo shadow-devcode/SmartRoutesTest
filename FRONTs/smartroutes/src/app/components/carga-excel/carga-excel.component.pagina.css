@@ -1,0 +1,192 @@
+/* Contenedor de carga, cabecera y distintivos de estado. */
+
+/* ════════════════════════════════════════════════════════
+   Contenedor principal
+   ════════════════════════════════════════════════════════ */
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: var(--sr-main-min-h, calc(100dvh - 72px));
+}
+
+.carga-excel-container {
+  min-height: var(--sr-main-min-h, calc(100dvh - 72px));
+  background: #1e3a8a;
+  padding: clamp(1.25rem, 3vw, 2.75rem) clamp(0.85rem, 2.5vw, 1.75rem) clamp(2rem, 4vw, 3.75rem);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ── Cabecera ───────────────────────────────────────────── */
+.page-header {
+  text-align: center;
+  color: #fff;
+  margin-bottom: clamp(1.25rem, 3vw, 2.25rem);
+}
+
+.page-header h1 {
+  font-size: clamp(1.5rem, 2vw + 1rem, 2.35rem);
+  font-weight: 700;
+  margin: 0 0 10px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+  font-size: clamp(0.95rem, 0.35vw + 0.85rem, 1.1rem);
+  opacity: 0.88;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* ── Zona de contenido ──────────────────────────────────── */
+.page-content {
+  max-width: var(--sr-content-max, min(96vw, 1920px));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* ════════════════════════════════════════════════════════
+   Tarjeta de sección
+   ════════════════════════════════════════════════════════ */
+.section-card {
+  background: #fff;
+  border-radius: clamp(12px, 1.2vw, 18px);
+  padding: clamp(1.1rem, 2.5vw, 2rem);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Encabezado de sección ──────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+/* ── Badge de paso numerado ─────────────────────────────── */
+.step-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-badge.step-done {
+  background: #48bb78;
+}
+
+.step-badge.step-active {
+  background: linear-gradient(135deg, #f6ad55, #ed8936);
+  animation: pulse-badge 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0.5); }
+  50%       { box-shadow: 0 0 0 8px rgba(237, 137, 54, 0); }
+}
+
+/* ── Metadatos del archivo ──────────────────────────────── */
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.badge-file {
+  background: #ebf4ff;
+  color: #3182ce;
+}
+
+.badge-count {
+  background: #f0fff4;
+  color: #276749;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: #1d4ed8;
+}
+
+/* ════════════════════════════════════════════════════════
+   Zona de arrastrar / soltar
+   ════════════════════════════════════════════════════════ */
+.drop-zone {
+  border: 2px dashed #c3d3f5;
+  border-radius: 12px;
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+  background: #fafbff;
+  cursor: default;
+}
+
+.drop-zone.dragging {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.drop-zone.loading {
+  border-color: #a0aec0;
+  background: #f7fafc;
+  cursor: not-allowed;
+}
+
+.drop-icon {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.drop-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.drop-subtitle {
+  font-size: 14px;
+  color: #718096;
+  margin: 0;
+}
+
+.drop-hint {

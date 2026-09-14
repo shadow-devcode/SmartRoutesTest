@@ -1,0 +1,302 @@
+/* Lista de mercaderistas: item, cabecera y estado abierto. */
+
+/* Lista de mercaderistas y sus visitas: item, cabecera, detalle por día y ubicaciones. */
+
+.mercadistas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Con 80 mercadistas la lista empujaba el resto del panel fuera de la
+     pantalla: se queda con su propia caja de scroll y los filtros de arriba
+     siguen a la vista. El padding evita que la barra tape el borde de las
+     tarjetas y el foco quede recortado. */
+  max-height: 55vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.mercadistas-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mercadistas-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mercadistas-list::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 3px;
+}
+
+.mercadistas-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+.mercadista-item {
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius-sm);
+  /* Imprescindible con la lista scrolleable: en un flex column con altura
+     acotada los hijos se encogen por defecto y las 80 tarjetas quedaban
+     aplastadas en líneas de 2 px. Cada una conserva su alto y el sobrante se
+     resuelve con scroll. */
+  flex: 0 0 auto;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease),
+    transform var(--sr-duration) var(--sr-ease);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.mercadista-item:hover {
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.mercadista-item.active {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.15);
+}
+
+/* Usuario con una sola ruta: no puede cambiar de mercadista */
+.mercadista-item.solo-tu-ruta:hover {
+  transform: none;
+}
+
+.mercadista-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  gap: 14px;
+  transition: background var(--sr-duration) var(--sr-ease);
+  cursor: pointer;
+}
+
+.mercadista-header--solo {
+  cursor: default;
+}
+
+.mercadista-header:focus-visible {
+  outline: 2px solid var(--sr-accent-deep);
+  outline-offset: 2px;
+}
+
+.mercadista-chevron-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -8px -6px -8px 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  color: inherit;
+  transition: background var(--sr-duration) var(--sr-ease);
+}
+
+.mercadista-chevron-btn:hover {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.mercadista-chevron-btn:focus-visible {
+  outline: 2px solid var(--sr-accent-deep);
+  outline-offset: 2px;
+}
+
+.mercadista-item:hover .mercadista-header {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.mercadista-item.active .mercadista-header {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+.mercadista-header__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mercadista-nombre {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  text-transform: capitalize;
+}
+
+.mercadista-hint {
+  font-size: 0.6875rem;
+  color: var(--sr-muted);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.mercadista-hint--on {
+  color: #2563eb;
+}
+
+.chevron {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-right: 2px solid var(--sr-muted);
+  border-bottom: 2px solid var(--sr-muted);
+  transform: rotate(-45deg);
+  transition: transform 0.28s var(--sr-ease), border-color var(--sr-duration) var(--sr-ease);
+  margin-top: -2px;
+  opacity: 0.65;
+}
+
+.mercadista-item:hover .chevron {
+  opacity: 1;
+  border-color: var(--sr-accent-deep);
+}
+
+.chevron--open {
+  transform: rotate(45deg);
+  margin-top: 2px;
+}
+
+/* Detalle del Mercadista */
+.mercadista-detalle {
+  padding: 0 14px 16px 14px;
+  border-top: 1px solid var(--sr-border);
+  animation: detailReveal 0.32s var(--sr-ease) both;
+}
+
+@keyframes detailReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dias-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.dia-detalle {
+  background: rgba(248, 250, 252, 0.9);
+  border-radius: var(--sr-radius-sm);
+  padding: 14px 12px 12px;
+  border: 1px solid var(--sr-border);
+}
+
+.dia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px 2px 12px;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.12);
+}
+
+.dia-header__dia {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sr-accent-deep);
+  letter-spacing: -0.02em;
+}
+
+.dia-header__count {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.badge {
+  background: #2563eb;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ubicaciones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ubicacion-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--sr-surface);
+  padding: 10px 10px 10px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--sr-border);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition:
+    box-shadow 0.25s var(--sr-ease),
+    transform 0.25s var(--sr-ease),
+    border-color 0.25s var(--sr-ease);
+}
+
+.ubicacion-item:hover {
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+  transform: translateY(-2px);
+}
+
+.ubicacion-col-izq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: stretch;
+  padding-top: 2px;
+}
+
+.ubicacion-orden {
+  width: 26px;
+  height: 26px;
+  background: #2563eb;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);

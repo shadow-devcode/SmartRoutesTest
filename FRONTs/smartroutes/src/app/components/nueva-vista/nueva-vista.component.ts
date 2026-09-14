@@ -34,7 +34,12 @@ type SortCol =
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './nueva-vista.component.html',
-  styleUrl: './nueva-vista.component.css',
+  styleUrls: [
+    './nueva-vista.component.pagina.css',
+    './nueva-vista.component.filtros.css',
+    './nueva-vista.component.tablas.css',
+    './nueva-vista.component.union.css',
+  ],
 })
 export class NuevaVistaComponent implements OnInit {
   estadisticas: Estadisticas | null = null;

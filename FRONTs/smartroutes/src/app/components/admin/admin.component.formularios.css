@@ -1,0 +1,251 @@
+/* Formularios, estados y asignación de Excel por usuario. */
+
+.admin-card__desc strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Estados vacío / carga */
+.admin-state,
+.admin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+  background: #f8fafc;
+  border: 1px dashed var(--border);
+}
+
+.admin-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--brand-from);
+  border-radius: 50%;
+  animation: adminSpin 0.85s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes adminSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── Formularios en tarjeta clara ─── */
+.admin-form {
+  margin-top: 0.25rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.admin-form label,
+.admin-form label.check {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-form label.check {
+  flex-direction: row;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.admin-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.admin-form input,
+.admin-form select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-form input:hover,
+.admin-form select:hover {
+  border-color: #cbd5e1;
+}
+
+.admin-form input:focus,
+.admin-form select:focus {
+  outline: none;
+  border-color: var(--brand-from);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.admin-form select {
+  cursor: pointer;
+}
+
+.field-error {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #dc2626;
+}
+
+/* Pista breve bajo un campo (p. ej. nueva contraseña opcional). */
+.admin-hint {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+/* Checklist de requisitos de contraseña: gris por defecto, verde al cumplirse. */
+.pw-requisitos {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+}
+
+.pw-requisitos li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+}
+
+/* Marca de estado: ✗ pendiente / ✓ cumplido. */
+.pw-requisitos li::before {
+  content: '✗';
+  font-weight: 700;
+  color: #9ca3af;
+  width: 1rem;
+  text-align: center;
+}
+
+.pw-requisitos li.ok {
+  color: #16a34a;
+}
+
+.pw-requisitos li.ok::before {
+  content: '✓';
+  color: #16a34a;
+}
+
+label.check input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--brand-from);
+  cursor: pointer;
+}
+
+.admin-hint-muted {
+  margin: -0.35rem 0 0.25rem;
+  padding: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.admin-asignacion-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.admin-asignacion-footer .admin-hint-muted {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+/* ─── Botones ─── */
+.btn {
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    transform 0.2s var(--ease-out),
+    box-shadow 0.25s ease,
+    filter 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--brand-from);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-brand {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.btn-brand:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.4);
+}
+
+.btn-muted {
+  background: #fff;
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.btn-muted:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+}
+
+.solid-danger {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3);
+}

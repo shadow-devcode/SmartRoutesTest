@@ -36,7 +36,16 @@ import { formatearFrecuenciaMes, formatearTituloPorPalabra } from '../../utils/f
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, DragDropModule],
   templateUrl: './lista-mercadistas.component.html',
-  styleUrl: './lista-mercadistas.component.css'
+  styleUrls: [
+    './lista-mercadistas.component.panel.css',
+    './lista-mercadistas.component.filtros.css',
+    './lista-mercadistas.component.lista.css',
+    './lista-mercadistas.component.visitas.css',
+    './lista-mercadistas.component.arrastre.css',
+    './lista-mercadistas.component.acciones.css',
+    './lista-mercadistas.component.modal.css',
+    './lista-mercadistas.component.pendientes.css',
+  ]
 })
 export class ListaMercadistasComponent implements OnInit, OnDestroy {
   @ViewChild('provinciasDdRoot') provinciasDdRoot?: ElementRef<HTMLElement>;

@@ -32,7 +32,12 @@ interface AdminToast {
   standalone: true,
   imports: [CommonModule, RouterLink, ReactiveFormsModule, FormsModule],
   templateUrl: './admin.component.html',
-  styleUrl: './admin.component.css',
+  styleUrls: [
+    './admin.component.pagina.css',
+    './admin.component.formularios.css',
+    './admin.component.tablas.css',
+    './admin.component.modal.css',
+  ],
 })
 export class AdminComponent implements OnInit, OnDestroy {
   users: AdminUserRow[] = [];

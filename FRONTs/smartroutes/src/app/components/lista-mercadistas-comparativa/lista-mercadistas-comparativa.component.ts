@@ -26,7 +26,12 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './lista-mercadistas-comparativa.component.html',
-  styleUrl: './lista-mercadistas-comparativa.component.css',
+  styleUrls: [
+    './lista-mercadistas-comparativa.component.panel.css',
+    './lista-mercadistas-comparativa.component.filtros.css',
+    './lista-mercadistas-comparativa.component.lista.css',
+    './lista-mercadistas-comparativa.component.ubicaciones.css',
+  ],
 })
 export class ListaMercadistasComparativaComponent implements OnInit, OnChanges {
   @Output() mercadistaSeleccionado = new EventEmitter<string>();

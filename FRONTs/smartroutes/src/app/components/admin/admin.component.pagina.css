@@ -1,0 +1,201 @@
+/* Página de administración: cabecera, enlaces y navegación. */
+
+/* Admin — alineado con Dashboard / nav: gradiente #667eea → #764ba2, tarjetas blancas */
+
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  scroll-behavior: smooth;
+}
+
+.admin-page {
+  --brand-from: #2563eb;
+  --brand-to: #1d4ed8;
+  --table-purple: #1d4ed8;
+  --table-purple-dark: #1e40af;
+  --table-row: #ffffff;
+  --table-row-hover: #eff6ff;
+  --table-text: #2d1b3d;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.1);
+  --shadow-card-hover: 0 16px 48px rgba(37, 99, 235, 0.18);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  min-height: var(--sr-main-min-h, calc(100dvh - 72px));
+  padding: clamp(1.25rem, 2.5vw, 2.75rem) clamp(1rem, 2vw, 1.75rem) clamp(1.75rem, 3vw, 3.5rem);
+  background: #1e3a8a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.admin-inner {
+  max-width: min(920px, 94vw);
+  margin: 0 auto;
+}
+
+/* ─── Hero (como vista-header del dashboard) ─── */
+.admin-hero {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 2.25rem;
+  padding: 0 0.5rem;
+}
+
+.admin-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.88;
+  margin: 0 0 0.5rem;
+}
+
+.admin-title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.85rem, 4vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.admin-lead {
+  margin: 0 auto 1.5rem;
+  max-width: 36rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  font-weight: 400;
+  opacity: 0.92;
+}
+
+.admin-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.admin-toc__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition:
+    background 0.25s var(--ease-out),
+    transform 0.2s var(--ease-out),
+    box-shadow 0.25s ease;
+}
+
+.admin-toc__link:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.admin-toc__link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.admin-toc__link--ghost {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-inline-link {
+  color: var(--brand-from);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-inline-link:hover {
+  border-bottom-color: var(--brand-from);
+}
+
+.admin-card .admin-inline-link {
+  color: var(--brand-to);
+}
+
+.admin-card .admin-inline-link:hover {
+  border-bottom-color: var(--brand-to);
+}
+
+/* ─── Tarjetas (misma familia que stat-card / filtros-card del dashboard) ─── */
+.admin-card {
+  scroll-margin-top: 5.5rem;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 1.75rem 1.85rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  transition:
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out);
+}
+
+.admin-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.admin-card__head {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+  margin-bottom: 1.35rem;
+}
+
+.admin-card__icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+}
+
+.admin-card__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.admin-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.admin-card__desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.admin-card__desc code {
+  font-size: 0.82em;
+  padding: 0.12rem 0.35rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: var(--table-purple-dark);
+}

@@ -17,7 +17,10 @@ type EtapaCarga = 'idle' | 'subiendo' | 'completado' | 'error';
     ListaMercadistasComparativaComponent,
   ],
   templateUrl: './vista-comparativa.component.html',
-  styleUrl: './vista-comparativa.component.css',
+  styleUrls: [
+    './vista-comparativa.component.pagina.css',
+    './vista-comparativa.component.modal.css',
+  ],
 })
 export class VistaComparativaComponent implements OnInit {
   @ViewChild(MapaComponent) mapaComponent!: MapaComponent;

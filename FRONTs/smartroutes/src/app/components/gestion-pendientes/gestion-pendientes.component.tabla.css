@@ -1,0 +1,282 @@
+/* Tablas de pendientes y rutas: cabecera, scroll, subtotales y leyenda. */
+
+.gp-select {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: #fff;
+}
+
+.gp-input {
+  flex: 1 1 22rem;
+  min-width: 15rem;
+}
+
+.gp-input:focus,
+.gp-select:focus {
+  outline: none;
+  border-color: var(--brand-from);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.gp-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+/* ── Tabla ────────────────────────────────────────────────── */
+.gp-table-wrap {
+  overflow: auto;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.gp-table-wrap::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.gp-table-wrap::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid #fff;
+}
+
+.gp-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.gp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.gp-table th,
+.gp-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+/* Cabecera azul, igual que la tabla de pendientes del Dashboard */
+.gp-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: none;
+}
+
+.gp-table tbody tr:hover {
+  background: #eff6ff;
+}
+
+.gp-num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.gp-nowrap {
+  white-space: nowrap;
+}
+
+/* Provincia y ciudad: nombres como «Santo Domingo de los Tsáchilas» en una
+   sola línea se comían el ancho de la tabla. Se dejan partir en varias líneas
+   y se acotan; el texto completo queda en el title de la celda. */
+.gp-loc {
+  white-space: normal;
+  max-width: 8rem;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.gp-desc {
+  max-width: 20rem;
+}
+
+.gp-name {
+  display: block;
+  font-weight: 600;
+}
+
+.gp-sub {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.gp-sub--inline {
+  display: inline;
+}
+
+/* ── Píldoras ─────────────────────────────────────────────── */
+.gp-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.12rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gp-pill--dia {
+  background: #dbeafe;
+  color: #1d4ed8;
+  margin: 0 0.25rem 0.25rem 0;
+}
+
+.gp-pill--pendiente {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  font-weight: 700;
+}
+
+.gp-sin-dato {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: #b45309;
+}
+
+.gp-state {
+  margin: 0;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.gp-nota {
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Mapa ─────────────────────────────────────────────────── */
+.gp-mapa-leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.gp-leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gp-leyenda-punto {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: radial-gradient(circle at 30% 30%, #f87171 0%, #dc2626 70%, #7f1d1d 100%);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.45);
+  flex: 0 0 auto;
+}
+
+.gp-leyenda-conteo {
+  font-weight: 600;
+  color: #334155;
+}
+
+/* El mapa necesita altura explícita: su contenedor no la hereda de nada. */
+.gp-mapa-wrap {
+  height: 60vh;
+  min-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gp-mapa-wrap app-mapa {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Botones (misma familia que el resto de pantallas) ────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-brand {
+  background: var(--brand-from);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.btn-muted {
+  background: #fff;
+  color: #475569;
+  border: 1px solid var(--border);
+}
+
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  /* En móvil sí se apilan: cinco desplegables no caben en una línea legible. */
+  .gp-filtros-mapa {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  .gp-filtro-mapa {
+    flex: 1 1 45%;
+  }
+
+  .gp-card__head {
+    flex-wrap: wrap;
+  }
+
+  .gp-vista-switch {
+    margin-left: 0;
+  }
+
+  .gp-input {
+    flex-basis: 100%;
+  }
+}
+
+/* ── Bloque de rutas asignadas (segunda tarjeta de la página) ───────────── */
+.gp-card--rutas {
+  margin-top: 1.35rem;
+}

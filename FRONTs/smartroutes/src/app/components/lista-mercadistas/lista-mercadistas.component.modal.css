@@ -1,0 +1,498 @@
+/* Modal de mover visita: tarjeta flotante, campos, confirmación y arrastre del panel. */
+
+  background: rgba(100, 116, 139, 0.55);
+}
+
+/* ======================================================
+   Modal: Mover visita — tarjeta flotante centrada
+   (sidebar y mapa permanecen visibles e interactivos a ambos lados)
+   --nav-h reserva el alto de la barra superior para que el modal nunca
+   quede oculto detrás del nav.
+   ====================================================== */
+.modal-mover-panel-fixed {
+  position: fixed;
+  top: calc(var(--sr-nav-h, 72px) + 16px);
+  /* Centrado horizontal sin usar transform (CDK drag necesita `transform` libre
+     para mover el elemento al arrastrar). */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: min(310px, calc(100vw - 32px));
+  max-height: calc(100vh - var(--sr-nav-h, 72px) - 32px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow:
+    0 20px 60px rgba(15, 23, 42, 0.28),
+    0 4px 16px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(15, 23, 42, 0.05);
+  z-index: 1100;
+  overflow: hidden;
+  animation: modalMoverPopIn 0.22s var(--sr-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* Cursor y estado visual mientras se arrastra el modal */
+.modal-mover-panel-fixed.cdk-drag-preview,
+.modal-mover-panel-fixed.cdk-drag-dragging {
+  box-shadow:
+    0 28px 72px rgba(15, 23, 42, 0.34),
+    0 6px 20px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(37, 99, 235, 0.35);
+}
+
+.modal-mover-panel-fixed .modal-mover-header.cdk-drag-handle,
+.modal-mover-panel-fixed .modal-mover-header[cdkDragHandle] {
+  cursor: grab;
+}
+.modal-mover-panel-fixed.cdk-drag-dragging .modal-mover-header {
+  cursor: grabbing;
+}
+
+/* Contenedor interno con scroll propio para que el modal no supere el viewport. */
+.modal-mover-panel-fixed > .modal-mover-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@keyframes modalMoverPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Botón "Usar mercadista del sidebar" */
+.modal-mover-usar-activo {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(37, 99, 235, 0.4);
+  background: rgba(37, 99, 235, 0.05);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #1d4ed8;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.modal-mover-usar-activo:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-style: solid;
+}
+.modal-mover-usar-activo strong {
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+/* ── Header del modal ── */
+.modal-mover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  background: #1d4ed8;
+  color: #fff;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+.modal-mover-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.modal-close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.modal-close:active {
+  transform: scale(0.96);
+}
+
+.modal-mover-body {
+  padding: 22px 22px 8px;
+}
+
+.modal-mover-hero {
+  margin-bottom: 14px;
+}
+
+.modal-mover-eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+
+.modal-visita-nombre {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+.modal-visita-hint {
+  margin: 0 0 18px 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.modal-mover-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 20px 0;
+  padding: 12px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 12px;
+}
+
+.modal-mover-callout__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.modal-mover-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.modal-field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.modal-field__hint {
+  margin: -2px 0 8px 0;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.modal-field__control {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fafafa;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+  box-sizing: border-box;
+}
+
+.modal-field__control:hover {
+  border-color: rgba(37, 99, 235, 0.25);
+  background: #fff;
+}
+
+.modal-field__control:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.modal-field__control--num {
+  max-width: 112px;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal-field--orden {
+  padding-bottom: 4px;
+}
+
+.mensaje-mover--error {
+  margin: 16px 0 0 0;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+}
+
+.modal-mover-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 22px 20px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f4f8 100%);
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  flex-shrink: 0;
+}
+
+/* Cada fila de acciones; align-items: stretch iguala la altura de los botones */
+.modal-mover-acciones {
+  display: flex;
+  gap: 10px;
+}
+
+/* Acciones secundarias (naranja): dos botones del mismo ancho, lado a lado */
+.modal-mover-acciones--secundarias {
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.1);
+}
+
+.modal-mover-acciones--secundarias .btn-mover-pendientes {
+  flex: 1 1 0;
+}
+
+/* Acciones principales: Cancelar compacto a la izquierda, primaria ocupa el resto */
+.modal-mover-acciones--principales .btn-cancelar-mover {
+  flex: 0 0 auto;
+}
+
+.modal-mover-acciones--principales .btn-confirmar-mover {
+  flex: 1 1 auto;
+}
+
+.btn-cancelar-mover {
+  padding: 10px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #64748b;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.btn-cancelar-mover:hover {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #334155;
+}
+
+.btn-confirmar-mover {
+  padding: 10px 20px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+  transition:
+    filter 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn-confirmar-mover:hover:not(:disabled) {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
+}
+
+.btn-confirmar-mover:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-confirmar-mover:disabled {
+  background: #cbd5e1;
+  box-shadow: none;
+  cursor: not-allowed;
+  color: #f1f5f9;
+}
+
+.btn-mover-pendientes {
+  padding: 10px 14px;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.08);
+  color: #c2410c;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn-mover-pendientes:hover:not(:disabled) {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.5);
+}
+
+.btn-mover-pendientes:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─── Ventana flotante de confirmación (reemplaza window.confirm) ─── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200; /* por encima del panel mover (1100) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  animation: confirmOverlayIn 0.16s ease;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 25rem;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px 24px 20px;
+  text-align: center;
+  box-shadow:
+    0 24px 60px rgba(15, 23, 42, 0.3),
+    0 0 0 1px rgba(15, 23, 42, 0.05);
+  animation: confirmCardIn 0.2s var(--sr-ease, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+.confirm-card__icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #c2410c;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.confirm-card__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.confirm-card__title {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.confirm-card__text {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.confirm-card__hint {
+  margin: 0 0 18px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+}
+
+.confirm-card__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.confirm-card__actions .btn-cancelar-mover {
+  flex: 0 0 auto;
+}
+
+.confirm-card__actions .btn-confirmar-mover {
+  flex: 1 1 auto;
+}
+
+@keyframes confirmOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes confirmCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-mover-panel-fixed {
+    animation: none !important;
+  }
+
+  .confirm-overlay,
+  .confirm-card {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .modal-mover-panel-fixed {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 24px);
+  }
+}
+
+/* ───────────────────────── Pendientes (sin asignar) ───────────────────────── */

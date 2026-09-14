@@ -1,0 +1,378 @@
+/* Modales de creación, edición y confirmación. */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  z-index: 1000;
+  animation: adminFadeIn 0.25s ease;
+}
+
+.modal-backdrop-elevated {
+  z-index: 1100;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  width: min(440px, calc(100dvw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.75rem 1.75rem 1.65rem;
+  border-radius: var(--radius-lg);
+  animation: adminModalIn 0.3s var(--ease-out);
+}
+
+.modal-surface {
+  background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+}
+
+.modal.modal-confirm {
+  z-index: 1101;
+  width: min(400px, calc(100dvw - 2rem));
+  text-align: center;
+  padding-top: 1.5rem;
+}
+
+.modal-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 1rem;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.modal-icon--danger {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.35);
+}
+
+.modal-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.modal-surface h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-sub {
+  margin: 0 0 1.1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.confirm-body {
+  margin: 0 0 1.35rem;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.confirm-email {
+  color: var(--brand-to);
+  word-break: break-all;
+  font-weight: 700;
+}
+
+.confirm-actions {
+  justify-content: center;
+  margin-top: 0;
+}
+
+.modal-surface .form-actions {
+  justify-content: flex-end;
+}
+
+@keyframes adminFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes adminModalIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ─── Toasts ─── */
+.toast-stack {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 2500;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: min(22rem, calc(100dvw - 2rem));
+  pointer-events: none;
+}
+
+.toast-stack .toast {
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 0.65rem 0.9rem 0.95rem;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(37, 99, 235, 0.1);
+  animation: toastIn 0.4s var(--ease-out);
+  border-left: 4px solid var(--brand-to);
+}
+
+.toast--ok {
+  border-left-color: #059669;
+}
+
+.toast--err {
+  border-left-color: #dc2626;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-top: 0.08rem;
+}
+
+.toast-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.toast--ok .toast-icon {
+  color: #059669;
+}
+
+.toast--err .toast-icon {
+  color: #dc2626;
+}
+
+.toast-text {
+  margin: 0;
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.toast-dismiss {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.15rem -0.05rem 0 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.toast-dismiss:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--brand-to);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    scroll-behavior: auto;
+  }
+
+  .admin-card,
+  .admin-toc__link,
+  .btn-brand,
+  .toast {
+    transition: none;
+    animation: none;
+  }
+
+  .admin-card:hover {
+    transform: none;
+  }
+
+  .admin-toc__link:hover,
+  .btn-brand:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.admin-excel-context-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.09), rgba(29, 78, 216, 0.05));
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  color: #334155;
+}
+
+.admin-excel-context-banner--warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+/* Icono en recuadro a la izquierda */
+.admin-excel-context-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+
+.admin-excel-context-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.admin-excel-context-banner--warn .admin-excel-context-icon {
+  background: rgba(217, 119, 6, 0.15);
+  color: #b45309;
+}
+
+/* Columna de texto: etiqueta pequeña arriba, nombre destacado abajo */
+.admin-excel-context-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.admin-excel-context-label {
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #1d4ed8;
+}
+
+.admin-excel-context-banner--warn .admin-excel-context-label {
+  color: #b45309;
+}
+
+.admin-excel-context-value {
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.admin-excel-context-banner--warn .admin-excel-context-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.admin-excel-context-id {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.admin-filter-editor-row {
+  margin-bottom: 1rem;
+}
+
+.admin-filter-editor-label {
+  display: block;
+  max-width: min(42rem, 100%);
+}
+
+.admin-select-wide {
+  width: 100%;
+  max-width: 100%;
+}
+
+.admin-cell-muted {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .admin-page {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .admin-card {
+    padding: 1.35rem 1.2rem 1.45rem;
+  }
+
+  .admin-card__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-toc {
+    flex-direction: column;
+  }
+
+  .admin-toc__link {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.8125rem;
+  }
+}

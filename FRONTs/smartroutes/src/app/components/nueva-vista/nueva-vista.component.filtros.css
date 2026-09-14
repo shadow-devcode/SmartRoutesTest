@@ -1,0 +1,172 @@
+/* Filtros, cabeceras de tarjeta y controles de orden. */
+
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: #333;
+  margin: 0 0 20px 0;
+  font-weight: 600;
+}
+
+.filtros-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filtro-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+}
+
+.filtro-group select {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  min-width: min(200px, 100%);
+  width: 100%;
+  background: white;
+}
+
+.btn-limpiar {
+  padding: 10px 20px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-limpiar:hover {
+  background: #e5e5e5;
+}
+
+/* Filtro inline para pendientes */
+.pendientes-filtro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.pendientes-filtro label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.input-filtro-punto {
+  padding: 10px 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  min-width: min(280px, 100%);
+  flex: 1 1 200px;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-filtro-punto:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Data cards (tablas) */
+.data-card {
+  background: white;
+  border-radius: 16px;
+  padding: clamp(1rem, 4vw, 1.875rem);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+}
+
+.data-card h2 {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: #333;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.card-header-flex h2 {
+  margin: 0;
+}
+
+.card-filtro-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Con dos filtros y el botón, la cabecera se queda sin sitio en pantallas
+   medianas: los desplegables se encogen antes que desbordar. */
+.card-filtro-inline select {
+  min-width: 0;
+  max-width: 14rem;
+}
+
+.card-filtro-inline label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.card-filtro-inline select {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #1e293b;
+  cursor: pointer;
+  outline: none;
+  font-weight: 500;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card-filtro-inline select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.card-desc {
+  color: #666;
+  font-size: 14px;
+  margin: 0 0 20px 0;
+}
+
+.table-loading {
+  color: #666;
+  padding: 20px;
+  text-align: center;
+}
+
+.table-wrapper {
+  position: relative;
+  overflow-x: auto;
+  max-height: clamp(260px, 45vh, 400px);
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #eee;

@@ -34,7 +34,13 @@ import { RutaEditApiService } from '../../services/api/ruta-edit-api.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, MapaComponent],
   templateUrl: './gestion-pendientes.component.html',
-  styleUrl: './gestion-pendientes.component.css',
+  styleUrls: [
+    './gestion-pendientes.component.pagina.css',
+    './gestion-pendientes.component.tabla.css',
+    './gestion-pendientes.component.filtros.css',
+    './gestion-pendientes.component.calendario.css',
+    './gestion-pendientes.component.pendientes.css',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDestroy {

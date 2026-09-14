@@ -1,0 +1,172 @@
+/* Aviso informativo, tabla de parámetros y formulario de configuración. */
+
+  font-size: 12px;
+  color: #a0aec0;
+  margin: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   Banner informativo
+   ════════════════════════════════════════════════════════ */
+.info-banner {
+  background: #ebf8ff;
+  border-left: 4px solid #63b3ed;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #2c5282;
+  margin-bottom: 10px;
+}
+
+/* ── Hint de scroll horizontal ───────────────────────────── */
+.scroll-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #a0aec0;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+
+/* ════════════════════════════════════════════════════════
+   Tabla de datos
+   ════════════════════════════════════════════════════════ */
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 7px;
+}
+.table-wrapper::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.data-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ── Cabecera ────────────────────────────────────────────── */
+.data-table thead {
+  background: #1d4ed8;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.data-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Columna # pegada al scroll izquierdo ────────────────── */
+.col-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.data-table thead th.col-sticky {
+  background: #1e40af;
+  z-index: 4;
+}
+
+.data-table tbody td.col-sticky {
+  background: inherit;
+  border-right: 2px solid #e2e8f0;
+}
+
+/* ── Ancho de la columna # ───────────────────────────────── */
+th.col-num,
+td.col-num {
+  width: 44px;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* ── Filas del cuerpo ────────────────────────────────────── */
+.data-table tbody tr {
+  transition: background 0.12s;
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #f7fafc;
+}
+
+.data-table tbody tr:hover {
+  background: #ebf4ff;
+}
+
+.data-table tbody td {
+  padding: 7px 14px;
+  border-bottom: 1px solid #edf2f7;
+  color: #4a5568;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-table tbody td.col-num {
+  text-align: center;
+  color: #a0aec0;
+  font-size: 11px;
+}
+
+.empty-row {
+  text-align: center;
+  color: #a0aec0;
+  padding: 32px;
+}
+
+/* ── Paginación ─────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.btn-page {
+  background: #edf2f7;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 14px;
+  color: #4a5568;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-page:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;

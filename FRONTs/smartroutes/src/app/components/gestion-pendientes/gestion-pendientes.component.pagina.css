@@ -1,0 +1,252 @@
+/* Página: cabecera, tarjetas de estadísticas y selector de vista. */
+
+/* Gestión de pendientes — mismo lenguaje que Gestión de Excels / Gestión de
+   usuarios: fondo azul, hero centrado, tarjetas blancas de radio 16. */
+
+:host {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.gp-page {
+  --brand-from: #2563eb;
+  --brand-to: #1d4ed8;
+  --border: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --radius-lg: 16px;
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.12);
+
+  min-height: var(--sr-main-min-h, calc(100dvh - 72px));
+  padding: clamp(1.25rem, 2.5vw, 2.75rem) clamp(1rem, 2vw, 1.75rem) clamp(1.75rem, 3vw, 3.5rem);
+  background: #1e3a8a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.gp-inner {
+  max-width: min(1240px, 96vw);
+  margin: 0 auto;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.gp-hero {
+  text-align: center;
+  color: #fff;
+  margin-bottom: 1.75rem;
+}
+
+.gp-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.88;
+  margin: 0 0 0.5rem;
+}
+
+.gp-title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.75rem, 3.5vw, 2.1rem);
+  font-weight: 700;
+}
+
+.gp-lead {
+  margin: 0 auto 1.25rem;
+  max-width: 44rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.gp-actions-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* ── Avisos ───────────────────────────────────────────────── */
+.gp-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.gp-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ── Resumen ──────────────────────────────────────────────── */
+.gp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.gp-stat {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.gp-stat__value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--brand-to);
+  line-height: 1.1;
+}
+
+.gp-stat__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* ── Tarjeta ──────────────────────────────────────────────── */
+.gp-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.6rem 1.6rem;
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.gp-card__head {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+}
+
+.gp-card__icon {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-from);
+  font-size: 24px;
+}
+
+.gp-card__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gp-card__lead {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* ── Conmutador lista / mapa ──────────────────────────────── */
+.gp-vista-switch {
+  margin-left: auto;
+  display: inline-flex;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.gp-vista-btn {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.gp-vista-btn.active {
+  background: #fff;
+  color: var(--brand-to);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+/* ── Filtros ──────────────────────────────────────────────── */
+.gp-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+}
+
+/* Los tres desplegables se quedan en su ancho útil en vez de estirarse a lo
+   ancho de la tarjeta: el de punto de venta más largo porque los nombres lo
+   son, y los de provincia y ciudad justos. Estirados dejaban medio filtro en
+   blanco. */
+.gp-filtros .gp-filtro-mapa {
+  flex: 0 1 11rem;
+  min-width: 8rem;
+}
+
+.gp-filtros .gp-filtro-mapa:first-child {
+  flex: 0 1 24rem;
+  min-width: 14rem;
+}
+
+.gp-filtros .gp-select {
+  text-overflow: ellipsis;
+}
+
+/* Botón que abre el panel de búsqueda: se ve igual que un desplegable. */
+.gp-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.gp-select-btn--activo {
+  border-color: var(--brand-from);
+  color: var(--brand-to);
+  font-weight: 600;
+}
+
+.gp-select-btn__texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-select-btn__flecha {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.gp-filtros .btn {
+  margin-bottom: 1px;
+}
+
+.gp-input,

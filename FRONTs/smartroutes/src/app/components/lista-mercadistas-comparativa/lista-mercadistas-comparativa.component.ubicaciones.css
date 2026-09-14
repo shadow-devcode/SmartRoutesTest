@@ -1,0 +1,312 @@
+/* Ubicaciones de cada día, acciones y botones de la lista. */
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 18px 20px 22px;
+  text-align: center;
+  background: var(--sr-surface);
+  border-top: 1px solid var(--sr-border);
+}
+
+.sidebar-footer p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--sr-muted);
+  line-height: 1.5;
+  max-width: 280px;
+  margin-inline: auto;
+}
+
+/* Sidebar muy estrecho: compactar filtros para que no se sobrepongan */
+@container sidebar (max-width: 280px) {
+  .sidebar-header {
+    padding: 12px 10px 10px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 0.9rem;
+  }
+
+  .subtitle {
+    font-size: 0.7rem;
+  }
+
+  .stats-container {
+    gap: 6px;
+    padding: 10px 10px 12px;
+  }
+
+  .stat-card {
+    padding: 10px 6px;
+  }
+
+  .stat-value {
+    font-size: 1.05rem;
+    margin-bottom: 2px;
+  }
+
+  .stat-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+  }
+
+  .filters-stack {
+    gap: 8px;
+    padding: 10px 8px 6px;
+  }
+
+  .filter-card {
+    padding: 12px 12px 12px;
+    border-radius: 10px;
+  }
+
+  .filter-card__head {
+    margin-bottom: 8px;
+  }
+
+  .filter-card__eyebrow {
+    font-size: 0.58rem;
+    margin-bottom: 2px;
+  }
+
+  .filter-card__title {
+    font-size: 0.88rem;
+    margin-bottom: 3px;
+  }
+
+  .filter-card__desc {
+    font-size: 0.72rem;
+  }
+
+  .chips-row {
+    gap: 5px;
+  }
+
+  .filter-chip {
+    font-size: 0.7rem;
+    padding: 6px 10px;
+  }
+
+  .filter-chip--day {
+    padding-inline: 9px;
+  }
+
+  .section--routes {
+    padding: 0 8px 10px;
+  }
+
+  .filter-card--routes {
+    padding-bottom: 12px;
+  }
+
+  .mercadista-header {
+    padding: 12px 12px;
+    gap: 10px;
+  }
+
+  .mercadista-nombre {
+    font-size: 0.85rem;
+  }
+
+  .mercadista-hint {
+    font-size: 0.62rem;
+  }
+
+  .mercadista-chevron-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ubicacion-item {
+    padding: 10px 10px 10px 8px;
+    gap: 8px;
+  }
+
+  .ubicacion-orden {
+    width: 24px;
+    height: 24px;
+    font-size: 0.62rem;
+  }
+
+  .ubicacion-nombre {
+    font-size: 0.74rem;
+  }
+
+  .ubicacion-direccion {
+    font-size: 0.68rem;
+    gap: 6px;
+  }
+
+  .ubicacion-pill {
+    font-size: 0.64rem;
+    padding: 4px 7px 4px 6px;
+  }
+
+  .actions {
+    padding: 10px 10px 16px;
+  }
+
+  .btn-clear {
+    font-size: 0.74rem;
+    padding: 10px 12px;
+  }
+
+  .sidebar-footer {
+    padding: 12px 14px 16px;
+  }
+
+  .sidebar-footer p {
+    font-size: 0.7rem;
+  }
+}
+
+/* Sidebar entre 280px y 310px */
+@container sidebar (min-width: 281px) and (max-width: 310px) {
+  .sidebar-header {
+    padding: 16px 12px 14px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 1rem;
+  }
+
+  .stats-container {
+    gap: 8px;
+    padding: 14px 12px 14px;
+  }
+
+  .stat-value {
+    font-size: 1.2rem;
+  }
+
+  .filter-card {
+    padding: 14px 14px 14px;
+  }
+
+  .filter-chip {
+    font-size: 0.75rem;
+    padding: 7px 11px;
+  }
+}
+
+@media (max-height: 800px) {
+  .sidebar-header {
+    padding: 18px 16px 16px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 1.15rem;
+  }
+
+  .stats-container {
+    padding: 12px 12px 14px;
+    gap: 8px;
+  }
+
+  .stat-value {
+    font-size: 1.3rem;
+  }
+
+  .sidebar-footer {
+    padding: 12px 14px 14px;
+  }
+}
+
+@media (min-width: 2000px) and (min-height: 900px) {
+  .sidebar-header {
+    padding: 32px 24px 28px;
+  }
+
+  .sidebar-header h2 {
+    font-size: 1.45rem;
+  }
+
+  .stats-container {
+    padding: 22px 18px 22px;
+    gap: 12px;
+  }
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .filter-chip,
+  .mercadista-item,
+  .ubicacion-item,
+  .btn-clear,
+  .btn-clear__icon,
+  .chevron,
+  .mercadista-detalle,
+  .spinner {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .filter-chip:hover,
+  .mercadista-item:hover,
+  .ubicacion-item:hover {
+    transform: none;
+  }
+}
+
+
+/* ── Filtro de zona (provincia y ciudad) ─────────────────────────────────── */
+.zona-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zona-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.zona-campo__label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sr-muted, #64748b);
+}
+
+.zona-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--sr-border, rgba(15, 23, 42, 0.12));
+  border-radius: 10px;
+  background: var(--sr-surface, #fff);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--sr-text, #0f172a);
+  cursor: pointer;
+}
+
+.zona-select:focus {
+  outline: none;
+  border-color: var(--sr-accent, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.zona-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

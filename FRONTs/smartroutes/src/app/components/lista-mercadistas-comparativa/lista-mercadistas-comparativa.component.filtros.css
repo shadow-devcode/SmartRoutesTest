@@ -1,0 +1,171 @@
+/* Filtros de zona y chips de mercaderista y día. */
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.filters-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 16px 8px;
+  background: var(--sr-bg);
+}
+
+.section--routes {
+  padding: 0 16px 12px;
+  background: transparent;
+  border: none;
+}
+
+.filter-card {
+  background: var(--sr-surface);
+  border-radius: var(--sr-radius);
+  border: 1px solid var(--sr-border);
+  box-shadow: var(--sr-shadow);
+  padding: 18px 18px 16px;
+  transition: box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.filter-card--routes {
+  padding-bottom: 14px;
+}
+
+.filter-card__head {
+  margin-bottom: 14px;
+}
+
+.filter-card__head--routes {
+  margin-bottom: 10px;
+}
+
+.filter-card__eyebrow {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sr-muted);
+  margin-bottom: 4px;
+}
+
+.filter-card__title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sr-text);
+  letter-spacing: -0.02em;
+}
+
+.filter-card__desc {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--sr-muted);
+}
+
+.filter-card__desc--muted {
+  opacity: 0.85;
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chip {
+  appearance: none;
+  border: 1px solid var(--sr-border);
+  background: var(--sr-surface);
+  color: var(--sr-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background var(--sr-duration) var(--sr-ease),
+    color var(--sr-duration) var(--sr-ease),
+    border-color var(--sr-duration) var(--sr-ease),
+    transform var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease);
+}
+
+.filter-chip:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--sr-accent-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.filter-chip:focus-visible {
+  outline: 2px solid var(--sr-accent);
+  outline-offset: 2px;
+}
+
+.filter-chip--active {
+  background: #2563eb;
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+.filter-chip--active:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+.filter-chip--day {
+  padding-inline: 12px;
+}
+
+.mercadistas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mercadista-item {
+  background: var(--sr-surface);
+  border: 1px solid var(--sr-border);
+  border-radius: var(--sr-radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    border-color var(--sr-duration) var(--sr-ease),
+    box-shadow var(--sr-duration) var(--sr-ease),
+    transform var(--sr-duration) var(--sr-ease);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.mercadista-item:hover {
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.mercadista-item.active {
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.15);
+}
+
+.mercadista-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 18px;
+  gap: 14px;
+  transition: background var(--sr-duration) var(--sr-ease);
+  cursor: pointer;
+}
+
+.mercadista-header:focus-visible {
+  outline: 2px solid var(--sr-accent-deep);
+  outline-offset: 2px;
+}
