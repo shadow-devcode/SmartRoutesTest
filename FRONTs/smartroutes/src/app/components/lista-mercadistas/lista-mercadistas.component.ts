@@ -504,10 +504,17 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
     return Math.round(jornada.minutos_mes * this.FRACCION_TODAS_SEMANAS);
   }
 
-  /** Suma total (tiempo de trabajo + tiempo entre sucursales) usada para la alerta
-      y para la tarjeta "Tiempo Total de Trabajo". */
+  /** ¿El Excel se generó contando el desplazamiento dentro de la jornada? */
+  get incluyeDesplazamiento(): boolean {
+    return !!this.jornadaDataset.incluye_desplazamiento;
+  }
+
+  /** Tiempo total de la jornada: con desplazamiento suma el viaje; sin él, es
+      solo el tiempo de servicio, porque ese modelo no cuenta la carretera. */
   get totalTiempoTotal(): number {
-    return this.totalTiempoTrabajo + this.totalTiempoEntreSucursales;
+    return this.incluyeDesplazamiento
+      ? this.totalTiempoTrabajo + this.totalTiempoEntreSucursales
+      : this.totalTiempoTrabajo;
   }
 
   /** True si el tiempo TOTAL (trabajo + entre sucursales) está por debajo del umbral.

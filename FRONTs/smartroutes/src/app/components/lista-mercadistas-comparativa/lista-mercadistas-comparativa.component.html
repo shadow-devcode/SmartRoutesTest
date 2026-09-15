@@ -23,12 +23,12 @@
       <div class="stat-value">{{ totalTiempoTrabajo | number:'1.0-0' }} min</div>
       <div class="stat-label">Tiempo de trabajo</div>
     </div>
-    <div class="stat-card">
+    <div *ngIf="incluyeDesplazamiento" class="stat-card">
       <div class="stat-value">{{ totalTiempoEntreSucursales | number:'1.0-0' }} min</div>
       <div class="stat-label">Tiempo entre sucursales</div>
     </div>
     <div class="stat-card">
-      <div class="stat-value">{{ (totalTiempoTrabajo + totalTiempoEntreSucursales) | number:'1.0-0' }} min</div>
+      <div class="stat-value">{{ totalTiempoTotal | number:'1.0-0' }} min</div>
       <div class="stat-label">Tiempo total de trabajo</div>
     </div>
   </div>

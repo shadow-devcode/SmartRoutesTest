@@ -131,6 +131,18 @@ export class ListaMercadistasComparativaComponent implements OnInit, OnChanges {
   detalleActual: MercadistaDetalle | null = null;
   estadisticas: Estadisticas | null = null;
 
+  /** ¿El Excel se generó contando el desplazamiento dentro de la jornada? */
+  get incluyeDesplazamiento(): boolean {
+    return !!this.estadisticas?.jornada?.incluye_desplazamiento;
+  }
+
+  /** Total de la jornada: sin desplazamiento es solo el servicio. */
+  get totalTiempoTotal(): number {
+    return this.incluyeDesplazamiento
+      ? this.totalTiempoTrabajo + this.totalTiempoEntreSucursales
+      : this.totalTiempoTrabajo;
+  }
+
   // Totales dinámicos (se actualizan según filtros activos)
   totalUbicaciones = 0;
   totalKilometrosRuta = 0;

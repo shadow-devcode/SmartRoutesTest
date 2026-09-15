@@ -15,6 +15,7 @@ from route_engine.config import (
     max_servicio_dia,
     viaje_en_agenda,
     tope_jornada_real,
+    jornada_incluye_viaje,
 )
 from route_engine.frequency import semanas_por_frecuencia
 from route_engine.geo import estimar_minutos_viaje
@@ -280,7 +281,9 @@ class VisitaConfirmador:
             + self.travel_total_dia
             + tiempo_entre_minutes
         )
-        if reloj_si_agrego > tope_jornada_real():
+        # Solo con el modelo que cuenta el desplazamiento: en el que no lo cuenta,
+        # la carretera no decide qué visitas caben.
+        if jornada_incluye_viaje() and reloj_si_agrego > tope_jornada_real():
             if not (dia_vacio and visita_mayor_que_jornada):
                 return False
 

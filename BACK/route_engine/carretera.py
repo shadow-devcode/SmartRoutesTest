@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from route_engine.config import hora_fin_jornada, tope_jornada_real
+from route_engine.config import hora_fin_jornada, jornada_incluye_viaje, tope_jornada_real
 from route_engine.geo import minutos_viaje_desde_km, parse_coordenada_a_float
 from route_engine.mapbox import ruta_por_carretera
 
@@ -94,7 +94,13 @@ def recalcular_tramos_por_carretera(horarios_df):
         # retiran —las últimas de la ruta, que son las que sobran— y vuelven a
         # pendientes. Dejarlas escritas sería entregar un plan que no se puede
         # cumplir; recortar solo la hora sería mentir sobre él.
-        sobrantes = _visitas_que_no_caben_en_el_dia(horarios_df, indices, frecuencia)
+        # Retirar visitas por el reloj real solo tiene sentido si el modelo cuenta
+        # el desplazamiento; si no, la carretera se informa pero no quita nada.
+        sobrantes = (
+            _visitas_que_no_caben_en_el_dia(horarios_df, indices, frecuencia)
+            if jornada_incluye_viaje()
+            else []
+        )
         if sobrantes:
             retiradas.extend(sobrantes)
             indices = [i for i in indices if i not in set(sobrantes)]
