@@ -86,8 +86,8 @@ export interface FrecuenciaPunto {
 
     `minutos` y `porcentaje` van en minutos COMBINADOS (tiempo en el punto de
     venta + desplazamiento entre puntos), que es lo que realmente consume la
-    jornada de 8 h. El 100% es la capacidad mensual del mercadista: 9600 min
-    (480/día × 5 días × 4 semanas), y 2400 min por cada semana.
+    jornada de 8 h. El 100% es la capacidad mensual del mercadista: 9960 min
+    (498/día × 5 días × 4 semanas), y 2490 min por cada semana.
 
     `minutos_servicio` y `minutos_viaje` desglosan ese total. */
 export interface ProvinciaPorcentaje {

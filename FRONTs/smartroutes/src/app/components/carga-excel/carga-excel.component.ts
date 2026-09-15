@@ -58,7 +58,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
   // ─── Cuota de jornada ──────────────────────────────────────────────────────
   // Solo aplica al modo "sin desplazamiento"; con el otro modo el motor usa la
   // jornada completa. 480 es el valor de siempre.
-  minutosJornada: MinutosJornada = 480;
+  minutosJornada: MinutosJornada = 498;
 
   // ─── Tipo de carga ─────────────────────────────────────────────────────────
   // Cómo se reparte el trabajo entre mercaderistas. 'zona' es el criterio de
@@ -242,7 +242,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     // se restablece a la jornada completa: enviar 400 desde un control que el
     // usuario ya no ve sería procesar con una cuota que nadie eligió.
     if (modo === 'con_desplazamiento') {
-      this.minutosJornada = 480;
+      this.minutosJornada = 498;
     }
     this.cdr.markForCheck();
   }

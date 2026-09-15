@@ -672,7 +672,7 @@ def ejecutar_asignacion(
                 fecha_base = _lunes_siguiente() + timedelta(days=offset_calendario(day))
 
                 total_servicio_dia = sum(it["tiempo"] for it in ordered_locations)
-                aplicar_almuerzo = total_servicio_dia != 480
+                aplicar_almuerzo = total_servicio_dia != cuota_dia()
 
                 # Usar VisitaConfirmador para proceso limpio
                 confirmador = VisitaConfirmador(

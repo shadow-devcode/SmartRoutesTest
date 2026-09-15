@@ -3,7 +3,7 @@ Plan de mercadistas en modo automático (sin tabla por provincia en Excel).
 
 - Mínimo de mercadistas según minutos COMBINADOS (servicio + colchón de
   desplazamiento estimado) vs capacidad mensual combinada
-  (cuota_mes() = 480 × 5 × 4 = 9600) y vs la lógica semanal.
+  (cuota_mes() = 498 × 5 × 4 = 9960) y vs la lógica semanal.
 - Con varias provincias: se añaden mercadistas por provincia cuando la carga
   combinada de esa provincia supera lo cubrible por un solo mercadista al mes.
 
@@ -62,7 +62,7 @@ def construir_plan_mercadistas_automatico(
 
     La carga de cada provincia se calcula como
         servicio_prov + n_visitas_prov × travel_estimado_por_visita_plan_min()
-    y se compara contra cuota_mes() (9600 min/mercadista/mes).
+    y se compara contra cuota_mes() (9960 min/mercadista/mes).
 
     - Una sola provincia (o solo SIN_PROVINCIA): varios mercadistas con esa misma
       provincia para repartir carga dentro de la región.

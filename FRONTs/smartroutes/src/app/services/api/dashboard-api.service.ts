@@ -46,7 +46,7 @@ export class DashboardApiService {
   }
 
   /**
-   * Provincias por mercadista con % del total (9600 min = 100%).
+   * Provincias por mercadista con % del total (9960 min = 100%).
    * Filtros opcionales: mercadista, provincia.
    */
   getProvinciasPorcentaje(
@@ -85,7 +85,7 @@ export class DashboardApiService {
    * Une las rutas de mercadistaOrigen en mercadistaDestino.
    *
    * Si la unión rompe las reglas de rutas (dispersión > 60 km o carga mensual
-   * > 9600 min combinados) el backend responde 409 con `union_invalida: true`;
+   * > 9960 min combinados) el backend responde 409 con `union_invalida: true`;
    * el error NO se captura aquí a propósito, para que el componente pueda leer
    * el detalle del HttpErrorResponse y ofrecer reintentar con `forzar = true`.
    */

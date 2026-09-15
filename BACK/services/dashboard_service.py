@@ -3,7 +3,7 @@ Lógica del dashboard: frecuencia de puntos por mercadista y porcentaje de
 tiempo por provincia.
 
 Tope diario base usado para los porcentajes de la vista provincias:
-- 4 semanas → 9600 min = 100%
+- 4 semanas → 9960 min = 100%
 - 1 semana   → 2400 min = 100%
 """
 from __future__ import annotations

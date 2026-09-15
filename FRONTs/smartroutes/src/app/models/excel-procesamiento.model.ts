@@ -68,7 +68,7 @@ export type TipoRuta = 'tiempo_completo' | 'medio_tiempo';
 /**
  * Cómo se llena la jornada del mercaderista al calcular las rutas.
  *
- * - `sin_desplazamiento`: la cuota (480 min/día, 9600 min/mes) se consume solo
+ * - `sin_desplazamiento`: la cuota (498 min/día, 9960 min/mes) se consume solo
  *   con el tiempo de servicio en los puntos. El tiempo entre puntos se sigue
  *   calculando y aparece en el Excel, pero no descuenta jornada.
  * - `con_desplazamiento`: el tiempo entre puntos también descuenta de la cuota,
@@ -80,13 +80,13 @@ export type ModoDesplazamiento = 'sin_desplazamiento' | 'con_desplazamiento';
 /**
  * Cuota de jornada en minutos/día. La semana son 5 días y el mes 20, así que
  * de este número salen las tres cifras:
- *   480 -> 2.400 / semana -> 9.600 / mes   (jornada completa)
+ *   498 -> 2.490 / semana -> 9.960 / mes   (jornada completa)
  *   400 -> 2.000 / semana -> 8.000 / mes   (jornada reducida)
  *
  * Solo se ofrece con "sin tiempo de desplazamiento": es ahí donde la cuota es
  * de servicio puro y el tope diario se respeta a rajatabla.
  */
-export type MinutosJornada = 480 | 400;
+export type MinutosJornada = 498 | 400;
 
 /**
  * Criterio con el que se reparte el trabajo entre mercaderistas.

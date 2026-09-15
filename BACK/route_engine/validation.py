@@ -3,7 +3,7 @@ Validaciones post-procesamiento.
 
 La carga de un mercadista se mide en minutos COMBINADOS: "Tiempo Servicio
 (min)" + "Tiempo entre sucursal (min)", que es lo que consume su jornada.
-Reglas: día 432–480 min, semana 2160–2400 min, mes 8640–9600 min.
+Reglas contra cuota_dia(), cuota_semana() y cuota_mes() (498 → 2.490 → 9.960).
 """
 
 import pandas as pd
@@ -23,7 +23,7 @@ from route_engine.mapbox import norm_provincia
 
 def validar_resultado(horarios_df, state):
     """
-    Ejecuta validaciones estrictas: día (480–500 min), semana (2400–2500 min), mes (9600–10000 min).
+    Ejecuta validaciones estrictas: día, semana y mes contra cuota_dia(), cuota_semana() y cuota_mes().
     Solo cuenta "Tiempo Servicio (min)". Imprime advertencias si algo no cumple.
     """
     if horarios_df.empty or "Fecha" not in horarios_df.columns or "Mercadista" not in horarios_df.columns:
@@ -62,7 +62,7 @@ def validar_resultado(horarios_df, state):
                 f"{merc} supera maximo mensual ({total:.0f} min, maximo {cuota_mes()})."
             )
 
-    # Semanal por mercadista (2400–2500 min por semana)
+    # Semanal por mercadista contra cuota_semana()
     for merc in horarios_df["Mercadista"].unique():
         for semana in semanas_esperadas:
             subset = horarios_df[

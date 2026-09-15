@@ -481,13 +481,13 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
   private readonly FRACCION_TODAS_SEMANAS = 9000 / 9600;
 
   /** Cuota del dataset que se está viendo; si el backend no la envía (Excel
-      antiguo), se asume la jornada completa de 480 min. */
+      antiguo), se asume la jornada completa de 498 min. */
   get jornadaDataset(): JornadaDataset {
     return (
       this.estadisticas?.jornada ?? {
-        minutos_dia: 480,
-        minutos_semana: 2400,
-        minutos_mes: 9600,
+        minutos_dia: 498,
+        minutos_semana: 2490,
+        minutos_mes: 9960,
         incluye_desplazamiento: false,
       }
     );
@@ -1125,7 +1125,7 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
         if (body?.tope_excedido) {
           const exceso = Math.round(body.exceso_min || 0);
           const combinado = Math.round(body.combinado_total_min || 0);
-          const limite = body.limite_min || 480;
+          const limite = body.limite_min || this.jornadaDataset.minutos_dia;
           const ok = (typeof window !== 'undefined' && typeof window.confirm === 'function')
             ? window.confirm(
                 `El día destino quedaría con ${combinado} min combinados ` +
@@ -1137,7 +1137,7 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
             this.confirmarAsignarPendiente(true);
             return;
           }
-          this.mensajeMover = body?.message || 'Excede el tope de 480 minutos combinados.';
+          this.mensajeMover = body?.message || `Excede el tope de ${this.jornadaDataset.minutos_dia} minutos combinados.`;
           return;
         }
         this.mensajeMover = body?.error || body?.message || 'Error al asignar la pendiente.';

@@ -33,7 +33,8 @@ _MODOS_SIN_DESPLAZAMIENTO = frozenset({"sin_desplazamiento", "false", "0", "no"}
 # Cuotas de jornada ofrecidas en la pantalla de carga. Solo estas: un valor
 # libre desde el navegador dimensionaría la flota con una jornada que nadie ha
 # acordado, así que lo que no esté en la lista se ignora y manda el defecto.
-JORNADAS_PERMITIDAS_MIN = (480, 400)
+# 480 se sigue aceptando para no rechazar formularios en caché.
+JORNADAS_PERMITIDAS_MIN = (498, 480, 400)
 
 # Tipos de carga aceptados. Se validan aquí para que un valor inventado no
 # acabe repartiendo el trabajo con un criterio que nadie eligió.

@@ -231,7 +231,7 @@ def ejecutar_red_seguridad(state):
             # No hay hueco en mercadistas existentes; no se crean adicionales.
             # Registrar como pendiente para visibilidad en reporte y Excel.
             state.puntos_pendientes.append({
-                "motivo": "red de seguridad: sin hueco respetando 480 min/dia combinado",
+                "motivo": f"red de seguridad: sin hueco respetando {max_dia_flex()} min/dia combinado",
                 "descripcion": inst.get("descripcion", ""),
                 "lat": inst.get("lat"),
                 "lon": inst.get("lon"),

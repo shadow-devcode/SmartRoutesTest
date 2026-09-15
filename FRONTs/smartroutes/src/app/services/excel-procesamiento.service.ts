@@ -68,7 +68,7 @@ export class ExcelProcesamientoService {
     displayName?: string,
     tipoRuta: TipoRuta = 'tiempo_completo',
     modoDesplazamiento: ModoDesplazamiento = 'sin_desplazamiento',
-    minutosJornadaDia: MinutosJornada = 480,
+    minutosJornadaDia: MinutosJornada = 498,
     tipoCarga: TipoCarga = 'zona',
     canal = '',
     cadenas: string[] = [],

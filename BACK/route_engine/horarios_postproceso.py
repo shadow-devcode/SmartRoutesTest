@@ -90,7 +90,7 @@ def _recalcular_ruta(grupo, incluye_viaje=None):
     prev_lat, prev_lon = None, None
     hora_fin_min = 8 * 60
     total_serv = grupo["Tiempo Servicio (min)"].sum()
-    aplicar_almuerzo = total_serv != 480
+    aplicar_almuerzo = total_serv != cuota_dia()
 
     for i in range(n):
         row = grupo.iloc[i]

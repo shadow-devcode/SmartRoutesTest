@@ -538,7 +538,7 @@ export class NuevaVistaComponent implements OnInit {
    */
   /** Tope diario del dataset: el 100% contra el que se mide cada jornada. */
   get minutosJornadaDia(): number {
-    return this.estadisticas?.jornada?.minutos_dia ?? 480;
+    return this.estadisticas?.jornada?.minutos_dia ?? 498;
   }
 
   get diasConRutas(): string[] {

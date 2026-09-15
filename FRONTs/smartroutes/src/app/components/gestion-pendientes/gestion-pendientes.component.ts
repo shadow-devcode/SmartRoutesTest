@@ -234,7 +234,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   calError = '';
   calMensaje = '';
   /** Cuota diaria del dataset (480 o 400): el 100% de cada columna. */
-  jornadaMinutosDia = 480;
+  jornadaMinutosDia = 498;
 
   readonly semanasPeriodo = ['semana 1', 'semana 2', 'semana 3', 'semana 4'];
 
@@ -1500,7 +1500,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
         this.recalcularOpcionesRuta();
         this.rutas = resp.puntos ?? [];
         this.rutasMercadistas = resp.mercadistas ?? [];
-        this.jornadaMinutosDia = resp.jornada?.minutos_dia || 480;
+        this.jornadaMinutosDia = resp.jornada?.minutos_dia || 498;
         // El calendario abre con el primer mercaderista si no hay uno elegido,
         // o con el que ya estuviera si esto es una recarga tras mover.
         if (!this.calMercadista || !this.rutasMercadistas.includes(this.calMercadista)) {

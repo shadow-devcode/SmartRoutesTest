@@ -118,7 +118,8 @@ def jornada_incluye_viaje_temporal(valor):
 #
 # Es estado por ejecución, igual que el modelo de desplazamiento: se fija con
 # `cuota_dia_temporal()` mientras dura un procesamiento.
-CUOTA_DIA_POR_DEFECTO = int(os.environ.get("MAX_TIEMPO_DIA_MIN", "480"))
+# 498 min/día -> 2.490/semana -> 9.960/mes.
+CUOTA_DIA_POR_DEFECTO = int(os.environ.get("MAX_TIEMPO_DIA_MIN", "498"))
 
 _cuota_dia = CUOTA_DIA_POR_DEFECTO
 
@@ -292,7 +293,7 @@ def tope_jornada_real() -> int:
     (39%), con tramos sueltos de 71 km —429 minutos de coche— dentro de un
     mismo día.
 
-    Por defecto 520: los 480 de jornada más algo de margen.
+    Por defecto 520: los 498 de jornada más algo de margen.
     """
     override = os.environ.get("TOPE_JORNADA_REAL_MIN")
     if override:
@@ -300,10 +301,11 @@ def tope_jornada_real() -> int:
             return int(override)
         except ValueError:
             pass
-    return int(cuota_dia() + MARGEN_JORNADA_REAL_MIN)
+    # Nunca por debajo de la propia jornada; por defecto, 520 min de reloj.
+    return int(max(cuota_dia(), TOPE_JORNADA_REAL_POR_DEFECTO_MIN))
 
 
-MARGEN_JORNADA_REAL_MIN = float(os.environ.get("MARGEN_JORNADA_REAL_MIN", "40"))
+TOPE_JORNADA_REAL_POR_DEFECTO_MIN = int(os.environ.get("TOPE_JORNADA_REAL_POR_DEFECTO_MIN", "520"))
 
 
 def max_servicio_dia() -> int:
