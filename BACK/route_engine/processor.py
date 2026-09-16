@@ -1078,10 +1078,16 @@ def _procesar_minoristas(
                 f"      -> Cuadrilla de fin de semana: {abiertos_fs} mercadista(s) "
                 f"de miércoles a domingo"
             )
-            # Aquí NO se compacta. Medido: una vuelta de compactación después
-            # de la cuadrilla devolvía la cobertura del 91,9% al 77,9%, porque
-            # vaciar plazas mueve puntos enteros a vecinos donde no caben y
-            # acaban otra vez en pendientes.
+            # Compactar aquí devolvía la cobertura del 91,9% al 77,9%: vaciar
+            # plazas mueve puntos enteros a vecinos donde no caben y vuelven a
+            # pendientes. Por eso solo se hace si se pide un mínimo de
+            # ocupación con OCUPACION_MINIMA_FIN_SEMANA.
+            from route_engine.config import OCUPACION_MINIMA_FIN_SEMANA
+
+            if OCUPACION_MINIMA_FIN_SEMANA > 0 and disolver_mercadistas_infrautilizados(
+                state, umbral_ocupacion=OCUPACION_MINIMA_FIN_SEMANA, minimo_activos=piso_flota
+            ):
+                ejecutar_pase_rescate(state)
             ejecutar_red_seguridad(state)
 
     _control_mes(state, "reparto final")

@@ -604,6 +604,14 @@ TRAMO_PRIORIDAD_FRECUENCIA_KM = float(
 )
 
 
+# Ocupación mínima que se le exige a cada mercaderista DESPUÉS de abrir la
+# cuadrilla de fin de semana. En 0 no se compacta al final, que es como estaba:
+# compactar ahí bajaba la cobertura del 91,9% al 77,9%.
+OCUPACION_MINIMA_FIN_SEMANA = float(
+    os.environ.get("OCUPACION_MINIMA_FIN_SEMANA", "0")
+)
+
+
 def es_frecuencia_base(frecuencia) -> bool:
     """¿Esa frecuencia es de las que definen la zona antes que el resto?"""
     try:
