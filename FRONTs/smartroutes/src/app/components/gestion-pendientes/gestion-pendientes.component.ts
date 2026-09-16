@@ -106,6 +106,8 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   /** Puntos agrupados, que es lo que pinta el mapa. */
   rutas: PuntoRuta[] = [];
   rutasMercadistas: string[] = [];
+  /** Jornada de los mercaderistas dados de alta sin puntos (aún sin filas). */
+  jornadasExtra: Record<string, 'semana' | 'fin_semana'> = {};
   rutasTotalPuntos = 0;
   rutasTotalVisitas = 0;
   rutasMinutos = 0;
@@ -266,7 +268,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     const suyos = new Set(
       this.rutasFilas.filter((f) => f.mercadista === this.calMercadista).map((f) => f.dia),
     );
-    const esFinDeSemana = suyos.has('Sábado') || suyos.has('Domingo');
+    // Sin filas todavía (recién creado), la jornada la dice el servidor.
+    const esFinDeSemana = suyos.size
+      ? suyos.has('Sábado') || suyos.has('Domingo')
+      : this.jornadasExtra[this.calMercadista] === 'fin_semana';
     this.cacheDias = esFinDeSemana
       ? ['Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
       : DIAS_CALENDARIO.slice(0, 5);
@@ -858,6 +863,49 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
           accion: () => this.asignarPendienteEnSemanas(punto, dia, semanas, semana, orden),
         },
       );
+    });
+  }
+
+  /** Da de alta un mercaderista sin puntos para arrastrarle pendientes. */
+  nuevoMercadista(): void {
+    if (this.calBloqueado) return;
+    this.pedirConfirmacion(
+      'Nuevo mercaderista',
+      'Se crea sin puntos: después le arrastras pendientes desde el panel de la ' +
+        'derecha. ¿Qué jornada tendrá?',
+      'Lunes a viernes',
+      () => this.crearMercadista(false),
+      false,
+      { texto: 'Miércoles a domingo', accion: () => this.crearMercadista(true) },
+    );
+  }
+
+  private crearMercadista(finDeSemana: boolean): void {
+    this.calGuardando = true;
+    this.calError = '';
+    this.calMensaje = '';
+    this.cdr.markForCheck();
+    this.rutaEditApi.crearMercadistaVacio(finDeSemana).subscribe({
+      next: (resp) => {
+        this.calGuardando = false;
+        if (!resp?.success || !resp.mercadista) {
+          this.calError = resp?.error ?? 'No se pudo crear el mercaderista.';
+          this.cdr.markForCheck();
+          return;
+        }
+        this.calMercadista = resp.mercadista;
+        this.calMensaje = `${resp.mercadista} creado sin puntos: arrástrale pendientes.`;
+        this.cargarRutas(true);
+        setTimeout(() => {
+          this.calMensaje = '';
+          this.cdr.markForCheck();
+        }, 5000);
+      },
+      error: (err) => {
+        this.calGuardando = false;
+        this.calError = err?.error?.error ?? 'No se pudo crear el mercaderista.';
+        this.cdr.markForCheck();
+      },
     });
   }
 
@@ -1542,6 +1590,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
         this.recalcularOpcionesRuta();
         this.rutas = resp.puntos ?? [];
         this.rutasMercadistas = resp.mercadistas ?? [];
+        this.jornadasExtra = resp.jornadas_extra ?? {};
         this.jornadaMinutosDia = resp.jornada?.minutos_dia || 498;
         // El calendario abre con el primer mercaderista si no hay uno elegido,
         // o con el que ya estuviera si esto es una recarga tras mover.

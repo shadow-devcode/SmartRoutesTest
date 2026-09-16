@@ -197,4 +197,19 @@ export class RutaEditApiService {
       body,
     );
   }
+
+  /** Da de alta un mercaderista sin puntos para poder arrastrarle pendientes. */
+  crearMercadistaVacio(finDeSemana: boolean): Observable<MercadistaNuevoResponse> {
+    return this.http.post<MercadistaNuevoResponse>(`${this.apiUrl}/ruta/mercadista-nuevo`, {
+      fin_de_semana: finDeSemana,
+    });
+  }
+}
+
+export interface MercadistaNuevoResponse {
+  success: boolean;
+  mercadista?: string;
+  dias?: string[];
+  message?: string;
+  error?: string;
 }

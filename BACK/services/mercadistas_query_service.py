@@ -301,7 +301,10 @@ def resumen_rutas(
             "warning": horarios_corruption_message(missing),
         }
 
+    filas_totales = len(df_horarios)
     df_horarios = df_filtrar_mercadista_usuario(df_horarios, auth_loaded=auth_loaded)
+    # Un usuario que solo ve su propio mercaderista no debe ver los vacíos.
+    usuario_restringido = len(df_horarios) != filas_totales
     df_horarios = df_horarios[
         df_horarios["Mercadista"].astype(str).str.strip().str.upper() != "TOTAL"
     ]
@@ -388,6 +391,21 @@ def resumen_rutas(
     lista.sort(key=lambda x: (x["mercadista"], x["descripcion"]))
     mercadistas = sorted({x["mercadista"] for x in lista if x["mercadista"]})
 
+    # Mercaderistas dados de alta sin puntos: no tienen filas, pero el
+    # calendario debe listarlos para poder arrastrarles pendientes.
+    jornadas_extra: dict = {}
+    if not usuario_restringido:
+        from services.mercadistas_extra import jornadas_extra as _jornadas_extra
+
+        con_filas = set(df_horarios["Mercadista"].astype(str).str.strip())
+        for nombre, jornada in _jornadas_extra(hp, con_filas).items():
+            if mercadista and nombre.strip().lower() != mercadista.strip().lower():
+                continue
+            jornadas_extra[nombre] = jornada
+            if nombre not in mercadistas:
+                mercadistas.append(nombre)
+        mercadistas.sort()
+
     # Filas tal cual salen del Excel (hoja Horarios_Detalle): mismo orden y
     # mismos nombres de columna. La pantalla de gestión muestra esto para que lo
     # que se ve en la app y lo que se descarga sean lo mismo; los `puntos`
@@ -437,6 +455,7 @@ def resumen_rutas(
         "total_visitas": sum(x["visitas_agendadas"] for x in lista),
         "minutos_asignados": round(sum(x["minutos_mes"] for x in lista), 1),
         "mercadistas": mercadistas,
+        "jornadas_extra": jornadas_extra,
         # Cuota del dataset: el calendario mide contra ella el llenado de cada
         # día en vez de dar por hecho que son 480 min.
         "jornada": jornada_dto(

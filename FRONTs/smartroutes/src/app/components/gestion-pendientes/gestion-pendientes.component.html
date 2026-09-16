@@ -499,6 +499,14 @@
             <option *ngFor="let c of calCiudades" [value]="c">{{ c }}</option>
           </select>
         </label>
+        <button
+          type="button"
+          class="btn btn-sm btn-muted"
+          (click)="nuevoMercadista()"
+          [disabled]="calBloqueado"
+          title="Crea un mercaderista sin puntos para arrastrarle pendientes">
+          ＋ Nuevo mercaderista
+        </button>
         <span class="cal-resumen">
           {{ calMinutosMes | number }} min en el mes ·
           jornada de {{ jornadaMinutosDia }} min/día

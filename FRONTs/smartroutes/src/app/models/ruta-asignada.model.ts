@@ -71,6 +71,8 @@ export interface RutasAsignadasResponse {
   total_visitas: number;
   minutos_asignados: number;
   mercadistas: string[];
+  /** Jornada de los mercaderistas dados de alta sin puntos (aún sin filas). */
+  jornadas_extra?: Record<string, 'semana' | 'fin_semana'>;
   warning?: string;
   error?: string;
 }

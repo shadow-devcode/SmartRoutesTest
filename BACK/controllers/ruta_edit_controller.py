@@ -227,3 +227,16 @@ def asignar_pendiente():
             provincia_fallback=visita.get("provincia", "") or "",
         )
     )
+
+
+@ruta_bp.route("/mercadista-nuevo", methods=["POST"])
+@_maneja_errores_ruta_edit("POST /api/ruta/mercadista-nuevo")
+def mercadista_nuevo():
+    """Da de alta un mercaderista sin puntos, para arrastrarle pendientes."""
+    hp = active_horarios_path(auth_loaded=is_auth_loaded())
+    if not hp:
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    data = request.get_json() or {}
+    return jsonify(
+        res.crear_mercadista_vacio(hp, fin_de_semana=bool(data.get("fin_de_semana")))
+    )

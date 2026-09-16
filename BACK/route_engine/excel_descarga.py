@@ -25,7 +25,7 @@ SHEET_RUTAS_SEMANA = "Rutas_Semana"
 
 # Hojas que el sistema necesita en su copia pero que no se entregan al
 # descargar: no aportan nada a quien lee el rutero.
-HOJAS_SOLO_INTERNAS = ("Config_Procesamiento", "Categorias")
+HOJAS_SOLO_INTERNAS = ("Config_Procesamiento", "Categorias", "Mercadistas_Extra")
 
 
 def _construir_hoja_rutas_semana(wb, abs_path: str) -> None:

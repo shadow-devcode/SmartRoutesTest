@@ -841,3 +841,46 @@ def asignar_pendiente(
             f"sobrepasa {tope_dia} min."
         )
     return resp
+
+
+# ---------------------------------------------------------------------------
+# Mercaderistas vacíos
+# ---------------------------------------------------------------------------
+
+
+@with_excel_file_lock("hp")
+def crear_mercadista_vacio(hp: str, *, fin_de_semana: bool = False) -> dict:
+    """Da de alta un mercaderista sin puntos para poder arrastrarle pendientes.
+
+    Como los mercaderistas salen de las filas de Horarios_Detalle, uno vacío no
+    existe hasta su primera visita: se anota en la hoja interna
+    Mercadistas_Extra, que el calendario mezcla con los que sí tienen filas.
+    """
+    from services.mercadistas_extra import (
+        JORNADA_FIN_SEMANA,
+        JORNADA_SEMANA,
+        SHEET_MERCADISTAS_EXTRA,
+        dias_de_jornada,
+        leer_mercadistas_extra,
+        siguiente_nombre_mercadista,
+    )
+
+    df = drop_spurious_total_rows_horarios_df(read_excel_cached(hp, "Horarios_Detalle"))
+    nombres = (
+        set(df["Mercadista"].astype(str).str.strip()) if "Mercadista" in df.columns else set()
+    )
+    extra = leer_mercadistas_extra(hp)
+    nombres |= set(extra["Mercadista"].astype(str).str.strip())
+    nombre = siguiente_nombre_mercadista(nombres)
+    jornada = JORNADA_FIN_SEMANA if fin_de_semana else JORNADA_SEMANA
+    extra = pd.concat(
+        [extra, pd.DataFrame([{"Mercadista": nombre, "Jornada": jornada}])],
+        ignore_index=True,
+    )
+    _escribir_hojas(hp, {SHEET_MERCADISTAS_EXTRA: extra})
+    return {
+        "success": True,
+        "mercadista": nombre,
+        "dias": dias_de_jornada(jornada),
+        "message": f"{nombre} creado sin puntos.",
+    }
