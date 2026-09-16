@@ -231,10 +231,21 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     alternativa?: { texto: string; accion: () => void };
   } | null = null;
   calGuardando = false;
+  /** Relectura en curso tras una edición: el tablero sigue bloqueado. */
+  calRecargando = false;
   calError = '';
   calMensaje = '';
   /** Cuota diaria del dataset (480 o 400): el 100% de cada columna. */
   jornadaMinutosDia = 498;
+
+  /**
+   * El tablero no acepta otro arrastre hasta que el cambio esté guardado y
+   * releído: soltar el siguiente punto antes de tiempo partía de una vista
+   * vieja y el servidor devolvía error.
+   */
+  get calBloqueado(): boolean {
+    return this.calGuardando || this.calRecargando;
+  }
 
   readonly semanasPeriodo = ['semana 1', 'semana 2', 'semana 3', 'semana 4'];
 
@@ -565,6 +576,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   // ─── Arrastrar y soltar ────────────────────────────────────────────────────
 
   alEmpezarArrastre(fila: FilaRuta, evento?: DragEvent): void {
+    if (this.calBloqueado) {
+      evento?.preventDefault();
+      return;
+    }
     this.calArrastrada = fila;
     this.calPendienteArrastrado = null;
     this.calDiaArrastrado = null;
@@ -576,6 +591,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
 
   /** Empieza a arrastrar una jornada entera desde la cabecera del día. */
   alEmpezarArrastreDia(dia: string, semana: string, evento: DragEvent): void {
+    if (this.calBloqueado) {
+      evento.preventDefault();
+      return;
+    }
     this.calDiaArrastrado = { dia, semana };
     this.calArrastrada = null;
     this.calPendienteArrastrado = null;
@@ -596,6 +615,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
 
   /** Empieza a arrastrar un pendiente desde el panel de la derecha. */
   alEmpezarArrastrePendiente(punto: PuntoPendiente, evento: DragEvent): void {
+    if (this.calBloqueado) {
+      evento.preventDefault();
+      return;
+    }
     if (!this.puedeAsignarPendiente(punto)) {
       evento.preventDefault();
       this.calError =
@@ -615,6 +638,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
 
   alSoltarEnDia(dia: string, semana: string, evento: DragEvent): void {
     evento.preventDefault();
+    if (this.calBloqueado) {
+      this.limpiarResaltado();
+      return;
+    }
     const pendiente = this.calPendienteArrastrado;
     const fila = this.calArrastrada;
     const jornada = this.calDiaArrastrado;
@@ -698,6 +725,10 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   alSoltarEnVisita(destino: FilaRuta, evento: DragEvent): void {
     evento.preventDefault();
     evento.stopPropagation();
+    if (this.calBloqueado) {
+      this.limpiarResaltado();
+      return;
+    }
     const pendiente = this.calPendienteArrastrado;
     const fila = this.calArrastrada;
     const jornada = this.calDiaArrastrado;
@@ -1539,23 +1570,35 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
       this.cargarRutas(true);
       return;
     }
-    this.mercadistasApi.getRutasAsignadas({ mercadista }).subscribe((resp) => {
-      if (!resp.success) {
-        // Si la carga parcial falla se cae a la completa: mejor lenta que con
-        // la pantalla desincronizada del servidor.
+    // El tablero queda tapado hasta que vuelvan los datos: el siguiente
+    // arrastre debe partir de lo que hay guardado, no de la vista optimista.
+    this.calRecargando = true;
+    this.cdr.markForCheck();
+
+    this.mercadistasApi.getRutasAsignadas({ mercadista }).subscribe({
+      next: (resp) => {
+        this.calRecargando = false;
+        if (!resp.success) {
+          // Si la carga parcial falla se cae a la completa: mejor lenta que con
+          // la pantalla desincronizada del servidor.
+          this.cargarRutas(true);
+          return;
+        }
+        const suyas = resp.filas ?? [];
+        this.rutasFilas = [
+          ...this.rutasFilas.filter((f) => f.mercadista !== mercadista),
+          ...suyas,
+        ];
+        const puntosAjenos = this.rutas.filter((p) => p.mercadista !== mercadista);
+        this.rutas = [...puntosAjenos, ...(resp.puntos ?? [])];
+        this.refrescarVista();
+        this.recalcularOpcionesRuta();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.calRecargando = false;
         this.cargarRutas(true);
-        return;
-      }
-      const suyas = resp.filas ?? [];
-      this.rutasFilas = [
-        ...this.rutasFilas.filter((f) => f.mercadista !== mercadista),
-        ...suyas,
-      ];
-      const puntosAjenos = this.rutas.filter((p) => p.mercadista !== mercadista);
-      this.rutas = [...puntosAjenos, ...(resp.puntos ?? [])];
-      this.refrescarVista();
-      this.recalcularOpcionesRuta();
-      this.cdr.markForCheck();
+      },
     });
   }
 

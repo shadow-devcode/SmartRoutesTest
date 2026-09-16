@@ -695,6 +695,15 @@
           en esa semana. Los apagados ya los atiende otro mercaderista.
         </p>
       </aside>
+
+        <!-- Tapa el tablero entero mientras el servidor confirma: soltar otro
+             punto antes de tiempo daba error. -->
+        <div class="cal-cargando" *ngIf="calBloqueado" role="status" aria-live="polite">
+          <span class="cal-cargando__caja">
+            <span class="cal-cargando__rueda" aria-hidden="true"></span>
+            <span class="cal-cargando__texto">Guardando el cambio…</span>
+          </span>
+        </div>
       </div>
 
       <p class="gp-nota">
