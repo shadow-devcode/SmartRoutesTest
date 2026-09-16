@@ -838,12 +838,21 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     semanaArrastrada: string,
     orden?: number,
   ): void {
-    for (const semana of semanas) {
+    // De una en una: lanzarlas a la vez hacía que varias peticiones editaran
+    // el mismo Excel en paralelo y lo dejaran corrupto.
+    const siguiente = (i: number) => {
+      if (i >= semanas.length) {
+        return;
+      }
+      const semana = semanas[i];
       // El orden elegido solo vale para la semana donde se soltó; en las demás
       // el día tiene su propia lista y la visita va al final.
       const posicion = semana === semanaArrastrada ? orden : undefined;
-      this.asignarPendienteConfirmado(punto, dia, semana, false, posicion);
-    }
+      this.asignarPendienteConfirmado(punto, dia, semana, false, posicion, () =>
+        siguiente(i + 1),
+      );
+    };
+    siguiente(0);
   }
 
   private asignarPendienteADia(
@@ -876,6 +885,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     semana: string,
     forzar: boolean,
     orden?: number,
+    alTerminar?: () => void,
   ): void {
     const posicion = orden ?? this.calVisitas(dia, semana).length + 1;
 
@@ -947,6 +957,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
             this.cdr.markForCheck();
             return;
           }
+          alTerminar?.();
           this.calMensaje = `${punto.descripcion} → ${dia.toLowerCase()} · ${semana}`;
           // Relectura en segundo plano para traer horario, tiempos y km.
           this.cargarRutasDeMercadista(this.calMercadista);
@@ -968,7 +979,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
               `Con el desplazamiento quedaría en ${combinado} min, por encima del ` +
                 `tope de ${limite} min.`,
               'Asignar igualmente',
-              () => this.asignarPendienteConfirmado(punto, dia, semana, true, orden),
+              () => this.asignarPendienteConfirmado(punto, dia, semana, true, orden, alTerminar),
             );
             return;
           }

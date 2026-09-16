@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import uuid
 from contextlib import contextmanager
 
 
@@ -37,8 +38,13 @@ def escritura_atomica(path: str):
     """
     # El nombre conserva la extensión .xlsx: `pd.ExcelWriter` valida la
     # extensión del destino y rechaza cualquier otra cosa.
+    #
+    # El sufijo lleva un id único por escritura, no solo el PID: dos hilos del
+    # mismo proceso compartían temporal, se pisaban a media escritura y dejaban
+    # un .xlsx corrupto («Error -3 while decompressing data») más un
+    # FileNotFoundError en el segundo `os.replace`.
     raiz, extension = os.path.splitext(path)
-    destino = f"{raiz}.tmp-{os.getpid()}{extension or '.xlsx'}"
+    destino = f"{raiz}.tmp-{os.getpid()}-{uuid.uuid4().hex[:8]}{extension or '.xlsx'}"
     if os.path.exists(path):
         shutil.copy2(path, destino)
     try:

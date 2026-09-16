@@ -593,6 +593,7 @@ def intercambiar_dias(
     }
 
 
+@with_excel_file_lock("hp")
 def asignar_pendiente(
     hp: str,
     *,
