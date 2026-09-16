@@ -593,6 +593,51 @@ def intercambiar_dias(
     }
 
 
+def _texto_celda(valor) -> str:
+    """Texto de una celda, con NaN tratado como vacío."""
+    if valor is None:
+        return ""
+    try:
+        if pd.isna(valor):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return str(valor).strip()
+
+
+def _geografia_del_punto(df: pd.DataFrame, lat, lon, desc: str) -> dict:
+    """Provincia, ciudad, calle, canal y cadena de otra visita del mismo punto.
+
+    La hoja de pendientes guarda esas columnas vacías a menudo, y la visita
+    recién colocada salía sin provincia aunque el punto ya estuviera agendado
+    otras semanas con la suya.
+    """
+    columnas = [c for c in ("PROVINCIA", "CIUDAD", "CALLE", "CANAL", "CADENA") if c in df.columns]
+    if df.empty or not columnas:
+        return {}
+    if {"Latitud", "Longitud"}.issubset(df.columns) and lat is not None and lon is not None:
+        latitudes = pd.to_numeric(df["Latitud"].map(parse_coordenada_a_float), errors="coerce")
+        longitudes = pd.to_numeric(df["Longitud"].map(parse_coordenada_a_float), errors="coerce")
+        misma = (latitudes.round(6) == round(float(lat), 6)) & (
+            longitudes.round(6) == round(float(lon), 6)
+        )
+    elif "Descripción" in df.columns:
+        misma = df["Descripción"].astype(str).str.strip() == str(desc).strip()
+    else:
+        return {}
+    iguales = df[misma]
+    if iguales.empty:
+        return {}
+    datos: dict = {}
+    for col in columnas:
+        for valor in iguales[col]:
+            texto = _texto_celda(valor)
+            if texto:
+                datos[col] = texto
+                break
+    return datos
+
+
 @with_excel_file_lock("hp")
 def asignar_pendiente(
     hp: str,
@@ -680,12 +725,27 @@ def asignar_pendiente(
             )
         except (TypeError, ValueError):
             nueva_fila["Tiempo Servicio (min)"] = 0.0
-    if "PROVINCIA" in nueva_fila and pendiente_row.get("Provincia"):
-        nueva_fila["PROVINCIA"] = pendiente_row.get("Provincia")
+    # Primero lo que traiga la pendiente; si viene en blanco, lo que ya tiene
+    # el mismo punto en otra semana y, en último caso, lo que mandó la pantalla.
+    geo_punto = _geografia_del_punto(df, lat_v, lon_v, desc_v)
+    provincia = (
+        _texto_celda(pendiente_row.get("Provincia"))
+        or geo_punto.get("PROVINCIA", "")
+        or _texto_celda(provincia_fallback)
+    )
+    if "PROVINCIA" in nueva_fila:
+        nueva_fila["PROVINCIA"] = provincia_display(provincia) if provincia else ""
     if "CIUDAD" in nueva_fila:
-        nueva_fila["CIUDAD"] = pendiente_row.get("Ciudad") or ""
+        nueva_fila["CIUDAD"] = (
+            _texto_celda(pendiente_row.get("Ciudad")) or geo_punto.get("CIUDAD", "")
+        )
     if "CALLE" in nueva_fila:
-        nueva_fila["CALLE"] = pendiente_row.get("Calle") or ""
+        nueva_fila["CALLE"] = (
+            _texto_celda(pendiente_row.get("Calle")) or geo_punto.get("CALLE", "")
+        )
+    for col in ("CANAL", "CADENA"):
+        if col in nueva_fila and geo_punto.get(col):
+            nueva_fila[col] = geo_punto[col]
     if "Duración (hh:mm)" in nueva_fila:
         from route_engine.scheduling import format_duracion
         try:
