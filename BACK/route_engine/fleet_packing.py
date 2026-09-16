@@ -41,8 +41,10 @@ from collections import defaultdict
 
 from route_engine.config import (
     cuota_dia,
+    es_frecuencia_base,
     RADIO_CENTRO_ZONA_KM,
     RADIO_ZONA_KM,
+    TRAMO_PRIORIDAD_FRECUENCIA_KM,
     carga_jornada,
     cuota_mes,
     travel_estimado_por_visita_plan_min,
@@ -298,6 +300,9 @@ def planificar_flota_por_capacidad(
     insts_punto = defaultdict(list)
     minutos_visita_punto = {}
     frecuencia_punto = {}
+    # Frecuencia de TODOS los puntos, también los que no son de día fijo: es
+    # con la que se decide cuáles siembran zona.
+    frecuencia_mes_punto = {}
     grupo_punto = {}
     sin_ubicar = []
 
@@ -315,6 +320,7 @@ def planificar_flota_por_capacidad(
         afinidad_punto.setdefault(pk, inst.get("group_key") or pk)
         insts_punto[pk].append(inst)
         grupo_punto.setdefault(pk, clave_grupo(inst, tipo_carga_norm))
+        frecuencia_mes_punto.setdefault(pk, inst.get("frecuencia_mes"))
         if inst.get("fixed_mercadista"):
             minutos_visita_punto[pk] = tiempo
             frecuencia_punto[pk] = inst.get("frecuencia_mes")
@@ -445,14 +451,20 @@ def planificar_flota_por_capacidad(
                 )
                 if patron is None:
                     continue
-                # Manda la CERCANÍA: de los puntos que caben, entra siempre el
-                # más próximo a los que la zona ya tiene. Las filas del mismo
-                # local van primero —un punto no se parte entre dos personas si
-                # cabe entero— y la carga solo desempata a igual distancia.
+                # Manda la CERCANÍA: de los puntos que caben, entra el más
+                # próximo a los que la zona ya tiene. Con
+                # TRAMO_PRIORIDAD_FRECUENCIA_KM > 0, a distancia pareja pasa
+                # antes el de frecuencia base (20 o 12). En 0 no actúa.
                 misma_tienda = 0 if afinidad_punto[pk] in {
                     afinidad_punto[p] for p in caja.puntos
                 } else 1
-                clave = (misma_tienda, caja.distancia_a(coords_nuevas), -carga)
+                distancia = caja.distancia_a(coords_nuevas)
+                if TRAMO_PRIORIDAD_FRECUENCIA_KM > 0:
+                    base = 0 if es_frecuencia_base(frecuencia_mes_punto.get(pk)) else 1
+                    tramo = round(distancia / TRAMO_PRIORIDAD_FRECUENCIA_KM)
+                    clave = (misma_tienda, tramo, base, distancia, -carga)
+                else:
+                    clave = (misma_tienda, distancia, -carga)
                 if mejor_clave is None or clave < mejor_clave:
                     mejor, mejor_clave, mejor_patron = pk, clave, patron
 

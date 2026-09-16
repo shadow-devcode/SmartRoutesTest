@@ -587,6 +587,31 @@ NUM_SEMANAS_POR_MERCADISTA = 4
 # es la distancia real entre puntos, no la frontera administrativa.
 RADIO_ZONA_KM = float(os.environ.get("RADIO_ZONA_KM", "30"))
 
+# Frecuencias que siembran las zonas: un punto de 20 o 12 visitas necesita
+# 5 o 3 días fijos por semana, así que si entra al final ya no cabe en ninguna
+# zona y sus visitas acaban pendientes. Configurable con FRECUENCIAS_BASE_ZONA.
+FRECUENCIAS_BASE_ZONA = tuple(
+    int(f) for f in os.environ.get("FRECUENCIAS_BASE_ZONA", "20,12").split(",") if f.strip()
+)
+
+
+# Tramo en km dentro del cual dos puntos se consideran igual de cercanos y
+# decide la frecuencia base. En 0 la regla no actúa y manda solo la cercanía.
+# Medido: con 0.5 el Excel de 124 puntos con desplazamiento baja de 143 a 104
+# pendientes, pero el rutero nacional sube de 239 a 353. Por eso viene apagada.
+TRAMO_PRIORIDAD_FRECUENCIA_KM = float(
+    os.environ.get("TRAMO_PRIORIDAD_FRECUENCIA_KM", "0")
+)
+
+
+def es_frecuencia_base(frecuencia) -> bool:
+    """¿Esa frecuencia es de las que definen la zona antes que el resto?"""
+    try:
+        return int(frecuencia or 0) in FRECUENCIAS_BASE_ZONA
+    except (TypeError, ValueError):
+        return False
+
+
 # Radio de la zona de un mercaderista medido DESDE SU CENTRO.
 #
 # Antes el límite se comprobaba entre todos los pares de puntos: ninguno podía
