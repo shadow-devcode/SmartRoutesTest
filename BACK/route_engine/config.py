@@ -659,6 +659,13 @@ RADIO_RESCATE_AMPLIADO_KM = float(
     os.environ.get("RADIO_RESCATE_AMPLIADO_KM", str(2.5 * RADIO_ZONA_KM))  # 75 km -> 150 de diámetro
 )
 
+# Último recurso para un punto aislado cuya plaza queda floja: si no hay ningún
+# mercaderista dentro del radio ampliado, se le deja saltarse el límite de
+# kilómetros con tal de que alguien lo atienda. En 0 no se permite.
+RADIO_RESCATE_PUNTO_AISLADO_KM = float(
+    os.environ.get("RADIO_RESCATE_PUNTO_AISLADO_KM", "0")
+)
+
 # Rondas máximas de refuerzo de flota. Tras asignar, las visitas que no cupieron
 # en su zona generan mercadistas adicionales en esa misma zona y se reasigna.
 # El tope evita un bucle infinito si alguna visita es imposible de colocar

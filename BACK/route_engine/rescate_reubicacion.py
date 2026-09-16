@@ -13,6 +13,7 @@ from collections import defaultdict
 from route_engine.config import (
     DAY_NAMES,
     RADIO_RESCATE_AMPLIADO_KM,
+    RADIO_RESCATE_PUNTO_AISLADO_KM,
     carga_jornada,
     cuota_mes,
     dias_de_mercadista,
@@ -96,6 +97,14 @@ def reasignar_puntos_varados(state):
             state, mercs_por_zona, zona, coords_merc, instancias[0], excluir=dueno,
             prov_merc=prov_merc,
         )
+        # Punto aislado: no hay nadie dentro del radio normal. Con
+        # RADIO_RESCATE_PUNTO_AISLADO_KM > 0 se le deja saltarse el límite de
+        # kilómetros antes que dejar sus visitas sin cubrir.
+        if not candidatos and RADIO_RESCATE_PUNTO_AISLADO_KM > 0:
+            candidatos = _candidatos_cercanos(
+                state, mercs_por_zona, zona, coords_merc, instancias[0], excluir=dueno,
+                radio_km=RADIO_RESCATE_PUNTO_AISLADO_KM, prov_merc=prov_merc,
+            )
         if not candidatos:
             continue
 
@@ -262,6 +271,14 @@ def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_act
                 state, mercs_por_zona, zona, coords_merc, instancias[0], excluir=flojo,
                 radio_km=RADIO_RESCATE_AMPLIADO_KM, prov_merc=prov_merc,
             )
+            # Punto aislado: no hay nadie dentro del radio ampliado. Antes que
+            # dejar abierta una plaza floja, se le permite saltarse el límite de
+            # kilómetros hasta RADIO_RESCATE_PUNTO_AISLADO_KM.
+            if not candidatos and RADIO_RESCATE_PUNTO_AISLADO_KM > 0:
+                candidatos = _candidatos_cercanos(
+                    state, mercs_por_zona, zona, coords_merc, instancias[0], excluir=flojo,
+                    radio_km=RADIO_RESCATE_PUNTO_AISLADO_KM, prov_merc=prov_merc,
+                )
             candidatos.sort(key=lambda m: carga[m], reverse=True)
             carga_punto_mes = sum(float(i.get("tiempo") or 0) for i in instancias)
             destino = None
