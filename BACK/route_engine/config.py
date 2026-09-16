@@ -605,10 +605,11 @@ TRAMO_PRIORIDAD_FRECUENCIA_KM = float(
 
 
 # Ocupación mínima que se le exige a cada mercaderista DESPUÉS de abrir la
-# cuadrilla de fin de semana. En 0 no se compacta al final, que es como estaba:
-# compactar ahí bajaba la cobertura del 91,9% al 77,9%.
+# cuadrilla de fin de semana: quien no llega se disuelve y sus puntos pasan a
+# compañeros. Sube la ocupación a costa de cobertura (medido en el nacional con
+# desplazamiento: de 74 a 56 plazas, pendientes de 524 a 1.038). En 0 no actúa.
 OCUPACION_MINIMA_FIN_SEMANA = float(
-    os.environ.get("OCUPACION_MINIMA_FIN_SEMANA", "0")
+    os.environ.get("OCUPACION_MINIMA_FIN_SEMANA", "0.6")
 )
 
 
