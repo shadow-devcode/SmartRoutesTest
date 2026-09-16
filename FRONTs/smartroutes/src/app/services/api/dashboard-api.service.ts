@@ -25,11 +25,13 @@ export class DashboardApiService {
    */
   getFrecuenciaPuntos(
     mercadista?: string,
+    fuente?: string,
   ): Observable<{ frecuencia_puntos: FrecuenciaPunto[]; mercadistas: string[] }> {
-    let url = `${this.apiUrl}/dashboard/frecuencia-puntos`;
-    if (mercadista?.trim()) {
-      url += `?mercadista=${encodeURIComponent(mercadista.trim())}`;
-    }
+    const params = new URLSearchParams();
+    if (mercadista?.trim()) params.set('mercadista', mercadista.trim());
+    if (fuente) params.set('fuente', fuente);
+    const qs = params.toString();
+    const url = `${this.apiUrl}/dashboard/frecuencia-puntos${qs ? '?' + qs : ''}`;
     return this.http
       .get<{
         success: boolean;
@@ -52,6 +54,7 @@ export class DashboardApiService {
   getProvinciasPorcentaje(
     mercadista?: string,
     provincia?: string,
+    fuente?: string,
   ): Observable<{
     provincias_porcentaje: ProvinciaPorcentaje[];
     mercadistas: string[];
@@ -60,6 +63,7 @@ export class DashboardApiService {
     const params = new URLSearchParams();
     if (mercadista?.trim()) params.set('mercadista', mercadista.trim());
     if (provincia?.trim()) params.set('provincia', provincia.trim());
+    if (fuente) params.set('fuente', fuente);
     const qs = params.toString();
     const url = `${this.apiUrl}/dashboard/provincias-porcentaje${qs ? '?' + qs : ''}`;
     return this.http

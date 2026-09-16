@@ -11,7 +11,7 @@ from flask import Blueprint, g, jsonify, request
 
 from controllers.auth_state import is_auth_loaded
 from services import mercadistas_query_service as mq
-from services.path_resolution_service import active_horarios_path
+from services.path_resolution_service import active_horarios_path, excel_por_fuente
 from utils.logging import log_endpoint_error, safe_error_message
 
 mercadistas_bp = Blueprint("mercadistas", __name__)
@@ -109,7 +109,8 @@ def get_ubicaciones_por_dia(dia):
 @mercadistas_bp.route("/api/stats", methods=["GET"])
 def get_stats():
     try:
-        hp = active_horarios_path(auth_loaded=is_auth_loaded())
+        # ?fuente=comparativa: mismas cifras sobre el rutero armado a mano.
+        hp = excel_por_fuente(request.args.get("fuente"), auth_loaded=is_auth_loaded())
         if not hp:
             return jsonify({"error": "Archivo no encontrado"}), 404
         return jsonify(mq.stats(hp, auth_loaded=is_auth_loaded()))

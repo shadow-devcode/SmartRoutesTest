@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import {
@@ -43,6 +43,13 @@ type SortCol =
 })
 export class NuevaVistaComponent implements OnInit {
   estadisticas: Estadisticas | null = null;
+  /** 'sistema' es el rutero del motor; 'comparativa', el armado a mano. */
+  readonly fuente: 'sistema' | 'comparativa' =
+    (inject(ActivatedRoute).snapshot.data['fuente'] as 'comparativa' | undefined) ?? 'sistema';
+
+  get esComparativa(): boolean {
+    return this.fuente === 'comparativa';
+  }
   frecuenciaPuntos: FrecuenciaPunto[] = [];
   provinciasPorcentaje: ProvinciaPorcentaje[] = [];
   mercadistas: string[] = [];
@@ -205,8 +212,11 @@ export class NuevaVistaComponent implements OnInit {
     this.cargarEstadisticas();
     this.cargarFrecuenciaPuntos();
     this.cargarProvinciasPorcentaje();
-    this.cargarPendientes();
-    this.cargarPuntosSinCoordenadas();
+    // La comparativa no tiene pendientes ni puntos sin coordenadas.
+    if (!this.esComparativa) {
+      this.cargarPendientes();
+      this.cargarPuntosSinCoordenadas();
+    }
   }
 
   /** ¿Hay una recarga manual en curso? Deshabilita el botón mientras tanto. */
@@ -226,8 +236,11 @@ export class NuevaVistaComponent implements OnInit {
     this.cargarEstadisticas();
     this.cargarFrecuenciaPuntos();
     this.cargarProvinciasPorcentaje();
-    this.cargarPendientes();
-    this.cargarPuntosSinCoordenadas();
+    // La comparativa no tiene pendientes ni puntos sin coordenadas.
+    if (!this.esComparativa) {
+      this.cargarPendientes();
+      this.cargarPuntosSinCoordenadas();
+    }
     // Las peticiones van por su cuenta; el botón se libera en cuanto han salido
     // todas, que es lo único que este componente sabe con certeza.
     setTimeout(() => (this.recargando = false), 1200);
@@ -235,7 +248,7 @@ export class NuevaVistaComponent implements OnInit {
 
   private cargarEstadisticas(): void {
     this.cargando = true;
-    this.apiService.getEstadisticas().subscribe({
+    this.apiService.getEstadisticas(this.fuente).subscribe({
       next: (stats) => {
         this.estadisticas = stats;
         this.cargando = false;
@@ -248,7 +261,7 @@ export class NuevaVistaComponent implements OnInit {
 
   cargarFrecuenciaPuntos(): void {
     this.cargandoFiltros = true;
-    this.apiService.getFrecuenciaPuntos(this.filtroMercadista || undefined).subscribe({
+    this.apiService.getFrecuenciaPuntos(this.filtroMercadista || undefined, this.fuente).subscribe({
       next: (res) => {
         this.frecuenciaPuntos = res.frecuencia_puntos;
         if (res.mercadistas?.length && !this.mercadistas.length) {
@@ -265,7 +278,11 @@ export class NuevaVistaComponent implements OnInit {
   cargarProvinciasPorcentaje(): void {
     this.cargandoFiltros = true;
     this.apiService
-      .getProvinciasPorcentaje(this.filtroMercadista || undefined, this.filtroProvincia || undefined)
+      .getProvinciasPorcentaje(
+        this.filtroMercadista || undefined,
+        this.filtroProvincia || undefined,
+        this.fuente,
+      )
       .subscribe({
         next: (res) => {
           this.provinciasPorcentaje = res.provincias_porcentaje;

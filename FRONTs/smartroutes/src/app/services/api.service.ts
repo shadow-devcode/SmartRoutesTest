@@ -61,20 +61,21 @@ export class ApiService {
     return this.mercadistas.getTodasUbicaciones(semana);
   }
 
-  getEstadisticas(): Observable<Estadisticas | null> {
-    return this.mercadistas.getEstadisticas();
+  getEstadisticas(fuente?: string): Observable<Estadisticas | null> {
+    return this.mercadistas.getEstadisticas(fuente);
   }
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
 
   getFrecuenciaPuntos(
     mercadista?: string,
+    fuente?: string,
   ): Observable<{ frecuencia_puntos: FrecuenciaPunto[]; mercadistas: string[] }> {
-    return this.dashboard.getFrecuenciaPuntos(mercadista);
+    return this.dashboard.getFrecuenciaPuntos(mercadista, fuente);
   }
 
-  getProvinciasPorcentaje(mercadista?: string, provincia?: string) {
-    return this.dashboard.getProvinciasPorcentaje(mercadista, provincia);
+  getProvinciasPorcentaje(mercadista?: string, provincia?: string, fuente?: string) {
+    return this.dashboard.getProvinciasPorcentaje(mercadista, provincia, fuente);
   }
 
   unirMercadistas(

@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 
 from controllers.auth_state import is_auth_loaded
 from services import dashboard_service as ds
-from services.path_resolution_service import active_horarios_path
+from services.path_resolution_service import active_horarios_path, excel_por_fuente
 from utils.logging import log_endpoint_error, safe_error_message
 
 dashboard_bp = Blueprint("dashboard_routes", __name__)
@@ -14,7 +14,7 @@ dashboard_bp = Blueprint("dashboard_routes", __name__)
 @dashboard_bp.route("/api/dashboard/frecuencia-puntos", methods=["GET"])
 def get_frecuencia_puntos():
     try:
-        hp = active_horarios_path(auth_loaded=is_auth_loaded())
+        hp = excel_por_fuente(request.args.get("fuente"), auth_loaded=is_auth_loaded())
         mercadista = request.args.get("mercadista", "").strip()
         return jsonify(ds.frecuencia_puntos(hp, mercadista))
     except Exception as e:
@@ -25,7 +25,7 @@ def get_frecuencia_puntos():
 @dashboard_bp.route("/api/dashboard/provincias-porcentaje", methods=["GET"])
 def get_provincias_porcentaje():
     try:
-        hp = active_horarios_path(auth_loaded=is_auth_loaded())
+        hp = excel_por_fuente(request.args.get("fuente"), auth_loaded=is_auth_loaded())
         mercadista = request.args.get("mercadista", "").strip()
         provincia = request.args.get("provincia", "").strip()
         return jsonify(ds.provincias_porcentaje(hp, mercadista, provincia))

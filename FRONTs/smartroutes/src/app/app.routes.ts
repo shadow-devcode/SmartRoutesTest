@@ -43,6 +43,14 @@ export const routes: Routes = [
     canActivate: [authGuard, comparativaGuard],
   },
   {
+    path: 'dashboard-comparativa',
+    loadComponent: () =>
+      import('./components/nueva-vista/nueva-vista.component').then(m => m.NuevaVistaComponent),
+    title: 'Dashboard comparativa - Smart Routes',
+    canActivate: [authGuard, comparativaGuard],
+    data: { fuente: 'comparativa' },
+  },
+  {
     path: 'carga-excel',
     loadComponent: () =>
       import('./components/carga-excel/carga-excel.component').then(

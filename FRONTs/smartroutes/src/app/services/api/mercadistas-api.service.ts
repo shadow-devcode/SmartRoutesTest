@@ -96,9 +96,11 @@ export class MercadistasApiService {
       );
   }
 
-  getEstadisticas(): Observable<Estadisticas | null> {
+  /** `fuente` = 'comparativa' devuelve las mismas cifras sobre el rutero armado a mano. */
+  getEstadisticas(fuente?: string): Observable<Estadisticas | null> {
+    const qs = fuente ? `?fuente=${encodeURIComponent(fuente)}` : '';
     return this.http
-      .get<{ success: boolean; stats: Estadisticas }>(`${this.apiUrl}/stats`)
+      .get<{ success: boolean; stats: Estadisticas }>(`${this.apiUrl}/stats${qs}`)
       .pipe(
         map((response) => response.stats),
         catchError((error) => {

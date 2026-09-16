@@ -66,3 +66,10 @@ def active_comparativa_path(*, auth_loaded: bool) -> str | None:
     except Exception:
         p = os.path.abspath(COMPARATIVA_FILE)
         return p if os.path.isfile(p) else None
+
+
+def excel_por_fuente(fuente: str | None, *, auth_loaded: bool) -> str | None:
+    """Excel principal, o el de comparativa si `fuente` es 'comparativa'."""
+    if (fuente or "").strip().lower() == "comparativa":
+        return active_comparativa_path(auth_loaded=auth_loaded)
+    return active_horarios_path(auth_loaded=auth_loaded)

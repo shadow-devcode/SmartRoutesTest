@@ -21,6 +21,11 @@
                   📈 Dashboard
                 </a>
               }
+              @if (auth.canAccessDashboard() && auth.canAccessComparativa()) {
+                <a routerLink="/dashboard-comparativa" routerLinkActive="active">
+                  📉 Dashboard comparativa
+                </a>
+              }
               @if (auth.canAccessCargaExcel()) {
                 <a routerLink="/carga-excel" routerLinkActive="active">
                   📂 Cargar Excel
