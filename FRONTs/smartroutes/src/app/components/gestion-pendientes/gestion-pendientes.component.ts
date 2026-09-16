@@ -843,7 +843,19 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     semana: string,
     orden?: number,
   ): void {
-    const semanas = [...(punto.semanas_pendientes ?? [])].sort();
+    // Las semanas a cubrir son las que el mercaderista aún no visita el punto,
+    // tantas como visitas le falten. Las etiquetas de la hoja de pendientes
+    // pueden repetir semana (dos "semana 4") y dejar otra sin nada.
+    const yaVisita = new Set(
+      this.rutasFilas
+        .filter((f) => f.mercadista === this.calMercadista && f.descripcion === punto.descripcion)
+        .map((f) => f.fecha),
+    );
+    const libres = this.semanasPeriodo.filter((s) => !yaVisita.has(s));
+    const faltan = Math.max(1, Number(punto.visitas_pendientes) || 0);
+    const semanas = [semana, ...libres]
+      .filter((s, i, arr) => libres.includes(s) && arr.indexOf(s) === i)
+      .slice(0, faltan);
     if (semanas.length <= 1) {
       this.asignarPendienteADia(punto, dia, semana, orden);
       return;

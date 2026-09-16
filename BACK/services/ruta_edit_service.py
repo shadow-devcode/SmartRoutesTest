@@ -672,9 +672,15 @@ def asignar_pendiente(
             },
         )
 
-    # Localizar la fila pendiente exacta
+    # Localizar la fila pendiente: la de esa semana si existe y, si no,
+    # cualquier otra del mismo punto. La etiqueta de semana es solo una
+    # sugerencia; lo que cuadra la frecuencia es el número de filas. Sin este
+    # segundo intento, colocar la visita en una semana sin etiqueta creaba la
+    # visita y dejaba la pendiente, y el punto quedaba con una de más.
     clave = clave_pendiente(desc_v, lat_v, lon_v, semana_visita or semana_destino)
+    clave_del_punto = clave_ub(desc_v, lat_v, lon_v)
     idx_pend = None
+    idx_mismo_punto = None
     for i in df_pend.index:
         row = df_pend.loc[i]
         k = clave_pendiente(
@@ -686,6 +692,10 @@ def asignar_pendiente(
         if k == clave:
             idx_pend = i
             break
+        if idx_mismo_punto is None and k[:-1] == clave_del_punto:
+            idx_mismo_punto = i
+    if idx_pend is None:
+        idx_pend = idx_mismo_punto
 
     if idx_pend is None:
         # No bloquear si la pendiente no se encuentra: el usuario podría estar
