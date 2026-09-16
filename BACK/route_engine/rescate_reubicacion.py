@@ -11,7 +11,9 @@ from __future__ import annotations
 from collections import defaultdict
 
 from route_engine.config import (
+    ALCANCE_TRAMO_EXTREMO_KM,
     DAY_NAMES,
+    DISTANCE_FACTOR_CARRETERA,
     RADIO_RESCATE_AMPLIADO_KM,
     RADIO_RESCATE_PUNTO_AISLADO_KM,
     carga_jornada,
@@ -20,7 +22,7 @@ from route_engine.config import (
     max_dia_flex,
     mercadistas_fin_semana,
 )
-from route_engine.geo import haversine_km
+from route_engine.geo import haversine_km, minutos_viaje_desde_km
 from route_engine.mapbox import norm_provincia
 from route_engine.scheduling import clave_punto
 from route_engine.rescate_utiles import (
@@ -185,6 +187,29 @@ def _retirar_punto_del_calendario(state, instancias, pk, zona, nuevo_merc):
 MARGEN_VIAJE_DISOLUCION_MIN = 30
 
 
+def _clave_de_summary(s) -> tuple:
+    """(lat6, lon6, descripción) de una fila del calendario, como `clave_punto`."""
+    return (
+        round(float(s.get("Latitud") or 0), 6),
+        round(float(s.get("Longitud") or 0), 6),
+        str(s.get("Descripción", "")).strip(),
+    )
+
+
+def _viaje_hasta(coords_destino, inst):
+    """Tramo por carretera (km) y reserva de minutos desde el punto más cercano
+    del destino. Sin coordenadas, la reserva fija de siempre."""
+    try:
+        lat, lon = float(inst["lat"]), float(inst["lon"])
+    except (TypeError, ValueError, KeyError):
+        return None, MARGEN_VIAJE_DISOLUCION_MIN
+    if not coords_destino:
+        return None, MARGEN_VIAJE_DISOLUCION_MIN
+    km = min(haversine_km(lat, lon, la, lo) for la, lo in coords_destino)
+    km *= DISTANCE_FACTOR_CARRETERA
+    return km, max(MARGEN_VIAJE_DISOLUCION_MIN, minutos_viaje_desde_km(km))
+
+
 def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_activos=None):
     """
     Reparte los puntos de los mercadistas con poca carga entre sus vecinos de
@@ -281,7 +306,7 @@ def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_act
                 )
             candidatos.sort(key=lambda m: carga[m], reverse=True)
             carga_punto_mes = sum(float(i.get("tiempo") or 0) for i in instancias)
-            destino = None
+            destino, margen_destino = None, MARGEN_VIAJE_DISOLUCION_MIN
             grupo_punto = state.grupo_de_punto.get(pk) if hasattr(state, "grupo_de_punto") else None
             for merc in candidatos:
                 # Mismo calendario que el mercaderista que se está vaciando.
@@ -299,10 +324,15 @@ def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_act
                     and grupo_simulado.get(merc) != grupo_punto
                 ):
                     continue
-                if _puede_absorber(
-                    simulado, merc, por_semana, margen_viaje=MARGEN_VIAJE_DISOLUCION_MIN
-                ):
-                    destino = merc
+                # Con el viaje real hasta el punto, no con una reserva fija. El
+                # rescate solo encadena tramos de hasta ALCANCE_TRAMO_EXTREMO_KM,
+                # así que un destino más lejos aprobaba traslados que luego no
+                # se podían materializar y el punto quedaba huérfano.
+                tramo_km, margen = _viaje_hasta(coords_merc.get(merc, []), instancias[0])
+                if tramo_km is not None and tramo_km > ALCANCE_TRAMO_EXTREMO_KM:
+                    continue
+                if _puede_absorber(simulado, merc, por_semana, margen_viaje=margen):
+                    destino, margen_destino = merc, margen
                     break
             if destino is None:
                 viable = False
@@ -328,14 +358,25 @@ def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_act
                         {"servicio": 0.0, "travel": 0.0, "last_lat": None, "last_lon": None},
                     )
                     st["servicio"] += t
-                    st["travel"] += MARGEN_VIAJE_DISOLUCION_MIN
+                    st["travel"] += margen_destino
             plan_traslado.append((pk, instancias, zona, destino))
 
         if not viable or not plan_traslado:
             continue
 
+        # Se guarda la agenda de cada punto antes de retirarla: si el rescate
+        # no logra colocarlo entero en el destino, la plaza se restaura.
+        registro = {"merc": flojo, "puntos": []}
         for pk, instancias, zona, destino in plan_traslado:
+            clave = clave_punto(instancias[0])
+            filas = [s for s in state.all_day_summaries if _clave_de_summary(s) == clave]
+            registro["puntos"].append(
+                {"pk": pk, "instancias": instancias, "zona": zona, "filas": filas}
+            )
             _retirar_punto_del_calendario(state, instancias, pk, zona, destino)
+        if getattr(state, "disoluciones_por_verificar", None) is None:
+            state.disoluciones_por_verificar = []
+        state.disoluciones_por_verificar.append(registro)
         disueltos += 1
         estado_dias = _estado_dias_existente(state)
         coords_merc = _coords_por_mercadista(state)
@@ -349,3 +390,42 @@ def disolver_mercadistas_infrautilizados(state, umbral_ocupacion=0.5, minimo_act
             f"pasaron enteros a compañeros de su misma zona."
         )
     return disueltos
+
+
+def deshacer_disoluciones_incompletas(state) -> int:
+    """Restaura las plazas disueltas cuyos puntos el rescate no colocó enteros.
+
+    Se llama DESPUÉS del pase de rescate. La simulación de la disolución es una
+    estimación; lo que manda es si las visitas cupieron de verdad. Si alguna
+    sigue en el pool, el traslado se deshace completo: vuelven las filas
+    originales, el punto recupera a su dueño y el pool queda limpio.
+    """
+    registros = getattr(state, "disoluciones_por_verificar", None) or []
+    state.disoluciones_por_verificar = []
+    if not registros:
+        return 0
+
+    en_pool = {
+        state.get_punto_key(i) for lst in state.remaining_by_prov.values() for i in lst
+    }
+    devueltas = 0
+    for reg in registros:
+        if not any(p["pk"] in en_pool for p in reg["puntos"]):
+            continue
+        for p in reg["puntos"]:
+            clave = clave_punto(p["instancias"][0])
+            state.all_day_summaries[:] = [
+                s for s in state.all_day_summaries if _clave_de_summary(s) != clave
+            ]
+            for lst in state.remaining_by_prov.values():
+                lst[:] = [i for i in lst if state.get_punto_key(i) != p["pk"]]
+            state.all_day_summaries.extend(p["filas"])
+            state.asignar_punto(p["pk"], reg["merc"])
+        devueltas += 1
+
+    if devueltas:
+        print(
+            f"      -> {devueltas} plaza(s) restaurada(s): el rescate no pudo colocar "
+            f"entera la cartera que se les había quitado."
+        )
+    return devueltas

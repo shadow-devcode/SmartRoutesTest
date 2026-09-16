@@ -11,8 +11,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from route_engine.config import hora_fin_jornada, jornada_incluye_viaje, tope_jornada_real
-from route_engine.geo import minutos_viaje_desde_km, parse_coordenada_a_float
+from route_engine.config import (
+    DISTANCE_FACTOR_CARRETERA,
+    HORA_INICIO_JORNADA,
+    hora_fin_jornada,
+    jornada_incluye_viaje,
+    tope_jornada_real,
+)
+from route_engine.geo import haversine_km, minutos_viaje_desde_km, parse_coordenada_a_float
 from route_engine.mapbox import ruta_por_carretera
 
 
@@ -109,10 +115,121 @@ def recalcular_tramos_por_carretera(horarios_df):
         if _recomponer_horarios_del_dia(horarios_df, indices) > limite:
             tarde += 1
 
+    # Antes de mandar a pendientes lo que no cupo, se intenta otro día de la
+    # misma semana con el mismo mercaderista: es la salida más barata y la que
+    # menos toca de lo ya armado.
+    if retiradas:
+        sin_sitio = _segunda_oportunidad(horarios_df, retiradas)
+        recolocadas = len(retiradas) - len(sin_sitio)
+        if recolocadas:
+            print(
+                f"      -> Segunda oportunidad: {recolocadas} de {len(retiradas)} visita(s) "
+                f"retiradas recolocadas en otro día de su mercaderista."
+            )
+        retiradas = sin_sitio
     if retiradas:
         horarios_df.drop(index=retiradas, inplace=True)
 
     return actualizadas, len(grupos), tarde, retiradas
+
+
+def _km_por_carretera(origen, destino):
+    """Kilómetros reales entre dos paradas; si la red falla, recta por factor."""
+    tramos = ruta_por_carretera([origen, destino])
+    if tramos:
+        return float(tramos[0][1])
+    return haversine_km(origen[0], origen[1], destino[0], destino[1]) * DISTANCE_FACTOR_CARRETERA
+
+
+def _segunda_oportunidad(horarios_df, retiradas):
+    """Recoloca cada visita retirada en otro día de esa misma semana de su
+    mercaderista donde quepa con el reloj real. Devuelve las que siguen sin sitio.
+
+    Se prueban los días que ese mercaderista ya trabaja, nunca uno en el que ya
+    visite el punto, y se elige el que más hueco deja. La visita se engancha al
+    final de la ruta con su tramo real.
+    """
+    if not retiradas:
+        return []
+    col_km = "kilometros entre sucurlas (km)"
+    col_viaje = "Tiempo entre sucursal (min)"
+    col_serv = "Tiempo Servicio (min)"
+    tope = tope_jornada_real()
+    fuera = set(retiradas)
+    dias_por_merc = {
+        merc: list(dict.fromkeys(grupo["Día"]))
+        for merc, grupo in horarios_df.groupby("Mercadista", sort=False)
+    }
+
+    def minutos(idx):
+        total = 0.0
+        for col in (col_serv, col_viaje):
+            try:
+                total += float(horarios_df.at[idx, col] or 0)
+            except (TypeError, ValueError):
+                pass
+        return total
+
+    sin_sitio = []
+    for idx in retiradas:
+        merc = horarios_df.at[idx, "Mercadista"]
+        fecha = horarios_df.at[idx, "Fecha"]
+        dia_origen = horarios_df.at[idx, "Día"]
+        lat = parse_coordenada_a_float(horarios_df.at[idx, "Latitud"])
+        lon = parse_coordenada_a_float(horarios_df.at[idx, "Longitud"])
+        if lat is None or lon is None:
+            sin_sitio.append(idx)
+            continue
+        try:
+            servicio = float(horarios_df.at[idx, col_serv] or 0)
+        except (TypeError, ValueError):
+            servicio = 0.0
+        clave = _clave_de_fila(horarios_df, idx)
+
+        mejor = None
+        for dia in dias_por_merc.get(merc, []):
+            if dia == dia_origen:
+                continue
+            mascara = (
+                (horarios_df["Mercadista"] == merc)
+                & (horarios_df["Fecha"] == fecha)
+                & (horarios_df["Día"] == dia)
+            )
+            indices = [i for i in horarios_df.index[mascara] if i not in fuera]
+            if any(_clave_de_fila(horarios_df, i) == clave for i in indices):
+                continue
+            total = sum(minutos(i) for i in indices)
+            if indices:
+                ultimo = max(indices, key=lambda i: float(horarios_df.at[i, "Orden Ruta"] or 0))
+                ulat = parse_coordenada_a_float(horarios_df.at[ultimo, "Latitud"])
+                ulon = parse_coordenada_a_float(horarios_df.at[ultimo, "Longitud"])
+                if ulat is None or ulon is None:
+                    continue
+                km = _km_por_carretera((ulat, ulon), (lat, lon))
+                viaje = minutos_viaje_desde_km(km)
+                orden = float(horarios_df.at[ultimo, "Orden Ruta"] or 0) + 1
+            else:
+                km, viaje, orden = 0.0, 0.0, 1
+            if total + viaje + servicio > tope:
+                continue
+            hueco = tope - (total + viaje + servicio)
+            if mejor is None or hueco > mejor[0]:
+                mejor = (hueco, dia, km, viaje, orden, indices)
+
+        if mejor is None:
+            sin_sitio.append(idx)
+            continue
+        _hueco, dia, km, viaje, orden, indices = mejor
+        horarios_df.at[idx, "Día"] = dia
+        horarios_df.at[idx, "Orden Ruta"] = orden
+        horarios_df.at[idx, col_km] = round(km, 2)
+        horarios_df.at[idx, col_viaje] = round(viaje, 2)
+        fuera.discard(idx)
+        if not indices and "Horario" in horarios_df.columns:
+            inicio = f"{HORA_INICIO_JORNADA // 60:02d}:{HORA_INICIO_JORNADA % 60:02d}"
+            horarios_df.at[idx, "Horario"] = f"{inicio} - {inicio}"
+        _recomponer_horarios_del_dia(horarios_df, indices + [idx])
+    return sin_sitio
 
 
 def _frecuencia_por_punto(horarios_df):

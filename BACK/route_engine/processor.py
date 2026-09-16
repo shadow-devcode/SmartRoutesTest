@@ -718,6 +718,24 @@ def _hueco_libre_de_la_plantilla(state, solo=None):
     ]
 
 
+def _compactar_con_verificacion(state, umbral, piso_flota) -> bool:
+    """Disuelve plazas flojas y restaura las que el rescate no logra recolocar.
+
+    Devuelve True si hubo alguna disolución que se mantuvo.
+    """
+    from route_engine.rescate_reubicacion import deshacer_disoluciones_incompletas
+
+    disueltos = disolver_mercadistas_infrautilizados(
+        state, umbral_ocupacion=umbral, minimo_activos=piso_flota
+    )
+    if not disueltos:
+        return False
+    # Los puntos cedidos vuelven al pool: hay que recolocarlos de verdad.
+    ejecutar_pase_rescate(state)
+    devueltas = deshacer_disoluciones_incompletas(state)
+    return devueltas < disueltos
+
+
 def procesar_minoristas(
     input_file: str,
     output_file: str,
@@ -1037,12 +1055,7 @@ def _procesar_minoristas(
     # libera puntos que el rescate recoloca, y colocarlos deja nuevas plazas por
     # debajo del umbral que la siguiente vuelta puede fundir.
     for vuelta in range(3):
-        if disolver_mercadistas_infrautilizados(
-            state, umbral_ocupacion=0.75, minimo_activos=piso_flota
-        ):
-            # Los puntos cedidos vuelven al pool: hay que recolocarlos.
-            ejecutar_pase_rescate(state)
-        elif vuelta > 0:
+        if not _compactar_con_verificacion(state, 0.75, piso_flota) and vuelta > 0:
             break
         _absorber_pendientes_abriendo_plazas(
             state, df, tipo_ruta, _notify, max_rondas=4 if vuelta == 0 else 2
@@ -1050,10 +1063,7 @@ def _procesar_minoristas(
 
     # Última compactación: la absorción deja plazas recién abiertas a medio
     # llenar que ya pueden fundirse contra la plantilla definitiva.
-    if disolver_mercadistas_infrautilizados(
-            state, umbral_ocupacion=0.75, minimo_activos=piso_flota
-        ):
-        ejecutar_pase_rescate(state)
+    _compactar_con_verificacion(state, 0.75, piso_flota)
 
     _notify(65, "Verificando que todos los puntos estén cubiertos...")
 
@@ -1084,10 +1094,8 @@ def _procesar_minoristas(
             # ocupación con OCUPACION_MINIMA_FIN_SEMANA.
             from route_engine.config import OCUPACION_MINIMA_FIN_SEMANA
 
-            if OCUPACION_MINIMA_FIN_SEMANA > 0 and disolver_mercadistas_infrautilizados(
-                state, umbral_ocupacion=OCUPACION_MINIMA_FIN_SEMANA, minimo_activos=piso_flota
-            ):
-                ejecutar_pase_rescate(state)
+            if OCUPACION_MINIMA_FIN_SEMANA > 0:
+                _compactar_con_verificacion(state, OCUPACION_MINIMA_FIN_SEMANA, piso_flota)
             ejecutar_red_seguridad(state)
 
     _control_mes(state, "reparto final")
