@@ -23,6 +23,27 @@ from utils.ubicacion_dto import fila_a_ubicacion, jornada_dto, stats_vacios
 from utils.uploads import COMPARATIVA_FILE, UnsafeExcelError, validar_xlsx_no_es_zip_bomb
 
 
+def _texto(valor) -> str:
+    """Texto de una celda; vacío si viene None o NaN."""
+    if valor is None or (isinstance(valor, float) and valor != valor):
+        return ""
+    return str(valor).strip()
+
+
+def _sin_nan(obj):
+    """Quita los NaN de una respuesta: no son JSON válido y el navegador
+    descarta la respuesta entera (el desglose del mercaderista no se pintaba).
+    Una columna toda vacía, como CALLE en las plantillas, se lee como NaN y
+    `df.where(notna, None)` no la limpia porque pandas la tipa como numérica."""
+    if isinstance(obj, float) and obj != obj:
+        return None
+    if isinstance(obj, dict):
+        return {k: _sin_nan(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sin_nan(v) for v in obj]
+    return obj
+
+
 # ---------------------------------------------------------------------------
 # Upload directo de comparativa (sin reprocesamiento)
 # ---------------------------------------------------------------------------
@@ -189,8 +210,8 @@ def detalle_mercadista(cp: str, mercadista_name: str, semana: str, *, auth_loade
                 "latitud": row["Latitud"],
                 "longitud": row["Longitud"],
                 "provincia": provincia_display(row.get("PROVINCIA", "")),
-                "ciudad": row.get("CIUDAD", ""),
-                "calle": row.get("CALLE", ""),
+                "ciudad": _texto(row.get("CIUDAD")),
+                "calle": _texto(row.get("CALLE")),
                 "tiempo_servicio": row["Tiempo Servicio (min)"],
                 "duracion": row["Duración (hh:mm)"],
                 "tiempo_entre_sucursal": row.get("Tiempo entre sucursal (min)", 0),
@@ -200,12 +221,12 @@ def detalle_mercadista(cp: str, mercadista_name: str, semana: str, *, auth_loade
             }
         )
 
-    return {
+    return _sin_nan({
         "success": True,
         "mercadista": mercadista_name,
         "dias": dias,
         "semana_filtro": semana or None,
-    }
+    })
 
 
 def todas_ubicaciones(cp: str, semana: str, *, auth_loaded: bool = False) -> dict:
