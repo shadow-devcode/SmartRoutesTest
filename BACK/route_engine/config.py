@@ -246,7 +246,22 @@ def max_dia_flex() -> int:
             pass
     if jornada_incluye_viaje():
         return int(cuota_dia() * FACTOR_JORNADA_FLEXIBLE)
-    return cuota_dia()
+    return techo_servicio_dia()
+
+
+# Regla del negocio: «480 de base, hasta 540». Un día puede estirarse para que
+# quepa una visita más; el mes (9.960) sigue siendo el límite duro. Con una
+# jornada parcial se guarda la misma proporción (400 -> 450).
+TECHO_SERVICIO_DIA_MIN = int(os.environ.get("TECHO_SERVICIO_DIA_MIN", "540"))
+_BASE_TECHO_SERVICIO_MIN = 480
+
+
+def techo_servicio_dia() -> int:
+    """Servicio máximo de un día concreto cuando el viaje no consume jornada."""
+    base = cuota_dia()
+    if base >= _BASE_TECHO_SERVICIO_MIN:
+        return max(base, TECHO_SERVICIO_DIA_MIN)
+    return int(round(base * TECHO_SERVICIO_DIA_MIN / _BASE_TECHO_SERVICIO_MIN))
 
 
 def tope_dia_combinado() -> int:
@@ -306,7 +321,7 @@ def tope_jornada_real() -> int:
     (39%), con tramos sueltos de 71 km —429 minutos de coche— dentro de un
     mismo día.
 
-    Por defecto 520: los 498 de jornada más algo de margen.
+    Por defecto 540: la regla del negocio es «480 de base, hasta 540».
     """
     override = os.environ.get("TOPE_JORNADA_REAL_MIN")
     if override:
@@ -314,11 +329,11 @@ def tope_jornada_real() -> int:
             return int(override)
         except ValueError:
             pass
-    # Nunca por debajo de la propia jornada; por defecto, 520 min de reloj.
+    # Nunca por debajo de la propia jornada; por defecto, 540 min de reloj.
     return int(max(cuota_dia(), TOPE_JORNADA_REAL_POR_DEFECTO_MIN))
 
 
-TOPE_JORNADA_REAL_POR_DEFECTO_MIN = int(os.environ.get("TOPE_JORNADA_REAL_POR_DEFECTO_MIN", "520"))
+TOPE_JORNADA_REAL_POR_DEFECTO_MIN = int(os.environ.get("TOPE_JORNADA_REAL_POR_DEFECTO_MIN", "540"))
 
 
 def max_servicio_dia() -> int:
@@ -417,7 +432,8 @@ def travel_estimado_por_visita_plan_min() -> int:
 # realidad, solo la forma de contarlo.
 ALCANCE_TRAMO_KM = float(os.environ.get("ALCANCE_TRAMO_KM", "10"))
 ALCANCE_TRAMO_RELAJADO_KM = float(os.environ.get("ALCANCE_TRAMO_RELAJADO_KM", "15"))
-ALCANCE_TRAMO_EXTREMO_KM = float(os.environ.get("ALCANCE_TRAMO_EXTREMO_KM", "20"))
+# Distancia máxima entre dos puntos seguidos: 30 km (antes 20), regla del negocio.
+ALCANCE_TRAMO_EXTREMO_KM = float(os.environ.get("ALCANCE_TRAMO_EXTREMO_KM", "30"))
 
 
 def _minutos_de_alcance(km: float) -> int:
