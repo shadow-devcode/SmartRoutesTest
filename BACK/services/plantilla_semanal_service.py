@@ -19,7 +19,7 @@ from datetime import datetime, time, timedelta
 import pandas as pd
 
 from route_engine.config import ORDEN_SEMANA
-from route_engine.geo import parse_coordenada_a_float
+from route_engine.geo import normalizar_coord_geografica
 from route_engine.mapbox import calcular_tiempo_entre
 
 # Cuatro semanas: la plantilla describe una semana tipo y el resto del sistema
@@ -186,8 +186,11 @@ def convertir_plantilla(contenido: bytes) -> pd.DataFrame:
     visitas = []
     for _, fila in df.iterrows():
         merc = str(fila.get(col_merc, "") or "").strip()
-        lat = parse_coordenada_a_float(fila.get(col_lat))
-        lon = parse_coordenada_a_float(fila.get(col_lon))
+        # Con recorte al rango geográfico: Excel pierde a veces el punto
+        # decimal (-78498314 en vez de -78.498314) y cada tramo hacia ese punto
+        # medía 22.000 km; dos puntos así inflaban el rutero de 5.000 a 700.000.
+        lat = normalizar_coord_geografica(fila.get(col_lat), "lat")
+        lon = normalizar_coord_geografica(fila.get(col_lon), "lon")
         if not merc or lat is None or lon is None or (lat == 0 and lon == 0):
             continue
 
@@ -294,8 +297,20 @@ def _armar_horarios(df: pd.DataFrame) -> pd.DataFrame:
     salida["_dia"] = salida["Día"].map(orden_dias).fillna(9)
     salida = salida.sort_values(
         ["Mercadista", "Fecha", "_dia", "Orden Ruta"], kind="stable"
-    ).drop(columns=["_dia"])
-    return salida.reset_index(drop=True)
+    ).drop(columns=["_dia"]).reset_index(drop=True)
+
+    # Misma vara que el rutero del sistema: kilómetros reales de carretera. El
+    # plan del cliente se mide, no se toca: ni se retiran visitas ni se mueven
+    # sus horas. Si Mapbox no responde, quedan los tramos estimados.
+    try:
+        from route_engine.carretera import recalcular_tramos_por_carretera
+
+        recalcular_tramos_por_carretera(
+            salida, retirar_sobrantes=False, recomponer_horarios=False
+        )
+    except Exception:
+        pass
+    return salida
 
 
 def plantilla_a_excel(df: pd.DataFrame) -> bytes:

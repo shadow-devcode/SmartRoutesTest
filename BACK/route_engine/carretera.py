@@ -29,7 +29,9 @@ from route_engine.geo import (
 from route_engine.mapbox import ruta_por_carretera
 
 
-def recalcular_tramos_por_carretera(horarios_df, optimizar_orden=False):
+def recalcular_tramos_por_carretera(
+    horarios_df, optimizar_orden=False, retirar_sobrantes=True, recomponer_horarios=True
+):
     """
     Sustituye la estimación de desplazamiento por los kilómetros y minutos
     REALES de carretera de cada jornada.
@@ -113,7 +115,7 @@ def recalcular_tramos_por_carretera(horarios_df, optimizar_orden=False):
         # el desplazamiento; si no, la carretera se informa pero no quita nada.
         sobrantes = (
             _visitas_que_no_caben_en_el_dia(horarios_df, indices, frecuencia)
-            if jornada_incluye_viaje()
+            if retirar_sobrantes and jornada_incluye_viaje()
             else []
         )
         if sobrantes:
@@ -121,7 +123,8 @@ def recalcular_tramos_por_carretera(horarios_df, optimizar_orden=False):
             indices = [i for i in indices if i not in set(sobrantes)]
             if len(indices) < 2:
                 continue
-        if _recomponer_horarios_del_dia(horarios_df, indices) > limite:
+        # La comparativa mide un plan ajeno: sus horas no se tocan.
+        if recomponer_horarios and _recomponer_horarios_del_dia(horarios_df, indices) > limite:
             tarde += 1
 
     # Antes de mandar a pendientes lo que no cupo, se intenta otro día de la
