@@ -13,7 +13,7 @@ from route_engine.config import (
     RADIO_RESCATE_AMPLIADO_KM,
     carga_jornada,
     cuota_mes,
-    max_dia_flex,
+    tope_dia_combinado,
     max_servicio_dia,
     travel_estimado_por_visita_plan_min,
 )
@@ -52,6 +52,11 @@ def ejecutar_pase_rescate(state):
     pendientes_total = state.count_remaining()
     if pendientes_total == 0:
         return
+
+    # Los puntos cambian de dueño entre pases: se traen los pares que falten.
+    from route_engine.matriz_carretera import precargar_por_mercadista
+
+    precargar_por_mercadista(state.visit_instances, state.punto_mercadista, state.get_punto_key)
 
     # Cada pase parte de cero: lo que no quepa en ESTE pase es lo que queda.
     state.sin_hueco = []
@@ -175,16 +180,16 @@ def ejecutar_pase_rescate(state):
             # rescate no podía recolocar esos puntos y acababan en pendientes
             # aunque el asignador sí les hubiera hecho sitio.
             dia_vacio = st["servicio"] <= 0
-            visita_mayor_que_jornada = float(inst_["tiempo"] or 0) > max_dia_flex()
+            visita_mayor_que_jornada = float(inst_["tiempo"] or 0) > tope_dia_combinado()
             if dia_vacio and visita_mayor_que_jornada:
                 return _salto_admisible(st["last_lat"], st["last_lon"], inst_)
-            if nuevo_serv > max_dia_flex():
+            if nuevo_serv > tope_dia_combinado():
                 return False
             if not _salto_admisible(st["last_lat"], st["last_lon"], inst_):
                 return False
             travel_nuevo = _travel_desde(st["last_lat"], st["last_lon"], inst_)
             combinado = nuevo_serv + st["travel"] + travel_nuevo
-            return combinado <= max_dia_flex()
+            return combinado <= tope_dia_combinado()
 
         def _agregar(key, inst_, semana_):
             buckets.setdefault(key, []).append((inst_, semana_))
@@ -272,7 +277,7 @@ def ejecutar_pase_rescate(state):
                     if _fits_combinado(key, inst):
                         st = bucket_state.get(key)
                         usado = (st["servicio"] + st["travel"]) if st else 0.0
-                        opciones.append((max_dia_flex() - usado, key))
+                        opciones.append((tope_dia_combinado() - usado, key))
                 if opciones:
                     _, key = min(opciones)
                     travel_nuevo = _agregar(key, inst, semana)

@@ -16,7 +16,7 @@ from route_engine.config import (
     carga_jornada,
     cuota_dia,
     dias_de_mercadista,
-    max_dia_flex,
+    tope_dia_combinado,
     travel_estimado_por_visita_plan_min,
 )
 from route_engine.frequency import semanas_distribuidas
@@ -229,7 +229,7 @@ def _puede_absorber(estado_dias, merc, visitas_por_semana, margen_viaje=None):
             usado = (st["servicio"] + st["travel"]) if st else 0.0
             if usado <= 0:
                 dia_vacio_disponible = True
-            huecos.append(max_dia_flex() - usado)
+            huecos.append(tope_dia_combinado() - usado)
         huecos.sort(reverse=True)
         if len(tiempos) > len(huecos):
             return False
@@ -241,7 +241,7 @@ def _puede_absorber(estado_dias, merc, visitas_por_semana, margen_viaje=None):
             # entera solo cabe en un día para ella sola. Sin esto el punto se
             # daba por imposible aquí y este pase le quitaba las visitas que ya
             # tenía agendadas, mandándolas a pendientes.
-            if float(t or 0) > max_dia_flex():
+            if float(t or 0) > tope_dia_combinado():
                 if not dia_vacio_disponible:
                     return False
                 dia_vacio_disponible = False

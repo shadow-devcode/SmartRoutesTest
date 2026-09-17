@@ -249,6 +249,19 @@ def max_dia_flex() -> int:
     return cuota_dia()
 
 
+def tope_dia_combinado() -> int:
+    """Techo de un día al RECOLOCAR visitas (rescate, red de seguridad).
+
+    Con desplazamiento es el reloj real: aceptar días hasta max_dia_flex()
+    armaba jornadas que el control final de carretera recortaba a
+    tope_jornada_real(), y esas visitas acababan pendientes sin más intentos.
+    TOPE_RESCATE_REAL=0 vuelve al techo flexible.
+    """
+    if jornada_incluye_viaje() and os.environ.get("TOPE_RESCATE_REAL", "1") != "0":
+        return min(max_dia_flex(), tope_jornada_real())
+    return max_dia_flex()
+
+
 def max_semana_flex() -> int:
     """
     Techo semanal coherente con el techo diario.

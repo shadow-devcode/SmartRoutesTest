@@ -278,6 +278,12 @@ def ejecutar_asignacion(
         propiedad_inicial=propiedad_inicial, tipo_carga=tipo_carga,
     )
 
+    # Los días se arman con kilómetros reales entre los puntos que comparte
+    # cada mercaderista, no con la estimación: es lo que se medirá al final.
+    from route_engine.matriz_carretera import precargar_por_mercadista
+
+    precargar_por_mercadista(visit_instances, state.punto_mercadista, state.get_punto_key)
+
     # Cuántos mercadistas del plan quedan por procesar en cada zona. Se
     # decrementa al terminar cada uno para repartir la carga de la zona entre
     # los que realmente quedan.

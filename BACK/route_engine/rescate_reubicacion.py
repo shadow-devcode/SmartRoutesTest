@@ -13,7 +13,6 @@ from collections import defaultdict
 from route_engine.config import (
     ALCANCE_TRAMO_EXTREMO_KM,
     DAY_NAMES,
-    DISTANCE_FACTOR_CARRETERA,
     RADIO_RESCATE_AMPLIADO_KM,
     RADIO_RESCATE_PUNTO_AISLADO_KM,
     carga_jornada,
@@ -22,7 +21,7 @@ from route_engine.config import (
     max_dia_flex,
     mercadistas_fin_semana,
 )
-from route_engine.geo import haversine_km, minutos_viaje_desde_km
+from route_engine.geo import haversine_km, km_por_carretera, minutos_viaje_desde_km
 from route_engine.mapbox import norm_provincia
 from route_engine.scheduling import clave_punto
 from route_engine.rescate_utiles import (
@@ -205,8 +204,7 @@ def _viaje_hasta(coords_destino, inst):
         return None, MARGEN_VIAJE_DISOLUCION_MIN
     if not coords_destino:
         return None, MARGEN_VIAJE_DISOLUCION_MIN
-    km = min(haversine_km(lat, lon, la, lo) for la, lo in coords_destino)
-    km *= DISTANCE_FACTOR_CARRETERA
+    km = min(km_por_carretera(lat, lon, la, lo) for la, lo in coords_destino)
     return km, max(MARGEN_VIAJE_DISOLUCION_MIN, minutos_viaje_desde_km(km))
 
 

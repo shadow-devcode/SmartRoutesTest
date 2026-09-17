@@ -113,8 +113,14 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 def km_por_carretera(lat1, lon1, lat2, lon2):
-    """Distancia aproximada por calle: haversine corregida por el factor de rodeo."""
+    """Kilómetros por calle: los reales si están precargados (matriz por
+    carretera); si no, haversine corregida por el factor de rodeo."""
     from route_engine.config import DISTANCE_FACTOR_CARRETERA  # import local para evitar ciclos
+    from route_engine.matriz_carretera import km_real
+
+    real = km_real(lat1, lon1, lat2, lon2)
+    if real is not None:
+        return real
 
     factor = DISTANCE_FACTOR_CARRETERA if DISTANCE_FACTOR_CARRETERA > 0 else 1.0
     return haversine_km(lat1, lon1, lat2, lon2) * factor

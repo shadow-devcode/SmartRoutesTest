@@ -3,8 +3,8 @@ import unicodedata
 
 import requests
 
-from route_engine.config import DISTANCE_FACTOR_CARRETERA, MAPBOX_ACCESS_TOKEN
-from route_engine.geo import haversine_km, minutos_viaje_desde_km
+from route_engine.config import MAPBOX_ACCESS_TOKEN
+from route_engine.geo import haversine_km, km_por_carretera, minutos_viaje_desde_km
 
 # Caches a nivel de modulo (compartidos durante toda la ejecucion)
 _distance_cache = {}
@@ -146,13 +146,12 @@ def calcular_tiempo_entre(prev_lat, prev_lon, lat, lon):
     if prev_lat is None or prev_lon is None:
         return 0.0, 0.0
 
-    dist_recta = haversine_km(prev_lat, prev_lon, lat, lon)
-
-    if dist_recta == 0.0:
+    if haversine_km(prev_lat, prev_lon, lat, lon) == 0.0:
         return 0.0, 0.0
 
-    factor = DISTANCE_FACTOR_CARRETERA if DISTANCE_FACTOR_CARRETERA > 0 else 1.0
-    dist_km = dist_recta * factor
+    # Kilómetros reales si el par está precargado; si no, recta × factor. Es la
+    # misma función que usa el pre-filtro, para que ambos coincidan siempre.
+    dist_km = km_por_carretera(prev_lat, prev_lon, lat, lon)
 
     return minutos_viaje_desde_km(dist_km), dist_km
 

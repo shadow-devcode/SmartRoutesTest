@@ -239,7 +239,7 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
         jornadas_total,
         jornadas_tarde,
         filas_retiradas,
-    ) = recalcular_tramos_por_carretera(horarios_df)
+    ) = recalcular_tramos_por_carretera(horarios_df, optimizar_orden=True)
     if filas_retiradas:
         # Vuelven a pendientes: la reconciliación de frecuencia, que corre justo
         # después, ya se encarga de dejar el invariante

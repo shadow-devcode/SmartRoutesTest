@@ -9,6 +9,8 @@ verdad, ya no caben en el reloj del día.
 """
 from __future__ import annotations
 
+import itertools
+
 import pandas as pd
 
 from route_engine.config import (
@@ -18,11 +20,16 @@ from route_engine.config import (
     jornada_incluye_viaje,
     tope_jornada_real,
 )
-from route_engine.geo import haversine_km, minutos_viaje_desde_km, parse_coordenada_a_float
+from route_engine.geo import (
+    haversine_km,
+    km_por_carretera as km_entre,
+    minutos_viaje_desde_km,
+    parse_coordenada_a_float,
+)
 from route_engine.mapbox import ruta_por_carretera
 
 
-def recalcular_tramos_por_carretera(horarios_df):
+def recalcular_tramos_por_carretera(horarios_df, optimizar_orden=False):
     """
     Sustituye la estimación de desplazamiento por los kilómetros y minutos
     REALES de carretera de cada jornada.
@@ -62,6 +69,8 @@ def recalcular_tramos_por_carretera(horarios_df):
 
     for _clave, grupo in grupos:
         orden = grupo.sort_values("Orden Ruta", kind="stable")
+        if optimizar_orden:
+            orden = _ordenar_dia_optimo(horarios_df, orden)
         coords = []
         indices = []
         for idx, fila in orden.iterrows():
@@ -131,6 +140,59 @@ def recalcular_tramos_por_carretera(horarios_df):
         horarios_df.drop(index=retiradas, inplace=True)
 
     return actualizadas, len(grupos), tarde, retiradas
+
+
+# Con más paradas que estas no se prueban todas las permutaciones (8! = 40.320).
+_MAX_PARADAS_ORDEN_EXACTO = 8
+
+
+def _ordenar_dia_optimo(horarios_df, orden):
+    """Reordena las paradas del día al recorrido más corto posible.
+
+    Es exacto: con las 2-5 paradas de una jornada real se prueban todas las
+    permutaciones, que es lo mejor que daría cualquier solver de rutas. Solo se
+    usa al generar el rutero, nunca sobre el orden puesto a mano en el
+    calendario. Devuelve las filas en el orden nuevo.
+    """
+    n = len(orden)
+    if n < 3 or n > _MAX_PARADAS_ORDEN_EXACTO:
+        return orden
+    paradas = []
+    for idx, fila in orden.iterrows():
+        lat = parse_coordenada_a_float(fila.get("Latitud"))
+        lon = parse_coordenada_a_float(fila.get("Longitud"))
+        if lat is None or lon is None or (lat == 0 and lon == 0):
+            return orden
+        paradas.append((idx, lat, lon))
+
+    km = [
+        [0.0 if i == j else km_entre(paradas[i][1], paradas[i][2], paradas[j][1], paradas[j][2])
+         for j in range(n)]
+        for i in range(n)
+    ]
+
+    def largo(p):
+        return sum(km[p[i]][p[i + 1]] for i in range(n - 1))
+
+    mejor = min(itertools.permutations(range(n)), key=largo)
+    if largo(tuple(range(n))) - largo(mejor) < 0.3:
+        return orden
+
+    # La jornada sigue empezando a su hora: la conserva quien pase a ser primero.
+    inicios = [_minutos_desde_horario(str(orden.at[i, "Horario"] or "")) for i in orden.index] \
+        if "Horario" in orden.columns else []
+    inicios = [m for m in inicios if m is not None]
+    nuevos = [paradas[i][0] for i in mejor]
+    for pos, idx in enumerate(nuevos):
+        horarios_df.at[idx, "Orden Ruta"] = pos + 1
+        tramo = 0.0 if pos == 0 else km[mejor[pos - 1]][mejor[pos]]
+        horarios_df.at[idx, "kilometros entre sucurlas (km)"] = round(tramo, 2)
+        horarios_df.at[idx, "Tiempo entre sucursal (min)"] = round(minutos_viaje_desde_km(tramo), 2)
+    if inicios:
+        m = min(inicios)
+        horarios_df.at[nuevos[0], "Horario"] = f"{int(m) // 60:02d}:{int(m) % 60:02d} - {int(m) // 60:02d}:{int(m) % 60:02d}"
+        _recomponer_horarios_del_dia(horarios_df, nuevos)
+    return orden.loc[nuevos]
 
 
 def _km_por_carretera(origen, destino):

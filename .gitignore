@@ -37,3 +37,6 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 .idea/
+
+# Caché de kilómetros por carretera (Mapbox Matrix): se regenera sola.
+BACK/cache/

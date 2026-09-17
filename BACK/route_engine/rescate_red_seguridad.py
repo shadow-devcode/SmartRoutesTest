@@ -17,7 +17,7 @@ from route_engine.config import (
     carga_jornada,
     cuota_mes,
     dias_de_mercadista,
-    max_dia_flex,
+    tope_dia_combinado,
 )
 from route_engine.excel_reader import clave_punto_frecuencia, columna_frecuencia_mes
 from route_engine.geo import estimar_minutos_viaje, haversine_km
@@ -202,7 +202,7 @@ def ejecutar_red_seguridad(state):
                     ))
                 except Exception:
                     travel_nuevo = 0.0
-            if serv_actual + tiempo_min > max_dia_flex():
+            if serv_actual + tiempo_min > tope_dia_combinado():
                 return False, travel_nuevo
             # Tope por SALTO, igual que en el pase de rescate. Sin él este pase
             # encadenaba visitas a cualquier distancia mientras el total del día
@@ -211,7 +211,7 @@ def ejecutar_red_seguridad(state):
             if prev is not None and not _salto_admisible(prev[1], prev[2], inst):
                 return False, travel_nuevo
             combinado = serv_actual + tiempo_min + travel_actual + travel_nuevo
-            return combinado <= max_dia_flex(), travel_nuevo
+            return combinado <= tope_dia_combinado(), travel_nuevo
 
         con_hueco = []
         for k in tot_por_grupo:
@@ -231,7 +231,7 @@ def ejecutar_red_seguridad(state):
             # No hay hueco en mercadistas existentes; no se crean adicionales.
             # Registrar como pendiente para visibilidad en reporte y Excel.
             state.puntos_pendientes.append({
-                "motivo": f"red de seguridad: sin hueco respetando {max_dia_flex()} min/dia combinado",
+                "motivo": f"red de seguridad: sin hueco respetando {tope_dia_combinado()} min/dia combinado",
                 "descripcion": inst.get("descripcion", ""),
                 "lat": inst.get("lat"),
                 "lon": inst.get("lon"),
