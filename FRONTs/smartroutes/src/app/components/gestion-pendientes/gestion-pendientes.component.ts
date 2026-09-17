@@ -861,19 +861,30 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     semana: string,
     orden?: number,
   ): void {
-    // Las semanas a cubrir son las que el mercaderista aún no visita el punto,
-    // tantas como visitas le falten. Las etiquetas de la hoja de pendientes
-    // pueden repetir semana (dos "semana 4") y dejar otra sin nada.
-    const yaVisita = new Set(
-      this.rutasFilas
-        .filter((f) => f.mercadista === this.calMercadista && f.descripcion === punto.descripcion)
-        .map((f) => f.fecha),
+    // Un punto no se visita dos veces el mismo día, pero sí varios días de una
+    // semana (frecuencias 8 a 20). Por eso lo que descarta una semana es tener
+    // ya el punto ESE día, no tenerlo algún día: con el criterio anterior, tras
+    // colocar el viernes de las cuatro semanas ya no se ofrecía ninguna más.
+    const suyas = this.rutasFilas.filter(
+      (f) => f.mercadista === this.calMercadista && f.descripcion === punto.descripcion,
     );
-    const libres = this.semanasPeriodo.filter((s) => !yaVisita.has(s));
+    const conEseDia = new Set(suyas.filter((f) => f.dia === dia).map((f) => f.fecha));
+    if (conEseDia.has(semana)) {
+      this.calError = `${punto.descripcion} ya se visita el ${dia.toLowerCase()} de la ${semana}.`;
+      this.cdr.markForCheck();
+      return;
+    }
+    const visitasPorSemana = new Map<string, number>();
+    for (const f of suyas) {
+      visitasPorSemana.set(f.fecha, (visitasPorSemana.get(f.fecha) ?? 0) + 1);
+    }
+    // Tantas semanas como visitas falten: primero la elegida y luego las que
+    // menos visitas del punto tienen, para que el reparto quede parejo.
     const faltan = Math.max(1, Number(punto.visitas_pendientes) || 0);
-    const semanas = [semana, ...libres]
-      .filter((s, i, arr) => libres.includes(s) && arr.indexOf(s) === i)
-      .slice(0, faltan);
+    const otras = this.semanasPeriodo
+      .filter((s) => s !== semana && !conEseDia.has(s))
+      .sort((a, b) => (visitasPorSemana.get(a) ?? 0) - (visitasPorSemana.get(b) ?? 0));
+    const semanas = [semana, ...otras].slice(0, faltan);
     if (semanas.length <= 1) {
       this.asignarPendienteADia(punto, dia, semana, orden);
       return;
@@ -882,7 +893,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     setTimeout(() => {
       this.pedirConfirmacion(
         `¿En cuántas semanas va ${punto.descripcion}?`,
-        `Le faltan visitas en ${semanas.length} semanas. Puedes ponerlo el ` +
+        `Le faltan ${faltan} visita(s). Puedes ponerlo el ` +
           `${dia.toLowerCase()} solo en la ${semana}, o el ${dia.toLowerCase()} de ` +
           `las ${semanas.length} de golpe.`,
         `Solo la ${semana}`,
