@@ -334,6 +334,24 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     return this.semanasPeriodo.reduce((total, s) => total + this.calMinutosSemana(s), 0);
   }
 
+  /** Minutos de desplazamiento del día: la suma de los tramos entre visitas. */
+  calViajeDia(dia: string, semana: string): number {
+    return Math.round(
+      this.calVisitas(dia, semana).reduce(
+        (total, f) => total + (Number(f.tiempo_entre_sucursal) || 0),
+        0,
+      ),
+    );
+  }
+
+  calViajeSemana(semana: string): number {
+    return this.calDias.reduce((total, d) => total + this.calViajeDia(d, semana), 0);
+  }
+
+  get calViajeMes(): number {
+    return this.semanasPeriodo.reduce((total, s) => total + this.calViajeSemana(s), 0);
+  }
+
   cambiarCalMercadista(nombre: string): void {
     this.calMercadista = nombre;
     this.cacheCalendario = null;

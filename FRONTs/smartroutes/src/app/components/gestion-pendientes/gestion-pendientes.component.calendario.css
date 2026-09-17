@@ -79,6 +79,14 @@
   font-weight: 600;
 }
 
+/* Desplazamiento del día, junto al tiempo de trabajo y en su propio tono. */
+.cal-dia__viaje {
+  margin-left: 0.3rem;
+  color: #0e7490;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .cal-barra {
   height: 4px;
   border-radius: 999px;

@@ -508,7 +508,8 @@
           ＋ Nuevo mercaderista
         </button>
         <span class="cal-resumen">
-          {{ calMinutosMes | number }} min en el mes ·
+          {{ calMinutosMes | number }} min de trabajo en el mes ·
+          {{ calViajeMes | number }} min de desplazamiento ·
           jornada de {{ jornadaMinutosDia }} min/día
         </span>
       </div>
@@ -533,7 +534,10 @@
         <section class="cal-semana" *ngFor="let semana of semanasPeriodo">
           <header class="cal-semana__cabecera">
             <h3 class="cal-semana__titulo">{{ semana | titlecase }}</h3>
-            <span class="cal-semana__total">{{ calMinutosSemana(semana) | number }} min</span>
+            <span class="cal-semana__total">
+              {{ calMinutosSemana(semana) | number }} min de trabajo ·
+              {{ calViajeSemana(semana) | number }} min de desplazamiento
+            </span>
           </header>
 
           <div class="cal-grid">
@@ -561,6 +565,12 @@
                   class="cal-dia__carga"
                   [class.cal-dia__carga--lleno]="calPorcentajeDia(dia, semana) >= 100">
                   {{ calMinutosDia(dia, semana) }} min · {{ calPorcentajeDia(dia, semana) }}%
+                  <span
+                    class="cal-dia__viaje"
+                    *ngIf="calViajeDia(dia, semana) > 0"
+                    title="Tiempo de desplazamiento del día, entre una visita y la siguiente">
+                    + {{ calViajeDia(dia, semana) }} min de viaje
+                  </span>
                 </span>
               </header>
 
