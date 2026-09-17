@@ -968,7 +968,13 @@ def _procesar_minoristas(
     # encima de la cuota solo con visitas obligatorias mientras otras quedaban
     # vacías, y ese exceso terminaba en 'Pendientes_Sin_Asignar'.
     from route_engine.day_balance import equilibrar_dias_fijos
+    from route_engine.matriz_carretera import precargar_por_mercadista
 
+    # Antes de elegir días: la cercanía entre los puntos de cada mercaderista
+    # se mide por carretera (Conocoto y Solanda están cerca solo en línea recta).
+    precargar_por_mercadista(
+        visit_instances, propiedad_puntos, lambda i: i.get("punto_key", i.get("idx"))
+    )
     balance = equilibrar_dias_fijos(visit_instances, propiedad_puntos, cuota_dia())
     print(
         f"      -> Días fijos equilibrados por mercadista: "

@@ -43,6 +43,9 @@ Qué NO cambia
 """
 from __future__ import annotations
 
+import os
+from route_engine.geo import km_por_carretera
+
 from collections import defaultdict
 from itertools import combinations
 
@@ -103,21 +106,88 @@ def patrones_de_frecuencia(frecuencia) -> list[list[str]]:
     return [list(p) for p in sorted(combinations(laborables, n), key=separacion)]
 
 
+# Al elegir los días de un punto se prefieren aquellos donde el mercaderista ya
+# visita vecinos: es lo que hace un planificador humano («lunes y jueves al
+# valle, martes y viernes al sur») y evita jornadas que cruzan la ciudad. Dos
+# patrones cuya lejanía difiera menos que este tramo se consideran iguales y
+# decide el equilibrio de carga. En 0 la cercanía no cuenta (como antes).
+#
+# Por defecto solo actúa cuando el desplazamiento consume jornada. Medido: ahí
+# recorta los kilómetros un 27% en Pichincha y un 16% en el nacional con la
+# misma cobertura; sin desplazamiento, en cambio, el nacional perdía 316
+# visitas. AGRUPAR_DIAS_POR_CERCANIA_KM lo fuerza en cualquier modo.
+
+
+def _tramo_agrupar() -> float:
+    manual = os.environ.get("AGRUPAR_DIAS_POR_CERCANIA_KM")
+    if manual not in (None, ""):
+        try:
+            return float(manual)
+        except ValueError:
+            pass
+    from route_engine.config import jornada_incluye_viaje
+
+    return 2.0 if jornada_incluye_viaje() else 0.0
+
+
+# Lo que «cuesta» estrenar un día vacío: menos que ir lejos, más que ir al lado.
+DIA_VACIO_EQUIVALE_KM = float(os.environ.get("DIA_VACIO_EQUIVALE_KM", "4"))
+
+
+def _fraccion_holgada() -> float:
+    """Fracción del tope a partir de la cual un día se considera apretado.
+
+    Hay que dejar sitio a las visitas sin día fijo y, si el viaje consume
+    jornada, también al desplazamiento. DIA_HOLGADO_FRACCION lo fija a mano.
+    """
+    manual = os.environ.get("DIA_HOLGADO_FRACCION")
+    if manual:
+        try:
+            return float(manual)
+        except ValueError:
+            pass
+    from route_engine.config import jornada_incluye_viaje
+
+    return 0.8 if jornada_incluye_viaje() else 1.0
+
+
+def _lejania(coords_dias: dict | None, patron: list[str], punto) -> float:
+    """Kilómetros del punto a su vecino más cercano en cada día del patrón."""
+    if not coords_dias or punto is None:
+        return 0.0
+    total = 0.0
+    for d in patron:
+        vecinos = coords_dias.get(d)
+        if not vecinos:
+            total += DIA_VACIO_EQUIVALE_KM
+            continue
+        total += min(km_por_carretera(punto[0], punto[1], la, lo) for la, lo in vecinos)
+    return total
+
+
 def _coste(
-    carga_dias: dict, patron: list[str], minutos: float, tope: float, dias: list[str] | None = None
+    carga_dias: dict, patron: list[str], minutos: float, tope: float, dias: list[str] | None = None,
+    coords_dias: dict | None = None, punto=None,
 ) -> tuple:
     """
     Cuánto empeora la semana del mercaderista al meter este punto en `patron`.
 
-    Prima primero no pasarse del tope diario (lo que de verdad manda visitas a
-    pendientes) y, en segundo lugar, dejar la semana pareja.
+    Por orden: no pasarse del tope diario (lo que de verdad manda visitas a
+    pendientes), no apretar los días, juntar el punto con sus vecinos y, solo
+    al final, dejar la semana pareja.
     """
     simulada = dict(carga_dias)
     for d in patron:
         simulada[d] = simulada.get(d, 0.0) + minutos
     exceso = sum(max(0.0, v - tope) for v in simulada.values())
     vals = [simulada.get(d, 0.0) for d in (dias or DAY_NAMES)]
-    return (exceso, max(vals) - min(vals), sum(v * v for v in vals))
+    equilibrio = (max(vals) - min(vals), sum(v * v for v in vals))
+    tramo_km = _tramo_agrupar()
+    if tramo_km <= 0:
+        return (exceso, *equilibrio)
+    apretado = sum(max(0.0, simulada[d] - tope * _fraccion_holgada()) for d in patron)
+    tramo = round(_lejania(coords_dias, patron, punto) / tramo_km)
+    return (exceso, round(apretado / 30.0), tramo, *equilibrio)
 
 
 def equilibrar_dias_fijos(visit_instances, propiedad, tope_dia: float) -> dict:
@@ -138,11 +208,22 @@ def equilibrar_dias_fijos(visit_instances, propiedad, tope_dia: float) -> dict:
     # La semana tipo de cada dueño, con SUS cinco días (la cuadrilla de fin de
     # semana tiene otros, no lunes-viernes).
     carga: dict = {}
+    # Dónde está ya cada día de cada dueño, para juntar vecinos.
+    coords: dict = {}
 
     def _carga_de(merc):
         if merc not in carga:
             carga[merc] = {d: 0.0 for d in dias_de_mercadista(merc)}
         return carga[merc]
+
+    def _coords_de(merc):
+        return coords.setdefault(merc, defaultdict(list))
+
+    def _punto_de(insts):
+        try:
+            return (float(insts[0]["lat"]), float(insts[0]["lon"]))
+        except (TypeError, ValueError, KeyError):
+            return None
 
     puntos = sorted(
         por_punto.items(),
@@ -157,10 +238,13 @@ def equilibrar_dias_fijos(visit_instances, propiedad, tope_dia: float) -> dict:
         frecuencia = insts[0].get("frecuencia_mes")
         minutos = float(insts[0].get("tiempo") or 0)
         opciones = patrones_de_frecuencia(frecuencia)
+        punto = _punto_de(insts)
         if len(opciones) <= 1:
             propia = _carga_de(merc)
             for d in {i.get("required_day") for i in insts if i.get("required_day")}:
                 propia[d] = propia.get(d, 0.0) + minutos
+                if punto is not None:
+                    _coords_de(merc)[d].append(punto)
             continue
 
         dias_merc = dias_de_mercadista(merc)
@@ -169,7 +253,10 @@ def equilibrar_dias_fijos(visit_instances, propiedad, tope_dia: float) -> dict:
             # hueco de la jornada de fin de semana.
             opciones = [[dia_equivalente_fin_semana(d) for d in p] for p in opciones]
         mejor = min(
-            opciones, key=lambda p: _coste(_carga_de(merc), p, minutos, tope_dia, dias_merc)
+            opciones,
+            key=lambda p: _coste(
+                _carga_de(merc), p, minutos, tope_dia, dias_merc, _coords_de(merc), punto
+            ),
         )
         actual = sorted({i.get("required_day") for i in insts if i.get("required_day")})
         if sorted(mejor) != actual:
@@ -185,5 +272,7 @@ def equilibrar_dias_fijos(visit_instances, propiedad, tope_dia: float) -> dict:
         propia = _carga_de(merc)
         for d in mejor:
             propia[d] = propia.get(d, 0.0) + minutos
+            if punto is not None:
+                _coords_de(merc)[d].append(punto)
 
     return {"puntos_movidos": movidos, "mercaderistas": len(carga)}
