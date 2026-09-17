@@ -28,6 +28,42 @@ export class AppComponent {
 
   /** Menú de usuario (avatar + nombre). */
   readonly userMenuOpen = signal(false);
+
+  /** Panel de enlaces desplegable: solo se usa en pantallas estrechas. */
+  readonly navOpen = signal(false);
+
+  /** Enlaces de la barra, en orden. `visible` decide por rol. */
+  readonly enlaces: {
+    ruta: string;
+    texto: string;
+    icono: string;
+    exacto?: boolean;
+    visible: () => boolean;
+  }[] = [
+    { ruta: '/rutas', texto: 'Mapa de rutas', icono: 'mapa', exacto: true, visible: () => true },
+    { ruta: '/comparativa', texto: 'Comparativa', icono: 'comparativa', visible: () => this.auth.canAccessComparativa() },
+    { ruta: '/dashboard', texto: 'Dashboard', icono: 'dashboard', visible: () => this.auth.canAccessDashboard() },
+    {
+      ruta: '/dashboard-comparativa',
+      texto: 'Dashboard comparativa',
+      icono: 'tendencia',
+      visible: () => this.auth.canAccessDashboard() && this.auth.canAccessComparativa(),
+    },
+    { ruta: '/carga-excel', texto: 'Cargar Excel', icono: 'subir', visible: () => this.auth.canAccessCargaExcel() },
+    { ruta: '/gestion-excels', texto: 'Excels / Rutas', icono: 'tabla', visible: () => this.auth.canAccessGestionExcels() },
+    { ruta: '/gestion-pendientes', texto: 'Pendientes', icono: 'lista', visible: () => this.auth.canAccessPendientes() },
+    { ruta: '/gestion-usuarios', texto: 'Usuarios', icono: 'usuarios', visible: () => this.auth.canAccessGestionUsuarios() },
+  ];
+
+  toggleNav(event: Event): void {
+    event.stopPropagation();
+    this.userMenuOpen.set(false);
+    this.navOpen.update((open) => !open);
+  }
+
+  closeNav(): void {
+    this.navOpen.set(false);
+  }
   private readonly userMenuRoot = viewChild<ElementRef<HTMLElement>>('userMenuRoot');
 
   get isLoginPage(): boolean {
@@ -36,6 +72,7 @@ export class AppComponent {
 
   toggleUserMenu(event: Event): void {
     event.stopPropagation();
+    this.navOpen.set(false);
     this.userMenuOpen.update((open) => !open);
   }
 
@@ -50,6 +87,10 @@ export class AppComponent {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
+    const destino = event.target as HTMLElement | null;
+    if (this.navOpen() && !destino?.closest('.nav-links, .nav-burger')) {
+      this.closeNav();
+    }
     if (!this.userMenuOpen()) return;
     const root = this.userMenuRoot()?.nativeElement;
     if (root && !root.contains(event.target as Node)) {
@@ -62,6 +103,7 @@ export class AppComponent {
     if (this.userMenuOpen()) {
       this.closeUserMenu();
     }
+    this.closeNav();
   }
 
   /** Nombre visible junto a «Cerrar sesión» (full_name o email). */

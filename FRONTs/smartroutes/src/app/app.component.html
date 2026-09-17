@@ -2,51 +2,72 @@
   @if (!isLoginPage) {
     <nav class="main-nav">
       <div class="nav-container">
-        <div class="nav-left">
-          <div class="nav-brand">
-            <h1><img src="assets/logo.png" alt="" class="nav-logo" /> {{ title }}</h1>
-          </div>
-          <div class="nav-links-panel">
-            <div class="nav-links">
-              <a routerLink="/rutas" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-                📍 Mapa de Rutas
+        <a class="nav-brand" routerLink="/rutas" [attr.aria-label]="title">
+          <img src="assets/logo.png" alt="" class="nav-logo" />
+          <span class="nav-brand__texto">{{ title }}</span>
+        </a>
+
+        <button
+          type="button"
+          class="nav-burger"
+          [class.nav-burger--open]="navOpen()"
+          [attr.aria-expanded]="navOpen()"
+          aria-controls="nav-links"
+          aria-label="Abrir el menú de navegación"
+          (click)="toggleNav($event)">
+          <span></span><span></span><span></span>
+        </button>
+
+        <div class="nav-links" id="nav-links" [class.nav-links--open]="navOpen()">
+          @for (e of enlaces; track e.ruta) {
+            @if (e.visible()) {
+              <a
+                [routerLink]="e.ruta"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ exact: !!e.exacto }"
+                [attr.title]="e.texto"
+                (click)="closeNav()">
+                <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">
+                  @switch (e.icono) {
+                    @case ('mapa') {
+                      <path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    }
+                    @case ('comparativa') {
+                      <rect x="3" y="4" width="7.5" height="16" rx="1.6" />
+                      <rect x="13.5" y="4" width="7.5" height="16" rx="1.6" />
+                    }
+                    @case ('dashboard') {
+                      <path d="M3 20h18M6 20v-8M11 20V5M16 20v-6M21 20v-10" />
+                    }
+                    @case ('tendencia') {
+                      <path d="M3 17l5.5-5.5 4 4L21 7" />
+                      <path d="M15 7h6v6" />
+                    }
+                    @case ('subir') {
+                      <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
+                    }
+                    @case ('tabla') {
+                      <rect x="3.5" y="4" width="17" height="16" rx="2" />
+                      <path d="M3.5 10h17M3.5 15h17M10 10v10" />
+                    }
+                    @case ('lista') {
+                      <rect x="5" y="4.5" width="14" height="16.5" rx="2" />
+                      <path d="M9 3h6v3H9zM9 12h6M9 16h4" />
+                    }
+                    @case ('usuarios') {
+                      <circle cx="9" cy="8" r="3.2" />
+                      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+                      <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M18 14.4c1.8.9 3 2.8 3 5" />
+                    }
+                  }
+                </svg>
+                <span class="nav-txt">{{ e.texto }}</span>
               </a>
-              @if (auth.canAccessComparativa()) {
-                <a routerLink="/comparativa" routerLinkActive="active">
-                  📊 Vista Comparativa
-                </a>
-              }
-              @if (auth.canAccessDashboard()) {
-                <a routerLink="/dashboard" routerLinkActive="active">
-                  📈 Dashboard
-                </a>
-              }
-              @if (auth.canAccessDashboard() && auth.canAccessComparativa()) {
-                <a routerLink="/dashboard-comparativa" routerLinkActive="active">
-                  📉 Dashboard comparativa
-                </a>
-              }
-              @if (auth.canAccessCargaExcel()) {
-                <a routerLink="/carga-excel" routerLinkActive="active">
-                  📂 Cargar Excel
-                </a>
-              }
-              @if (auth.canAccessGestionExcels()) {
-                <a routerLink="/gestion-excels" routerLinkActive="active">
-                  📑 Excels / Rutas
-                </a>
-              }
-              @if (auth.canAccessPendientes()) {
-                <a routerLink="/gestion-pendientes" routerLinkActive="active">
-                  📋 Gestión de pendientes
-                </a>
-              }
-              @if (auth.canAccessGestionUsuarios()) {
-                <a routerLink="/gestion-usuarios" routerLinkActive="active">👥 Gestión de usuarios</a>
-              }
-            </div>
-          </div>
+            }
+          }
         </div>
+
         <div class="nav-auth">
           @if (auth.isAuthenticated()) {
             <div class="nav-user-dropdown" #userMenuRoot>
