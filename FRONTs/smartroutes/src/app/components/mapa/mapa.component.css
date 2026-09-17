@@ -13,9 +13,9 @@
 }
 
 :host ::ng-deep .sr-route-map-popup .mapboxgl-popup-close-button {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
-  padding: 8px 10px;
+  padding: 6px 9px;
   color: rgba(255, 255, 255, 0.92);
   outline: none;
 }
@@ -28,6 +28,196 @@
 
 :host ::ng-deep .sr-route-map-popup .mapboxgl-popup-tip {
   border-top-color: #fff;
+}
+
+/* Globo de parada: el local manda, los datos van en una fila y el contexto
+   (mercaderista, día, semana) al pie. Ocupa la mitad que el anterior. */
+:host ::ng-deep .sr-pop {
+  width: 300px;
+  max-width: 100%;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: #0f172a;
+}
+
+:host ::ng-deep .sr-pop__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 36px 10px 12px;
+  background: linear-gradient(135deg, #1d4ed8, #4338ca);
+  color: #fff;
+}
+
+:host ::ng-deep .sr-pop__orden {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+}
+
+:host ::ng-deep .sr-pop__titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+:host ::ng-deep .sr-pop__titulo small {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+:host ::ng-deep .sr-pop__titulo strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+:host ::ng-deep .sr-pop__titulo span {
+  overflow: hidden;
+  font-size: 11.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host ::ng-deep .sr-pop__datos {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #eef2f7;
+}
+
+:host ::ng-deep .sr-pop__datos > div {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 9px 9px 8px;
+}
+
+/* El horario y el traslado llevan más texto que los minutos en el punto. */
+:host ::ng-deep .sr-pop__datos > div:first-child,
+:host ::ng-deep .sr-pop__datos > div:nth-child(3) {
+  flex-grow: 1.3;
+}
+
+:host ::ng-deep .sr-pop__datos > div:nth-child(2) {
+  flex-grow: 0.9;
+}
+
+:host ::ng-deep .sr-pop__datos > div + div {
+  border-left: 1px solid #eef2f7;
+}
+
+:host ::ng-deep .sr-pop__datos small {
+  display: block;
+  margin-bottom: 3px;
+  overflow: hidden;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host ::ng-deep .sr-pop__datos b {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+:host ::ng-deep .sr-pop__datos b i {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 10.5px;
+  color: #64748b;
+}
+
+:host ::ng-deep .sr-pop__pie {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px 9px;
+  background: #f8fafc;
+}
+
+:host ::ng-deep .sr-pop__merc {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host ::ng-deep .sr-pop__ctx {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+:host ::ng-deep .sr-pop__ctx code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+:host ::ng-deep .sr-pop__lista {
+  margin: 0;
+  padding: 9px 12px 10px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
+}
+
+:host ::ng-deep .sr-pop__lista > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+}
+
+:host ::ng-deep .sr-pop__lista dt {
+  flex: 0 0 auto;
+  color: #64748b;
+}
+
+:host ::ng-deep .sr-pop__lista dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* La punta del globo toma el color de la zona que toca. */
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  border-top-color: #f8fafc;
+}
+
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+:host ::ng-deep .sr-route-map-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
+  border-bottom-color: #2a48cf;
 }
 
 /* Etiquetas de km (DOM creado en TS bajo el mapa) */

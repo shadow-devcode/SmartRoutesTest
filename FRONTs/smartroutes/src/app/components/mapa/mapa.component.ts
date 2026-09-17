@@ -260,28 +260,13 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
 
     el.addEventListener('click', () => {
       if (!this.popup || !this.map) return;
-      const desc = this.escapePopupHtml(p.descripcion);
-      const ciudad = this.escapePopupHtml(p.ciudad || p.provincia || '');
-      const merc = this.escapePopupHtml(p.mercadista || '');
-      const dias = p.dias_visita?.length
-        ? this.escapePopupHtml(p.dias_visita.join(', '))
-        : 'sin días asignados';
-      const filas = opciones.detalle
-        .map(([k, v]) => `<div><strong>${this.escapePopupHtml(k)}:</strong> ${this.escapePopupHtml(v)}</div>`)
-        .join('');
-      const html = `
-        <div class="sr-popup-root" style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:0;margin:0;overflow:hidden;border-radius:14px;">
-          <header style="background:${opciones.cabecera};color:#fff;padding:12px 14px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.88;">${opciones.etiqueta}</div>
-            <div style="font-size:14px;font-weight:700;margin-top:4px;">${desc}</div>
-          </header>
-          <div style="padding:12px 14px;background:#fff;font-size:12px;color:#334155;line-height:1.5;">
-            ${filas}
-            <div><strong>Días de visita:</strong> ${dias}</div>
-            <div><strong>Mercaderista:</strong> ${merc || '—'}</div>
-            <div><strong>Ubicación:</strong> ${ciudad || '—'}</div>
-          </div>
-        </div>`;
+      const filas: [string, string][] = [
+        ...opciones.detalle.map(([k, v]): [string, string] => [String(k), String(v)]),
+        ['Días de visita', p.dias_visita?.length ? p.dias_visita.join(', ') : 'sin días asignados'],
+        ['Mercaderista', p.mercadista || '—'],
+        ['Ubicación', p.ciudad || p.provincia || '—'],
+      ];
+      const html = this.htmlGloboSimple(opciones.etiqueta, p.descripcion, filas, opciones.cabecera);
       this.popup.setLngLat([lng, lat]).setHTML(html).addTo(this.map);
     });
   }
@@ -323,22 +308,16 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
 
     el.addEventListener('click', () => {
       if (!this.popup || !this.map) return;
-      const desc = this.escapePopupHtml(p.descripcion);
-      const prov = this.escapePopupHtml(p.provincia || '');
-      const ciudad = this.escapePopupHtml(p.ciudad || '');
-      const t = this.escapePopupHtml(p.tiempo_servicio);
-      const html = `
-        <div class="sr-popup-root" style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:0;margin:0;overflow:hidden;border-radius:14px;">
-          <header style="background:linear-gradient(135deg,#d97706,#92400e);color:#fff;padding:12px 14px;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.88;">Visita pendiente</div>
-            <div style="font-size:14px;font-weight:700;margin-top:4px;">${desc}</div>
-          </header>
-          <div style="padding:12px 14px;background:#fff;font-size:12px;color:#334155;line-height:1.45;">
-            <div><strong>Provincia:</strong> ${prov || '—'}</div>
-            <div><strong>Ciudad:</strong> ${ciudad || '—'}</div>
-            <div><strong>Tiempo servicio:</strong> ${t} min</div>
-          </div>
-        </div>`;
+      const html = this.htmlGloboSimple(
+        'Visita pendiente',
+        p.descripcion,
+        [
+          ['Provincia', p.provincia || '—'],
+          ['Ciudad', p.ciudad || '—'],
+          ['Tiempo servicio', `${p.tiempo_servicio} min`],
+        ],
+        'linear-gradient(135deg,#d97706,#92400e)',
+      );
       this.popup.setLngLat([lng, lat]).setHTML(html).addTo(this.map);
     });
 
@@ -386,7 +365,7 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
     this.popup = new mapboxgl.Popup({
       closeButton: true,
       closeOnClick: false,
-      maxWidth: '340px',
+      maxWidth: '320px',
       className: 'sr-route-map-popup',
     });
 
@@ -622,6 +601,8 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
         horario: ub.horario ?? '',
         tiempo_servicio: ub.tiempo_servicio ?? '',
         semana: ub.semana ?? '',
+        viaje_min: ub.tiempo_entre_sucursal ?? '',
+        km_entre: ub.km_entre_sucursales ?? '',
         latitud: lat,
         longitud: lng,
       },
@@ -791,6 +772,28 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
       .replace(/"/g, '&quot;');
   }
 
+  /** Globo compacto de etiqueta + título + lista de datos (pendientes y puntos). */
+  private htmlGloboSimple(
+    etiqueta: string,
+    titulo: string,
+    filas: [string, string][],
+    cabecera: string,
+  ): string {
+    const lista = filas
+      .map(([k, v]) => `<div><dt>${this.escapePopupHtml(k)}</dt><dd>${this.escapePopupHtml(v)}</dd></div>`)
+      .join('');
+    return `
+      <div class="sr-pop sr-pop--simple">
+        <header class="sr-pop__head" style="background:${cabecera}">
+          <div class="sr-pop__titulo">
+            <small>${this.escapePopupHtml(etiqueta)}</small>
+            <strong>${this.escapePopupHtml(titulo)}</strong>
+          </div>
+        </header>
+        <dl class="sr-pop__lista">${lista}</dl>
+      </div>`;
+  }
+
   /** Abre el popup de una parada a partir de las propiedades del feature GL. */
   private mostrarPopup(
     lngLat: [number, number],
@@ -810,42 +813,39 @@ export class MapaComponent implements OnInit, AfterViewInit, OnChanges, OnDestro
     const desc = this.escapePopupHtml(str(p['descripcion']));
     const dir = this.escapePopupHtml(direccionRaw);
     const horario = this.escapePopupHtml(str(p['horario']));
-    const tiempo = this.escapePopupHtml(str(p['tiempo_servicio']));
     const semanaRaw = str(p['semana']).trim();
     const semanaChip = semanaRaw ? this.escapePopupHtml(semanaRaw) : '';
     const lat = Number(p['latitud']);
     const lng = Number(p['longitud']);
 
+    const color = /^#[0-9a-fA-F]{3,8}$/.test(str(p['color'])) ? str(p['color']) : '#2563eb';
+    const minutosPunto = Number(p['tiempo_servicio']);
+    const enPunto = Number.isFinite(minutosPunto) && minutosPunto > 0 ? `${Math.round(minutosPunto)} min` : '—';
+    const viajeMin = Number(p['viaje_min']);
+    const kmEntre = Number(p['km_entre']);
+    const hayTraslado = Number.isFinite(viajeMin) && viajeMin > 0;
+    const kmTexto = Number.isFinite(kmEntre) && kmEntre > 0 ? ` · ${kmEntre.toFixed(1)} km` : '';
+    const contexto = [dia, semanaChip].filter(Boolean).join(' · ');
+    const coords = Number.isFinite(lat) && Number.isFinite(lng) ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '';
+
     const contenido = `
-      <div class="sr-popup-root" style="font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;padding:0;margin:0;overflow:hidden;border-radius:14px;">
-        <header style="background:linear-gradient(135deg,#5b21b6 0%,#764ba2 100%);color:#fff;padding:14px 16px 14px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;opacity:0.88;margin-bottom:5px;">Mercadista</div>
-          <div style="font-size:15px;font-weight:700;line-height:1.3;letter-spacing:-0.02em;">${merc}</div>
-          <div style="display:inline-flex;align-items:center;margin-top:11px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,0.22);font-size:12px;font-weight:600;">
-            ${dia}${semanaChip ? ' · ' + semanaChip : ''}
+      <div class="sr-pop">
+        <header class="sr-pop__head">
+          <span class="sr-pop__orden" style="background:${color}">${this.escapePopupHtml(str(p['orden']))}</span>
+          <div class="sr-pop__titulo">
+            <strong>${desc}</strong>
+            ${partesDir.length ? `<span>${dir}</span>` : ''}
           </div>
         </header>
-        <div style="padding:16px 16px 14px;background:#fff;">
-          <h4 style="margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;letter-spacing:0.01em;">${desc}</h4>
-          <p style="margin:0 0 14px;font-size:12px;line-height:1.5;color:#64748b;">${dir}</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px;">
-            <div style="padding:10px 12px;background:#f8fafc;border-radius:11px;border:1px solid #e2e8f0;">
-              <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:5px;">Orden</div>
-              <div style="font-size:16px;font-weight:800;color:#4f46b5;letter-spacing:-0.02em;">#${this.escapePopupHtml(str(p['orden']))}</div>
-            </div>
-            <div style="padding:10px 12px;background:#f8fafc;border-radius:11px;border:1px solid #e2e8f0;">
-              <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:5px;">Horario</div>
-              <div style="font-size:13px;font-weight:600;color:#334155;">${horario}</div>
-            </div>
-            <div style="grid-column:1/-1;padding:10px 12px;background:#faf5ff;border-radius:11px;border:1px solid #e9d5ff;">
-              <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#7c3aed;margin-bottom:5px;">Tiempo en punto</div>
-              <div style="font-size:13px;font-weight:600;color:#5b21b6;">${tiempo} min</div>
-            </div>
-          </div>
-          <div style="font-size:10px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#94a3b8;padding-top:12px;margin-top:4px;border-top:1px solid #f1f5f9;line-height:1.4;">
-            ${Number.isFinite(lat) ? lat.toFixed(6) : ''}, ${Number.isFinite(lng) ? lng.toFixed(6) : ''}
-          </div>
+        <div class="sr-pop__datos">
+          <div><small>Horario</small><b>${horario || '—'}</b></div>
+          <div><small>En el punto</small><b>${enPunto}</b></div>
+          ${hayTraslado ? `<div title="Desde la parada anterior"><small>Traslado</small><b>${Math.round(viajeMin)} min<i>${kmTexto}</i></b></div>` : ''}
         </div>
+        <footer class="sr-pop__pie">
+          <span class="sr-pop__merc">${merc}</span>
+          <span class="sr-pop__ctx"><span>${contexto}</span><code>${coords}</code></span>
+        </footer>
       </div>
     `;
 
