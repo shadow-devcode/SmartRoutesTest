@@ -139,6 +139,14 @@ def recalcular_tramos_por_carretera(horarios_df, optimizar_orden=False):
     if retiradas:
         horarios_df.drop(index=retiradas, inplace=True)
 
+    # Retirar o recolocar visitas deja huecos en la numeración (1, 3): el orden
+    # de cada jornada vuelve a ser 1..n sin alterar la secuencia.
+    rango = horarios_df.groupby(["Mercadista", "Fecha", "Día"], sort=False)["Orden Ruta"].rank(
+        method="first"
+    )
+    validos = rango.notna()
+    horarios_df.loc[validos, "Orden Ruta"] = rango[validos].astype(int)
+
     return actualizadas, len(grupos), tarde, retiradas
 
 
@@ -258,6 +266,9 @@ def _segunda_oportunidad(horarios_df, retiradas):
                 & (horarios_df["Día"] == dia)
             )
             indices = [i for i in horarios_df.index[mascara] if i not in fuera]
+            # En orden de ruta, no de archivo: tras reordenar el día ya no
+            # coinciden, y los horarios se encadenan siguiendo esta lista.
+            indices.sort(key=lambda i: float(horarios_df.at[i, "Orden Ruta"] or 0))
             if any(_clave_de_fila(horarios_df, i) == clave for i in indices):
                 continue
             total = sum(minutos(i) for i in indices)
