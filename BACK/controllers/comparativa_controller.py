@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request
 from controllers.auth_state import is_auth_loaded
 from services import comparativa_service as cs
 from services import plantilla_semanal_service as pss
-from services.path_resolution_service import active_comparativa_path
+from services.path_resolution_service import active_comparativa_path, active_horarios_path
 from utils.uploads import allowed_file
 from utils.logging import log_endpoint_error, safe_error_message
 
@@ -78,6 +78,14 @@ def upload_plantilla_comparativa():
 
     try:
         df = pss.convertir_plantilla(contenido)
+        # La plantilla identifica cada punto por su código SAP: se le pone el
+        # nombre del local del dataset activo, emparejando por coordenadas.
+        try:
+            renombrados = pss.nombrar_puntos_con_el_dataset(
+                df, active_horarios_path(auth_loaded=is_auth_loaded())
+            )
+        except Exception:
+            renombrados = 0
         convertido = pss.plantilla_a_excel(df)
     except pss.PlantillaError as exc:
         return jsonify({"success": False, "error": exc.message}), 400
@@ -99,6 +107,7 @@ def upload_plantilla_comparativa():
         "message": (
             f"Plantilla cargada: {len(df)} visita(s) de {mercaderistas} mercaderista(s), "
             "repartidas en las cuatro semanas."
+            + (f" {renombrados} punto(s) con el nombre del local." if renombrados else "")
         ),
         "visitas": len(df),
         "mercadistas": mercaderistas,

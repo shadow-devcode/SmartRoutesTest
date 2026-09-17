@@ -319,3 +319,59 @@ def plantilla_a_excel(df: pd.DataFrame) -> bytes:
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="Horarios_Detalle", index=False)
     return buffer.getvalue()
+
+
+def nombrar_puntos_con_el_dataset(df: pd.DataFrame, hp: str | None, radio_m: float = 50.0) -> int:
+    """Cambia las descripciones que son solo un código por el nombre del local.
+
+    La plantilla del cliente identifica cada punto por su código SAP, y en el
+    mapa aparecía «218» en vez de la tienda. Los mismos locales están en el
+    dataset del sistema con su nombre, así que se emparejan por coordenadas
+    (≤ `radio_m`). Devuelve cuántos puntos se renombraron.
+    """
+    import re
+
+    from route_engine.geo import haversine_km
+    from utils.excel_cache import read_excel_cached
+
+    if df is None or df.empty or not hp:
+        return 0
+    locales = []
+    for hoja in ("Horarios_Detalle", "Pendientes_Sin_Asignar"):
+        try:
+            origen = read_excel_cached(hp, hoja)
+        except Exception:
+            continue
+        if not {"Descripción", "Latitud", "Longitud"}.issubset(origen.columns):
+            continue
+        for nombre, lat, lon in zip(origen["Descripción"], origen["Latitud"], origen["Longitud"]):
+            texto = str(nombre or "").strip()
+            if not texto or texto.upper() in ("NAN", "TOTAL"):
+                continue
+            try:
+                locales.append((texto, float(lat), float(lon)))
+            except (TypeError, ValueError):
+                continue
+    if not locales:
+        return 0
+    locales = list({(n, round(la, 6), round(lo, 6)) for n, la, lo in locales})
+
+    es_codigo = re.compile(r"^\d+(\.0)?$")
+    nombres: dict = {}
+    for desc, lat, lon in df[["Descripción", "Latitud", "Longitud"]].drop_duplicates().itertuples(index=False):
+        texto = str(desc or "").strip()
+        if texto and not es_codigo.match(texto):
+            continue
+        try:
+            metros, nombre = min(
+                (haversine_km(float(lat), float(lon), la, lo) * 1000.0, n) for n, la, lo in locales
+            )
+        except (TypeError, ValueError):
+            continue
+        if metros <= radio_m:
+            nombres[(desc, lat, lon)] = nombre
+    if not nombres:
+        return 0
+    claves = list(zip(df["Descripción"], df["Latitud"], df["Longitud"]))
+    df["Descripción"] = [nombres.get(k, k[0]) for k in claves]
+    return len(nombres)
