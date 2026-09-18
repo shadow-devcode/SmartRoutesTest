@@ -547,6 +547,7 @@
             <div
               class="cal-dia"
               *ngFor="let dia of calDias"
+              (contextmenu)="abrirMenuDia(dia, semana, $event)"
               (drop)="alSoltarEnDia(dia, semana, $event)">
 
               <!-- La cabecera arrastra la jornada entera: soltarla sobre otro
@@ -802,6 +803,22 @@
   <!-- Pregunta antes de una acción que no se deshace sola: pasarse de la
        jornada o sacar visitas de la ruta. Es un cuadro de la propia página,
        no el del navegador, para poder nombrar el punto y el día. -->
+  <!-- Menú del clic derecho sobre un día -->
+  <div
+    class="cal-menu"
+    *ngIf="calMenuDia"
+    role="menu"
+    [style.left.px]="calMenuDia.x"
+    [style.top.px]="calMenuDia.y"
+    (click)="$event.stopPropagation()"
+    (contextmenu)="$event.preventDefault()">
+    <p class="cal-menu__titulo">{{ calMenuDia.dia }} · {{ calMenuDia.semana }}</p>
+    <button type="button" class="cal-menu__opcion" role="menuitem" (click)="pedirReplicarDia()">
+      <span aria-hidden="true">⧉</span>
+      Replicar este {{ calMenuDia.dia | lowercase }} en las otras semanas
+    </button>
+  </div>
+
   <div class="cal-dialogo" *ngIf="calConfirmacion" (click)="cancelarDialogo()">
     <div
       class="cal-dialogo__caja"

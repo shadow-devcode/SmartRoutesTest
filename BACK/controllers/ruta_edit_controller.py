@@ -240,3 +240,19 @@ def mercadista_nuevo():
     return jsonify(
         res.crear_mercadista_vacio(hp, fin_de_semana=bool(data.get("fin_de_semana")))
     )
+
+
+@ruta_bp.route("/replicar-dia", methods=["POST"])
+@_maneja_errores_ruta_edit("POST /api/ruta/replicar-dia")
+def replicar_dia():
+    """Deja ese día de las demás semanas igual que en la semana indicada."""
+    hp = active_horarios_path(auth_loaded=is_auth_loaded())
+    if not hp:
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    data = request.get_json() or {}
+    mercadista = (data.get("mercadista") or "").strip()
+    dia = (data.get("dia") or "").strip()
+    semana = (data.get("semana_origen") or "").strip()
+    if not mercadista or not dia or not semana:
+        return jsonify({"error": "Faltan mercadista, dia o semana_origen"}), 400
+    return jsonify(res.replicar_dia(hp, mercadista=mercadista, dia=dia, semana_origen=semana))

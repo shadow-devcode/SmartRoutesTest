@@ -198,12 +198,37 @@ export class RutaEditApiService {
     );
   }
 
+  /** Deja ese día de las demás semanas igual que en `semanaOrigen`. */
+  replicarDia(
+    mercadista: string,
+    dia: string,
+    semanaOrigen: string,
+  ): Observable<ReplicarDiaResponse> {
+    return this.http.post<ReplicarDiaResponse>(`${this.apiUrl}/ruta/replicar-dia`, {
+      mercadista,
+      dia,
+      semana_origen: semanaOrigen,
+    });
+  }
+
   /** Da de alta un mercaderista sin puntos para poder arrastrarle pendientes. */
   crearMercadistaVacio(finDeSemana: boolean): Observable<MercadistaNuevoResponse> {
     return this.http.post<MercadistaNuevoResponse>(`${this.apiUrl}/ruta/mercadista-nuevo`, {
       fin_de_semana: finDeSemana,
     });
   }
+}
+
+export interface ReplicarDiaResponse {
+  success: boolean;
+  message?: string;
+  semanas?: string[];
+  agregadas?: number;
+  movidas?: number;
+  a_pendientes?: number;
+  /** Visitas del día modelo que no se pudieron traer: «Punto (semana N)». */
+  omitidas?: string[];
+  error?: string;
 }
 
 export interface MercadistaNuevoResponse {

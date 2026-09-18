@@ -68,7 +68,7 @@ def _ordenar_jornada_por_cercania(grupo):
     return grupo.iloc[[p[0] for p in orden]]
 
 
-def _recalcular_ruta(grupo, incluye_viaje=None):
+def _recalcular_ruta(grupo, incluye_viaje=None, respetar_orden=False):
     """
     Recalcula Tiempo entre sucursal, km y Horario para cada ruta
     (Mercadista, Dia, Fecha) en orden.
@@ -78,7 +78,13 @@ def _recalcular_ruta(grupo, incluye_viaje=None):
     los editores de rutas, que trabajan sobre un Excel ya generado y deben
     respetar el modelo de ESE archivo, no el que tenga el servidor por defecto.
     """
-    grupo = _ordenar_jornada_por_cercania(grupo).copy()
+    # En una edición manual manda el orden que puso el usuario: reordenar por
+    # cercanía dejaba el número de orden como él lo quería, pero las horas y
+    # los tramos calculados para otra secuencia.
+    if respetar_orden and "Orden Ruta" in grupo.columns:
+        grupo = grupo.sort_values("Orden Ruta", kind="stable").copy()
+    else:
+        grupo = _ordenar_jornada_por_cercania(grupo).copy()
     col_tiempo_entre = "Tiempo entre sucursal (min)"
     col_km = "kilometros entre sucurlas (km)"
 

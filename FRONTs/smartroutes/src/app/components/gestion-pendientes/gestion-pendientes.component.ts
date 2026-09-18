@@ -106,6 +106,9 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   /** Puntos agrupados, que es lo que pinta el mapa. */
   rutas: PuntoRuta[] = [];
   rutasMercadistas: string[] = [];
+  /** Menú del clic derecho sobre un día del calendario. */
+  calMenuDia: { dia: string; semana: string; x: number; y: number } | null = null;
+
   /** Jornada de los mercaderistas dados de alta sin puntos (aún sin filas). */
   jornadasExtra: Record<string, 'semana' | 'fin_semana'> = {};
   rutasTotalPuntos = 0;
@@ -904,6 +907,83 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
           accion: () => this.asignarPendienteEnSemanas(punto, dia, semanas, semana, orden),
         },
       );
+    });
+  }
+
+  /** Clic derecho sobre un día: abre su menú junto al puntero. */
+  abrirMenuDia(dia: string, semana: string, evento: MouseEvent): void {
+    evento.preventDefault();
+    evento.stopPropagation();
+    if (this.calBloqueado) return;
+    this.cerrarFiltro();
+    this.calMenuDia = {
+      dia,
+      semana,
+      x: Math.max(8, Math.min(evento.clientX, window.innerWidth - 300)),
+      y: Math.max(8, Math.min(evento.clientY, window.innerHeight - 120)),
+    };
+    this.cdr.markForCheck();
+  }
+
+  cerrarMenuDia(): void {
+    if (!this.calMenuDia) return;
+    this.calMenuDia = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Pide confirmación antes de copiar ese día a las demás semanas. */
+  pedirReplicarDia(): void {
+    const menu = this.calMenuDia;
+    if (!menu) return;
+    this.calMenuDia = null;
+    const { dia, semana } = menu;
+    const visitas = this.calVisitas(dia, semana).length;
+    if (!visitas) {
+      this.calError = `El ${dia.toLowerCase()} de la ${semana} no tiene visitas que replicar.`;
+      this.cdr.markForCheck();
+      return;
+    }
+    const otras = this.semanasPeriodo.filter((s) => s !== semana);
+    this.pedirConfirmacion(
+      `Replicar el ${dia.toLowerCase()} de la ${semana}`,
+      `El ${dia.toLowerCase()} de ${otras.join(', ')} quedará con las mismas ${visitas} ` +
+        'visita(s) y en el mismo orden. Lo que sobre en esos días pasa a pendientes; lo que ' +
+        'falte se trae de pendientes o del día donde esté esa semana.',
+      'Replicar',
+      () => this.replicarDia(dia, semana),
+    );
+  }
+
+  private replicarDia(dia: string, semana: string): void {
+    this.calGuardando = true;
+    this.calError = '';
+    this.calMensaje = '';
+    this.cdr.markForCheck();
+    this.rutaEditApi.replicarDia(this.calMercadista, dia, semana).subscribe({
+      next: (resp) => {
+        this.calGuardando = false;
+        if (resp?.success === false) {
+          this.calError = resp.error ?? 'No se pudo replicar el día.';
+          this.cdr.markForCheck();
+          return;
+        }
+        this.calMensaje = resp.message ?? `${dia} replicado.`;
+        if (resp.omitidas?.length) {
+          this.calError =
+            `No se pudo traer: ${resp.omitidas.join(', ')}. ` +
+            'Ese punto no tiene visitas pendientes ni otro día del que moverlo.';
+        }
+        this.cargarRutasDeMercadista(this.calMercadista);
+        this.cargar(true);
+        setTimeout(() => {
+          this.calMensaje = '';
+          this.cdr.markForCheck();
+        }, 5000);
+      },
+      error: (err) => {
+        this.calGuardando = false;
+        this.fallarEdicion(err, 'No se pudo replicar el día. Inténtalo de nuevo.');
+      },
     });
   }
 
@@ -1756,11 +1836,19 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   onClickFuera(): void {
     this.cerrarFiltro();
     this.cerrarMenuVisita();
+    this.cerrarMenuDia();
+  }
+
+  /** El menú es de posición fija: si la página se mueve, deja de apuntar a su día. */
+  @HostListener('window:scroll')
+  onScrollVentana(): void {
+    this.cerrarMenuDia();
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.cerrarFiltro();
+    this.cerrarMenuDia();
   }
 
   /** Abre o cierra el panel de filtro de una columna. */

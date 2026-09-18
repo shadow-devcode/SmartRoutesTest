@@ -279,7 +279,7 @@ def _renumerar_y_recalcular_grupos(
     for merc, dia, fecha in recalc_keys:
         m = _mask_grupo(df, merc, dia, fecha)
         if m.any():
-            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje))
+            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje, respetar_orden=True))
             mask_any = mask_any | m
     if partes:
         df_resto = df.loc[~mask_any].copy()
@@ -335,7 +335,7 @@ def actualizar_orden_ruta(
         if col in grupo.columns:
             grupo[col] = grupo[col].apply(a_numero)
 
-    grupo_recalc = _recalcular_ruta(grupo, incluye_viaje_del_dataset(hp))
+    grupo_recalc = _recalcular_ruta(grupo, incluye_viaje_del_dataset(hp), respetar_orden=True)
     col_tiempo = "Tiempo entre sucursal (min)"
     col_km = "kilometros entre sucurlas (km)"
     col_horario = "Horario"
@@ -517,7 +517,7 @@ def mover_visita(
     for merc, dia, fecha in grupos_afectados:
         m = _mask_grupo(df, merc, dia, fecha)
         if m.any():
-            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje_del_dataset(hp)))
+            partes.append(_recalcular_ruta(df.loc[m].copy(), incluye_viaje_del_dataset(hp), respetar_orden=True))
             mask_any = mask_any | m
     if partes:
         df_resto = df.loc[~mask_any].copy()
@@ -795,7 +795,7 @@ def asignar_pendiente(
     for col in ("Latitud", "Longitud"):
         if col in dest_new_df.columns:
             dest_new_df[col] = dest_new_df[col].apply(a_numero)
-    dest_recalc = _recalcular_ruta(dest_new_df, incluye_viaje_del_dataset(hp))
+    dest_recalc = _recalcular_ruta(dest_new_df, incluye_viaje_del_dataset(hp), respetar_orden=True)
 
     # Validar el tope diario con los tiempos recalculados. La cuota sale del
     # propio Excel (480 o 400 min/día según el preset con el que se generó).
@@ -893,4 +893,139 @@ def crear_mercadista_vacio(hp: str, *, fin_de_semana: bool = False) -> dict:
         "mercadista": nombre,
         "dias": dias_de_jornada(jornada),
         "message": f"{nombre} creado sin puntos.",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Replicar un día en las demás semanas
+# ---------------------------------------------------------------------------
+
+
+def _pendiente_del_punto(df_pend: pd.DataFrame, clave_punto: tuple, semana: str):
+    """Índice de una pendiente de ese punto: la de esa semana si existe; si no, otra."""
+    otra = None
+    for i in df_pend.index:
+        row = df_pend.loc[i]
+        if clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud")) != clave_punto:
+            continue
+        if str(row.get("Semana") or "").strip().lower() == semana.strip().lower():
+            return i
+        if otra is None:
+            otra = i
+    return otra
+
+
+@with_excel_file_lock("hp")
+def replicar_dia(hp: str, *, mercadista: str, dia: str, semana_origen: str) -> dict:
+    """Deja ese día de las demás semanas igual que en `semana_origen`.
+
+    No crea ni destruye visitas, para que «agendadas + pendientes = frecuencia»
+    siga cuadrando: lo que sobra en el día destino pasa a pendientes; lo que
+    falta sale de los pendientes del punto o, si no tiene, se mueve desde otro
+    día de esa semana donde la semana modelo no lo tiene (el reflejo de lo que
+    se movió a mano). Lo que no se pueda traer se informa, no se inventa.
+    """
+    df = drop_spurious_total_rows_horarios_df(read_excel_cached(hp, "Horarios_Detalle"))
+    df_pend = leer_hoja_pendientes(hp)
+
+    def clave(row) -> tuple:
+        return clave_ub(row.get("Descripción"), row.get("Latitud"), row.get("Longitud"))
+
+    idx_modelo = df.index[_mask_grupo(df, mercadista, dia, semana_origen)].tolist()
+    if not idx_modelo:
+        raise RutaEditError(
+            f"El {dia.lower()} de la {semana_origen} no tiene visitas que replicar.",
+            status_code=400,
+        )
+    modelo = [
+        (clave(r), r.to_dict()) for _, r in df.loc[idx_modelo].sort_values("Orden Ruta").iterrows()
+    ]
+    posicion = {c: n for n, (c, _) in enumerate(modelo, start=1)}
+
+    es_suya = df["Mercadista"].astype(str).str.strip() == mercadista
+    fecha = df["Fecha"].astype(str).str.strip()
+    # (día, punto) de la semana modelo: lo que en otra semana no esté aquí «sobra».
+    en_modelo = {
+        (str(r.get("Día", "")).strip(), clave(r))
+        for _, r in df[es_suya & (fecha == semana_origen)].iterrows()
+    }
+    semanas = sorted(s for s in set(fecha[es_suya]) if s and s.lower() != "nan" and s != semana_origen)
+    if not semanas:
+        raise RutaEditError("No hay otras semanas donde replicar.", status_code=400)
+
+    maestro = resolver_excel_maestro_frecuencia()
+    freq_index = index_frecuencia_mes_desde_excel(maestro) if maestro else {}
+
+    grupos: set = set()
+    quitar: list = []
+    nuevas: list = []
+    resumen = {"agregadas": 0, "movidas": 0, "a_pendientes": 0}
+    omitidas: list = []
+
+    for semana in semanas:
+        grupos.add((mercadista, dia, semana))
+        presentes = {
+            clave(df.loc[i]): i for i in df.index[_mask_grupo(df, mercadista, dia, semana)].tolist()
+        }
+        for c, i in presentes.items():
+            if c not in posicion:
+                quitar.append(i)
+
+        for c, fila_modelo in modelo:
+            if c in presentes:
+                continue
+            idx_p = _pendiente_del_punto(df_pend, c, semana)
+            if idx_p is not None:
+                df_pend = df_pend.drop(idx_p).reset_index(drop=True)
+                nuevas.append({**fila_modelo, "Fecha": semana})
+                resumen["agregadas"] += 1
+                continue
+            sobrantes = [
+                i for i in df.index[es_suya & (fecha == semana)].tolist()
+                if i not in quitar
+                and clave(df.loc[i]) == c
+                and str(df.at[i, "Día"]).strip() != dia
+                and (str(df.at[i, "Día"]).strip(), c) not in en_modelo
+            ]
+            if sobrantes:
+                i = sobrantes[0]
+                grupos.add((mercadista, str(df.at[i, "Día"]).strip(), semana))
+                df.at[i, "Día"] = dia
+                resumen["movidas"] += 1
+                continue
+            omitidas.append(f"{fila_modelo.get('Descripción')} ({semana})")
+
+    for i in quitar:
+        df_pend = _agregar_pendiente(
+            df_pend,
+            _fila_horarios_a_pendiente(df.loc[i], "replicación de día: no está en el día modelo", freq_index),
+        )
+        resumen["a_pendientes"] += 1
+    if quitar:
+        df = df.drop(index=quitar)
+    if nuevas:
+        df = pd.concat([df, pd.DataFrame(nuevas)], ignore_index=True)
+    df = df.reset_index(drop=True)
+
+    # Mismo orden de ruta que el día modelo.
+    for semana in semanas:
+        for i in df.index[_mask_grupo(df, mercadista, dia, semana)].tolist():
+            df.at[i, "Orden Ruta"] = posicion.get(clave(df.loc[i]), 999)
+
+    df = _renumerar_y_recalcular_grupos(df, grupos, incluye_viaje_del_dataset(hp))
+    _guardar_horarios_pendientes(hp, df, df_pend)
+
+    partes = [f"{dia} replicado en {len(semanas)} semana(s)"]
+    if resumen["agregadas"]:
+        partes.append(f"{resumen['agregadas']} visita(s) traídas de pendientes")
+    if resumen["movidas"]:
+        partes.append(f"{resumen['movidas']} movida(s) desde otro día")
+    if resumen["a_pendientes"]:
+        partes.append(f"{resumen['a_pendientes']} pasada(s) a pendientes")
+    return {
+        "success": True,
+        "message": " · ".join(partes) + ".",
+        "semanas": semanas,
+        **resumen,
+        "omitidas": omitidas,
     }
