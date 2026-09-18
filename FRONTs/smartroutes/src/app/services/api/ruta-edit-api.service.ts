@@ -211,6 +211,13 @@ export class RutaEditApiService {
     });
   }
 
+  /** Elimina un mercaderista. El servidor lo rechaza (409) si tiene algún punto. */
+  eliminarMercadistaVacio(mercadista: string): Observable<MercadistaNuevoResponse> {
+    return this.http.post<MercadistaNuevoResponse>(`${this.apiUrl}/ruta/mercadista-eliminar`, {
+      mercadista,
+    });
+  }
+
   /** Da de alta un mercaderista sin puntos para poder arrastrarle pendientes. */
   crearMercadistaVacio(finDeSemana: boolean): Observable<MercadistaNuevoResponse> {
     return this.http.post<MercadistaNuevoResponse>(`${this.apiUrl}/ruta/mercadista-nuevo`, {

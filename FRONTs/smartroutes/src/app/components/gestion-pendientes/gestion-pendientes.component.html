@@ -507,6 +507,16 @@
           title="Crea un mercaderista sin puntos para arrastrarle pendientes">
           ＋ Nuevo mercaderista
         </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-danger"
+          (click)="pedirEliminarMercadista()"
+          [disabled]="calBloqueado || !calMercadistaSinPuntos"
+          [title]="calMercadistaSinPuntos
+            ? 'Elimina este mercaderista: no tiene ningún punto'
+            : 'Solo se puede eliminar un mercaderista sin puntos. Pasa antes sus visitas a pendientes.'">
+          Eliminar mercaderista
+        </button>
         <span class="cal-resumen">
           {{ calMinutosMes | number }} min de trabajo en el mes ·
           {{ calViajeMes | number }} min de desplazamiento ·

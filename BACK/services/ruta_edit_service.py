@@ -1029,3 +1029,36 @@ def replicar_dia(hp: str, *, mercadista: str, dia: str, semana_origen: str) -> d
         **resumen,
         "omitidas": omitidas,
     }
+
+
+@with_excel_file_lock("hp")
+def eliminar_mercadista_vacio(hp: str, *, mercadista: str) -> dict:
+    """Quita un mercaderista que no tiene ningún punto.
+
+    Solo existen sin puntos los dados de alta a mano (hoja Mercadistas_Extra):
+    uno con visitas vive en Horarios_Detalle y no se puede eliminar hasta pasar
+    sus visitas a otro o a pendientes. La comprobación se hace aquí, no solo en
+    la pantalla.
+    """
+    from services.mercadistas_extra import SHEET_MERCADISTAS_EXTRA, leer_mercadistas_extra
+
+    df = drop_spurious_total_rows_horarios_df(read_excel_cached(hp, "Horarios_Detalle"))
+    visitas = (
+        int((df["Mercadista"].astype(str).str.strip() == mercadista).sum())
+        if "Mercadista" in df.columns
+        else 0
+    )
+    if visitas:
+        raise RutaEditError(
+            f"{mercadista} tiene {visitas} visita(s) agendada(s). Pásalas a pendientes "
+            "antes de eliminarlo.",
+            status_code=409,
+            payload={"codigo": "MERCADISTA_CON_PUNTOS", "visitas": visitas},
+        )
+
+    extra = leer_mercadistas_extra(hp)
+    queda = extra[extra["Mercadista"].astype(str).str.strip() != mercadista]
+    if len(queda) == len(extra):
+        raise RutaEditError(f"{mercadista} no existe o ya fue eliminado.", status_code=404)
+    _escribir_hojas(hp, {SHEET_MERCADISTAS_EXTRA: queda.reset_index(drop=True)})
+    return {"success": True, "mercadista": mercadista, "message": f"{mercadista} eliminado."}

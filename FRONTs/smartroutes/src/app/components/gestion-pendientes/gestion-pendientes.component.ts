@@ -987,6 +987,51 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     });
   }
 
+  /** Solo se puede eliminar al mercaderista que no tiene ninguna visita. */
+  get calMercadistaSinPuntos(): boolean {
+    return !!this.calMercadista && !this.rutasFilas.some((f) => f.mercadista === this.calMercadista);
+  }
+
+  pedirEliminarMercadista(): void {
+    if (this.calBloqueado || !this.calMercadistaSinPuntos) return;
+    const nombre = this.calMercadista;
+    this.pedirConfirmacion(
+      `Eliminar ${nombre}`,
+      `${nombre} no tiene ningún punto asignado. Se quitará de la lista de mercaderistas.`,
+      'Eliminar',
+      () => this.eliminarMercadista(nombre),
+      true,
+    );
+  }
+
+  private eliminarMercadista(nombre: string): void {
+    this.calGuardando = true;
+    this.calError = '';
+    this.calMensaje = '';
+    this.cdr.markForCheck();
+    this.rutaEditApi.eliminarMercadistaVacio(nombre).subscribe({
+      next: (resp) => {
+        this.calGuardando = false;
+        if (resp?.success === false) {
+          this.calError = resp.error ?? 'No se pudo eliminar el mercaderista.';
+          this.cdr.markForCheck();
+          return;
+        }
+        this.calMercadista = '';
+        this.calMensaje = resp.message ?? `${nombre} eliminado.`;
+        this.cargarRutas(true);
+        setTimeout(() => {
+          this.calMensaje = '';
+          this.cdr.markForCheck();
+        }, 4000);
+      },
+      error: (err) => {
+        this.calGuardando = false;
+        this.fallarEdicion(err, 'No se pudo eliminar el mercaderista.');
+      },
+    });
+  }
+
   /** Da de alta un mercaderista sin puntos para arrastrarle pendientes. */
   nuevoMercadista(): void {
     if (this.calBloqueado) return;

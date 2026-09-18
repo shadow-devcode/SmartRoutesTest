@@ -832,29 +832,11 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
 
   /** Carga la lista de pendientes desde la API. Idempotente: se puede llamar varias veces. */
   cargarPendientes(): void {
-    // Backend solo permite ADMIN/EDITOR sobre /api/pendientes; evitamos el 403.
-    if (!this.auth.canEditMapaRutas()) {
-      this.pendientes = [];
-      this.cargandoPendientes = false;
-      return;
-    }
-    this.cargandoPendientes = true;
-    this.apiService.getPendientes().subscribe({
-      next: (lista) => {
-        this.pendientes = lista || [];
-        this.cargandoPendientes = false;
-        // Si la pendiente actualmente resaltada ya no está en la lista (porque
-        // se asignó), limpiamos el marker temporal del mapa.
-        if (this.pendienteActual && !this.pendientes.some(p => p.id === this.pendienteActual?.id)) {
-          this.pendienteActual = null;
-          this.pendienteSeleccionada.emit(null);
-        }
-      },
-      error: () => {
-        this.pendientes = [];
-        this.cargandoPendientes = false;
-      },
-    });
+    // El panel de pendientes se quitó de /rutas: la asignación manual vive en
+    // «Gestión de pendientes». Sin panel, pedir la lista era una llamada de más
+    // cada vez que se abría el mapa.
+    this.pendientes = [];
+    this.cargandoPendientes = false;
   }
 
   /** Quita acentos para comparar/deduplicar de forma robusta. */

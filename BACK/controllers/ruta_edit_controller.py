@@ -256,3 +256,16 @@ def replicar_dia():
     if not mercadista or not dia or not semana:
         return jsonify({"error": "Faltan mercadista, dia o semana_origen"}), 400
     return jsonify(res.replicar_dia(hp, mercadista=mercadista, dia=dia, semana_origen=semana))
+
+
+@ruta_bp.route("/mercadista-eliminar", methods=["POST"])
+@_maneja_errores_ruta_edit("POST /api/ruta/mercadista-eliminar")
+def mercadista_eliminar():
+    """Elimina un mercaderista, solo si no tiene ningún punto."""
+    hp = active_horarios_path(auth_loaded=is_auth_loaded())
+    if not hp:
+        return jsonify({"error": "Archivo no encontrado"}), 404
+    mercadista = ((request.get_json() or {}).get("mercadista") or "").strip()
+    if not mercadista:
+        return jsonify({"error": "Falta mercadista"}), 400
+    return jsonify(res.eliminar_mercadista_vacio(hp, mercadista=mercadista))
