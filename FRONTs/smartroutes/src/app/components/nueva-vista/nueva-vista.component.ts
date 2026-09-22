@@ -465,10 +465,6 @@ export class NuevaVistaComponent implements OnInit {
     return ordenarDiasLaborables(Object.keys(this.estadisticas.total_por_dia));
   }
 
-  getCantidadDiasActivos(): number {
-    return this.getDiasKeys().length;
-  }
-
   getDiasActivosString(): string {
     const keys = this.getDiasKeys();
     return keys.length ? keys.join(', ') : 'No disponible';
