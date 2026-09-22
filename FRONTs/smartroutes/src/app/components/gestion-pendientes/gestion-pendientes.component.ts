@@ -121,6 +121,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   cambiarGrupoRuta(grupo: string): void {
     this.filtroGrupoRuta = grupo;
     this.refrescarVista();
+    this.ajustarMercadistaDelCalendario();
   }
 
   private cargarGruposRuta(): void {
@@ -532,14 +533,15 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
    * de la derecha no se tocan: ahí se ven todos.
    */
   get calMercadistasFiltrados(): string[] {
-    if (!this.calProvincia && !this.calCiudad) return this.rutasMercadistas;
+    const delGrupo = this.rutasMercadistas.filter((m) => this.rutaEnGrupo(m));
+    if (!this.calProvincia && !this.calCiudad) return delGrupo;
     const conRutas = new Set<string>();
     for (const f of this.rutasFilas) {
       if (this.calProvincia && (f.provincia || '').trim() !== this.calProvincia) continue;
       if (this.calCiudad && (f.ciudad || '').trim() !== this.calCiudad) continue;
       conRutas.add(f.mercadista);
     }
-    return this.rutasMercadistas.filter((m) => conRutas.has(m));
+    return delGrupo.filter((m) => conRutas.has(m));
   }
 
   cambiarCalProvincia(valor: string): void {

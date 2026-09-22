@@ -491,6 +491,18 @@
             <span class="gp-select-btn__flecha" aria-hidden="true">▾</span>
           </button>
         </div>
+        <label class="gp-filtro-mapa" *ngIf="gruposRuta.length">
+          <span class="gp-filtro-mapa__label">Grupo de cadenas</span>
+          <select
+            class="gp-select"
+            [ngModel]="filtroGrupoRuta"
+            (ngModelChange)="cambiarGrupoRuta($event)">
+            <option value="">Todos los grupos</option>
+            <option *ngFor="let g of gruposRuta" [value]="g.nombre" [title]="g.cadenas.join(', ')">
+              {{ g.nombre }} · {{ g.mercadistas.length }} mercaderista(s)
+            </option>
+          </select>
+        </label>
         <label class="gp-filtro-mapa">
           <span class="gp-filtro-mapa__label">Provincia</span>
           <select
