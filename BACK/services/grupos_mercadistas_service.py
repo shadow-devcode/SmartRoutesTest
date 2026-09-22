@@ -37,7 +37,13 @@ def _leer_grupos(hp: str) -> tuple[str, list[dict]]:
 
 def grupos_mercadistas(hp: str | None) -> dict:
     """{grupos: [{nombre, cadenas, mercadistas}], grupo_por_mercadista: {merc: grupo}}."""
-    vacio = {"success": True, "tipo_carga": "", "grupos": [], "grupo_por_mercadista": {}}
+    vacio = {
+        "success": True,
+        "tipo_carga": "",
+        "grupos": [],
+        "grupo_por_mercadista": {},
+        "grupo_por_punto": {},
+    }
     if not hp:
         return vacio
     tipo, grupos = _leer_grupos(hp)
@@ -58,4 +64,29 @@ def grupos_mercadistas(hp: str | None) -> dict:
     por_merc = {m: c.most_common(1)[0][0] for m, c in votos.items()}
     for g in grupos:
         g["mercadistas"] = sorted(m for m, n in por_merc.items() if n == g["nombre"])
-    return {"success": True, "tipo_carga": tipo, "grupos": grupos, "grupo_por_mercadista": por_merc}
+
+    # Grupo de cada PUNTO, para que el panel de pendientes no ofrezca puntos de
+    # otro grupo: la cadena sale de sus visitas agendadas y, si no tiene
+    # ninguna, de la columna Cadena de la hoja de pendientes.
+    por_punto: dict = {}
+    if "CADENA" in df.columns:
+        for desc, cadena in zip(df["Descripción"].astype(str), df["CADENA"]):
+            grupo = grupo_de_cadena.get(_norm(cadena))
+            if grupo:
+                por_punto.setdefault(_norm(desc), grupo)
+    try:
+        pend = read_excel_cached(hp, "Pendientes_Sin_Asignar")
+    except Exception:
+        pend = None
+    if pend is not None and "Cadena" in pend.columns:
+        for desc, cadena in zip(pend["Descripción"].astype(str), pend["Cadena"]):
+            grupo = grupo_de_cadena.get(_norm(cadena))
+            if grupo:
+                por_punto.setdefault(_norm(desc), grupo)
+    return {
+        "success": True,
+        "tipo_carga": tipo,
+        "grupos": grupos,
+        "grupo_por_mercadista": por_merc,
+        "grupo_por_punto": por_punto,
+    }

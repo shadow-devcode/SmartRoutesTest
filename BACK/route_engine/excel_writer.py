@@ -445,6 +445,8 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
                 "Provincia": provincia_final,
                 "Ciudad": ciudad_final,
                 "Calle": calle_final,
+                "Cadena": p.get("cadena_punto") or p.get("cadena") or "",
+                "Canal": p.get("canal_punto") or p.get("canal") or "",
                 "Mercadista origen": p.get("mercadista_origen", ""),
                 "Día origen": p.get("dia_origen", ""),
                 "Motivo": p.get("motivo", ""),
@@ -456,7 +458,7 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
             columns=[
                 "Descripción", "Latitud", "Longitud", "Semana",
                 "Tiempo Servicio (min)", "Provincia", "Ciudad", "Calle",
-                "Frecuencia mes",
+                "Frecuencia mes", "Cadena", "Canal",
                 "Mercadista origen", "Día origen", "Motivo",
             ]
         )
@@ -464,7 +466,8 @@ def generar_excel_salida(output_file, horarios_df, df, visit_instances, state):
         pend_col_order = [
             "Descripción", "Latitud", "Longitud", "Semana",
             "Tiempo Servicio (min)", "Provincia", "Ciudad", "Calle",
-            "Frecuencia mes", "Mercadista origen", "Día origen", "Motivo",
+            "Frecuencia mes", "Cadena", "Canal",
+            "Mercadista origen", "Día origen", "Motivo",
         ]
         pend_cols_present = [c for c in pend_col_order if c in pendientes_df.columns] + [
             c for c in pendientes_df.columns if c not in pend_col_order

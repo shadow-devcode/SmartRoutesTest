@@ -100,7 +100,7 @@ export class MercadistasApiService {
   getGruposMercadistas(fuente?: string): Observable<GruposMercadistas> {
     const qs = fuente ? `?fuente=${encodeURIComponent(fuente)}` : '';
     return this.http.get<GruposMercadistas>(`${this.apiUrl}/grupos-mercadistas${qs}`).pipe(
-      catchError(() => of({ success: false, grupos: [], grupo_por_mercadista: {} })),
+      catchError(() => of({ success: false, grupos: [], grupo_por_mercadista: {}, grupo_por_punto: {} })),
     );
   }
 
@@ -172,4 +172,6 @@ export interface GruposMercadistas {
   tipo_carga?: string;
   grupos: GrupoMercadistas[];
   grupo_por_mercadista: Record<string, string>;
+  /** Grupo de cada punto (por descripción en mayúsculas), para no mezclar pendientes. */
+  grupo_por_punto?: Record<string, string>;
 }

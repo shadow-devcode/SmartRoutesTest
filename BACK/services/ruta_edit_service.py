@@ -120,6 +120,8 @@ def _fila_horarios_a_pendiente(row, motivo: str, freq_index: dict | None = None)
         "Provincia": prov,
         "Ciudad": ciudad_val,
         "Calle": calle_val,
+        "Cadena": "" if row.get("CADENA") is None or pd.isna(row.get("CADENA")) else str(row.get("CADENA")).strip(),
+        "Canal": "" if row.get("CANAL") is None or pd.isna(row.get("CANAL")) else str(row.get("CANAL")).strip(),
         "Mercadista origen": str(row.get("Mercadista", "") or "").strip(),
         "Día origen": str(row.get("Día", "") or "").strip(),
         "Motivo": motivo,

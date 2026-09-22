@@ -24,6 +24,9 @@ PENDIENTES_COLS: list[str] = [
     "Descripción", "Latitud", "Longitud", "Semana",
     "Tiempo Servicio (min)", "Provincia", "Ciudad", "Calle",
     "Frecuencia mes",
+    # Cadena y canal del punto: con el reparto multicadena deciden a qué grupo
+    # pertenece el pendiente, y sin ellos no se puede filtrar por grupo.
+    "Cadena", "Canal",
     "Mercadista origen", "Día origen", "Motivo",
 ]
 

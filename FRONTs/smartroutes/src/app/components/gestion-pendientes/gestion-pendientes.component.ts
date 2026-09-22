@@ -112,10 +112,28 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   /** Grupos de cadenas (solo datasets multicadena) para filtrar rutas asignadas. */
   gruposRuta: { nombre: string; cadenas: string[]; mercadistas: string[] }[] = [];
   private grupoPorMercadistaRuta: Record<string, string> = {};
+  private grupoPorPunto: Record<string, string> = {};
   filtroGrupoRuta = '';
 
   rutaEnGrupo(mercadista: string): boolean {
     return !this.filtroGrupoRuta || this.grupoPorMercadistaRuta[mercadista] === this.filtroGrupoRuta;
+  }
+
+  /** Grupo que manda en el calendario: el del mercaderista abierto o el filtrado. */
+  private get grupoDelCalendario(): string {
+    return this.grupoPorMercadistaRuta[this.calMercadista] || this.filtroGrupoRuta || '';
+  }
+
+  /**
+   * Con reparto multicadena, un punto solo puede ir a un mercaderista de su
+   * grupo: ofrecer los demás sería invitar a mezclar cadenas. Los puntos cuyo
+   * grupo se desconoce se siguen mostrando, para no esconder trabajo.
+   */
+  pendienteDelGrupo(p: PuntoPendiente): boolean {
+    const grupo = this.grupoDelCalendario;
+    if (!grupo) return true;
+    const suyo = this.grupoPorPunto[(p.descripcion || '').trim().toUpperCase()];
+    return !suyo || suyo === grupo;
   }
 
   cambiarGrupoRuta(grupo: string): void {
@@ -128,6 +146,8 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     this.mercadistasApi.getGruposMercadistas().subscribe((res) => {
       this.gruposRuta = res.grupos ?? [];
       this.grupoPorMercadistaRuta = res.grupo_por_mercadista ?? {};
+      this.grupoPorPunto = res.grupo_por_punto ?? {};
+      this.cachePendientesPanel = null;
       if (this.filtroGrupoRuta && !this.gruposRuta.some((x) => x.nombre === this.filtroGrupoRuta)) {
         this.filtroGrupoRuta = '';
       }
@@ -578,6 +598,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     const clave = [
       this.puntos.length,
       this.calMercadista,
+      this.grupoDelCalendario,
       this.pendProvincia,
       this.pendCiudad,
       texto,
@@ -587,6 +608,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
     }
     const lista = this.puntos
       .filter((p) => p.visitas_pendientes > 0)
+      .filter((p) => this.pendienteDelGrupo(p))
       .filter((p) => !this.pendProvincia || (p.provincia || '').trim() === this.pendProvincia)
       .filter((p) => !this.pendCiudad || (p.ciudad || '').trim() === this.pendCiudad)
       .filter(
