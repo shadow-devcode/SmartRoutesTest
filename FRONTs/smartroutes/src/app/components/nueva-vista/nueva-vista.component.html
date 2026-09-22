@@ -73,11 +73,20 @@
     <div class="filtros-card" *ngIf="!cargando">
       <h2>🔍 Filtros</h2>
       <div class="filtros-row">
+        <div class="filtro-group" *ngIf="grupos.length">
+          <label for="filtro-grupo">Grupo de cadenas</label>
+          <select id="filtro-grupo" [(ngModel)]="filtroGrupo" (ngModelChange)="cambiarGrupo()">
+            <option value="">Todos los grupos</option>
+            <option *ngFor="let g of grupos" [value]="g.nombre" [title]="g.cadenas.join(', ')">
+              {{ g.nombre }} · {{ g.cadenas.join(', ') }}
+            </option>
+          </select>
+        </div>
         <div class="filtro-group">
           <label for="filtro-mercadista">Mercadista</label>
           <select id="filtro-mercadista" [(ngModel)]="filtroMercadista" (ngModelChange)="aplicarFiltros()">
             <option value="">Todos</option>
-            <option *ngFor="let m of mercadistas" [value]="m">{{ m }}</option>
+            <option *ngFor="let m of mercadistasDelGrupo" [value]="m">{{ m }}</option>
           </select>
         </div>
         <div class="filtro-group">
@@ -391,10 +400,19 @@
       <div class="card-header-flex">
         <h2>🗺️ Provincias por mercadista (% del total)</h2>
         <div class="card-filtro-inline">
+<ng-container *ngIf="grupos.length">
+            <label for="filtro-grupo-resumen">Grupo:</label>
+            <select id="filtro-grupo-resumen" [(ngModel)]="filtroGrupo" (ngModelChange)="cambiarGrupo()">
+              <option value="">Todos los grupos</option>
+              <option *ngFor="let g of grupos" [value]="g.nombre" [title]="g.cadenas.join(', ')">
+                {{ g.nombre }} ({{ g.mercadistas.length }})
+              </option>
+            </select>
+          </ng-container>
           <label for="filtro-mercadista-resumen">Mercaderista:</label>
           <select id="filtro-mercadista-resumen" [(ngModel)]="filtroMercadista" (ngModelChange)="aplicarFiltros()">
             <option value="">Todos</option>
-            <option *ngFor="let m of mercadistas" [value]="m">{{ m }}</option>
+            <option *ngFor="let m of mercadistasDelGrupo" [value]="m">{{ m }}</option>
           </select>
           <label for="filtro-provincia-resumen">Provincia:</label>
           <select id="filtro-provincia-resumen" [(ngModel)]="filtroProvincia" (ngModelChange)="aplicarFiltros()">

@@ -53,6 +53,37 @@ export class NuevaVistaComponent implements OnInit {
   frecuenciaPuntos: FrecuenciaPunto[] = [];
   provinciasPorcentaje: ProvinciaPorcentaje[] = [];
   mercadistas: string[] = [];
+
+  /** Grupos de cadenas (solo en datasets multicadena) y filtro por grupo. */
+  grupos: { nombre: string; cadenas: string[]; mercadistas: string[] }[] = [];
+  grupoPorMercadista: Record<string, string> = {};
+  filtroGrupo = '';
+
+  private enGrupo(mercadista: string): boolean {
+    return !this.filtroGrupo || this.grupoPorMercadista[mercadista] === this.filtroGrupo;
+  }
+
+  /** Mercaderistas del grupo elegido (todos si no hay grupo). */
+  get mercadistasDelGrupo(): string[] {
+    return this.mercadistas.filter((m) => this.enGrupo(m));
+  }
+
+  cambiarGrupo(): void {
+    if (this.filtroMercadista && !this.enGrupo(this.filtroMercadista)) {
+      this.filtroMercadista = '';
+    }
+    this.aplicarFiltros();
+  }
+
+  private cargarGrupos(): void {
+    this.apiService.getGruposMercadistas(this.fuente).subscribe((res) => {
+      this.grupos = res.grupos ?? [];
+      this.grupoPorMercadista = res.grupo_por_mercadista ?? {};
+      if (this.filtroGrupo && !this.grupos.some((g) => g.nombre === this.filtroGrupo)) {
+        this.filtroGrupo = '';
+      }
+    });
+  }
   provincias: string[] = [];
   filtroMercadista = '';
   filtroProvincia = '';
@@ -209,6 +240,7 @@ export class NuevaVistaComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.cargarGrupos();
     this.cargarEstadisticas();
     this.cargarFrecuenciaPuntos();
     this.cargarProvinciasPorcentaje();
@@ -233,6 +265,7 @@ export class NuevaVistaComponent implements OnInit {
   recargarDashboard(): void {
     if (this.recargando) return;
     this.recargando = true;
+    this.cargarGrupos();
     this.cargarEstadisticas();
     this.cargarFrecuenciaPuntos();
     this.cargarProvinciasPorcentaje();
@@ -263,7 +296,7 @@ export class NuevaVistaComponent implements OnInit {
     this.cargandoFiltros = true;
     this.apiService.getFrecuenciaPuntos(this.filtroMercadista || undefined, this.fuente).subscribe({
       next: (res) => {
-        this.frecuenciaPuntos = res.frecuencia_puntos;
+        this.frecuenciaPuntos = (res.frecuencia_puntos ?? []).filter((f) => this.enGrupo(f.mercadista));
         if (res.mercadistas?.length && !this.mercadistas.length) {
           this.mercadistas = res.mercadistas;
         }
@@ -285,7 +318,9 @@ export class NuevaVistaComponent implements OnInit {
       )
       .subscribe({
         next: (res) => {
-          this.provinciasPorcentaje = res.provincias_porcentaje;
+          this.provinciasPorcentaje = (res.provincias_porcentaje ?? []).filter((p) =>
+            this.enGrupo(p.mercadista),
+          );
           if (res.mercadistas?.length && !this.mercadistas.length) {
             this.mercadistas = res.mercadistas;
           }
@@ -308,6 +343,7 @@ export class NuevaVistaComponent implements OnInit {
 
   limpiarFiltros(): void {
     this.filtroMercadista = '';
+    this.filtroGrupo = '';
     this.filtroProvincia = '';
     this.filtroPuntoVisita = '';
     this.semanaSeleccionada = 'semana 1';

@@ -96,6 +96,14 @@ export class MercadistasApiService {
       );
   }
 
+  /** Grupos de cadenas del dataset (reparto multicadena) y el grupo de cada mercaderista. */
+  getGruposMercadistas(fuente?: string): Observable<GruposMercadistas> {
+    const qs = fuente ? `?fuente=${encodeURIComponent(fuente)}` : '';
+    return this.http.get<GruposMercadistas>(`${this.apiUrl}/grupos-mercadistas${qs}`).pipe(
+      catchError(() => of({ success: false, grupos: [], grupo_por_mercadista: {} })),
+    );
+  }
+
   /** `fuente` = 'comparativa' devuelve las mismas cifras sobre el rutero armado a mano. */
   getEstadisticas(fuente?: string): Observable<Estadisticas | null> {
     const qs = fuente ? `?fuente=${encodeURIComponent(fuente)}` : '';
@@ -151,4 +159,17 @@ export class MercadistasApiService {
         }),
       );
   }
+}
+
+export interface GrupoMercadistas {
+  nombre: string;
+  cadenas: string[];
+  mercadistas: string[];
+}
+
+export interface GruposMercadistas {
+  success: boolean;
+  tipo_carga?: string;
+  grupos: GrupoMercadistas[];
+  grupo_por_mercadista: Record<string, string>;
 }

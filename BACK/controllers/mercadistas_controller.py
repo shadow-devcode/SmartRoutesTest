@@ -128,3 +128,16 @@ def get_categorias():
         return jsonify(mq.categorias(hp))
     except Exception as e:
         return jsonify({"error": safe_error_message(e)}), 500
+
+
+@mercadistas_bp.route("/api/grupos-mercadistas", methods=["GET"])
+def get_grupos_mercadistas():
+    """Grupos de cadenas del dataset y a qué grupo pertenece cada mercaderista."""
+    try:
+        from services.grupos_mercadistas_service import grupos_mercadistas
+
+        hp = excel_por_fuente(request.args.get("fuente"), auth_loaded=is_auth_loaded())
+        return jsonify(grupos_mercadistas(hp))
+    except Exception as e:
+        log_endpoint_error("GET /api/grupos-mercadistas", e)
+        return jsonify({"success": False, "error": safe_error_message(e)}), 500

@@ -65,6 +65,10 @@ export class ApiService {
     return this.mercadistas.getEstadisticas(fuente);
   }
 
+  getGruposMercadistas(fuente?: string) {
+    return this.mercadistas.getGruposMercadistas(fuente);
+  }
+
   // ─── Dashboard ─────────────────────────────────────────────────────────────
 
   getFrecuenciaPuntos(

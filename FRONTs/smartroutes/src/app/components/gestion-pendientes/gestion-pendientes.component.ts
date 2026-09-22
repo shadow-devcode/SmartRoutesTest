@@ -109,6 +109,31 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
   /** Menú del clic derecho sobre un día del calendario. */
   calMenuDia: { dia: string; semana: string; x: number; y: number } | null = null;
 
+  /** Grupos de cadenas (solo datasets multicadena) para filtrar rutas asignadas. */
+  gruposRuta: { nombre: string; cadenas: string[]; mercadistas: string[] }[] = [];
+  private grupoPorMercadistaRuta: Record<string, string> = {};
+  filtroGrupoRuta = '';
+
+  rutaEnGrupo(mercadista: string): boolean {
+    return !this.filtroGrupoRuta || this.grupoPorMercadistaRuta[mercadista] === this.filtroGrupoRuta;
+  }
+
+  cambiarGrupoRuta(grupo: string): void {
+    this.filtroGrupoRuta = grupo;
+    this.refrescarVista();
+  }
+
+  private cargarGruposRuta(): void {
+    this.mercadistasApi.getGruposMercadistas().subscribe((res) => {
+      this.gruposRuta = res.grupos ?? [];
+      this.grupoPorMercadistaRuta = res.grupo_por_mercadista ?? {};
+      if (this.filtroGrupoRuta && !this.gruposRuta.some((x) => x.nombre === this.filtroGrupoRuta)) {
+        this.filtroGrupoRuta = '';
+      }
+      this.refrescarVista();
+    });
+  }
+
   /** Jornada de los mercaderistas dados de alta sin puntos (aún sin filas). */
   jornadasExtra: Record<string, 'semana' | 'fin_semana'> = {};
   rutasTotalPuntos = 0;
@@ -1733,6 +1758,7 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
    *   dibujarla parecía que la página entera se recargaba.
    */
   cargarRutas(silencioso = false): void {
+    this.cargarGruposRuta();
     this.rutasCargando = !silencioso;
     this.rutasError = '';
     this.cdr.markForCheck();
@@ -1819,10 +1845,12 @@ export class GestionPendientesComponent implements OnInit, AfterViewInit, OnDest
 
   /** Filas del Excel que pasan todos los filtros de columna. */
   get rutasFilasFiltradas(): FilaRuta[] {
-    const clave = `${this.rutasFilas.length}|${JSON.stringify(this.filtrosRuta)}`;
+    const clave = `${this.rutasFilas.length}|${this.filtroGrupoRuta}|${JSON.stringify(this.filtrosRuta)}`;
     if (clave !== this.cacheClaveFiltros) {
       this.cacheClaveFiltros = clave;
-      this.cacheFilasFiltradas = this.filtrarFilas(this.rutasFilas, null);
+      this.cacheFilasFiltradas = this.filtrarFilas(this.rutasFilas, null).filter((f) =>
+        this.rutaEnGrupo(f.mercadista),
+      );
       this.cachePuntosMapa = null;
       this.cacheUbicaciones = null;
       this.cacheSemanales = null;
