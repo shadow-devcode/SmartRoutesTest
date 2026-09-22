@@ -58,6 +58,10 @@ def _path_allows_authenticated_user(path: str) -> bool:
         return True
     if path == "/api/stats":
         return True
+    # Grupos de cadenas del reparto multicadena: es la misma información que ya
+    # lleva cada fila (su CADENA), agrupada. Mismo nivel que /api/stats.
+    if path == "/api/grupos-mercadistas":
+        return True
     return False
 
 
