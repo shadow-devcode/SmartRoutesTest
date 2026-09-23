@@ -77,6 +77,8 @@ def stats_vacios() -> dict:
     return {
         "total_mercadistas": 0,
         "total_ubicaciones": 0,
+        "total_puntos_asignados": 0,
+        "total_puntos_pendientes": 0,
         "total_por_dia": {},
         "tiempo_promedio_servicio": 0,
         "total_tiempo_trabajo_min": 0,

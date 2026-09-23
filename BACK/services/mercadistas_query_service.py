@@ -188,6 +188,28 @@ def ubicaciones_por_dia(hp: str, dia: str, semana: str, *, auth_loaded: bool) ->
     }
 
 
+def _contar_puntos(df) -> int:
+    """Puntos de venta distintos de un DataFrame (por descripción y coordenadas)."""
+    from utils.route_helpers import clave_ub
+
+    if df is None or df.empty or "Descripción" not in df.columns:
+        return 0
+    claves = {
+        clave_ub(d, la, lo)
+        for d, la, lo in zip(df["Descripción"], df.get("Latitud"), df.get("Longitud"))
+        if str(d or "").strip()
+    }
+    return len(claves)
+
+
+def _contar_puntos_pendientes(hp: str) -> int:
+    """Puntos con alguna visita sin asignar. Cero si el Excel no tiene esa hoja."""
+    try:
+        return _contar_puntos(read_excel_cached(hp, "Pendientes_Sin_Asignar"))
+    except Exception:
+        return 0
+
+
 def stats(hp: str, *, auth_loaded: bool) -> dict:
     df_horarios = read_excel_cached(hp, "Horarios_Detalle")
 
@@ -232,6 +254,10 @@ def stats(hp: str, *, auth_loaded: bool) -> dict:
         "stats": {
             "total_mercadistas": int(df_stats["Mercadista"].nunique()),
             "total_ubicaciones": int(len(df_horarios)),
+            # Puntos de venta distintos, no visitas: un punto de frecuencia 20
+            # son veinte filas pero un solo punto.
+            "total_puntos_asignados": _contar_puntos(df_stats),
+            "total_puntos_pendientes": _contar_puntos_pendientes(hp),
             "total_por_dia": df_horarios.groupby("Día").size().to_dict(),
             "tiempo_promedio_servicio": round(
                 float(df_horarios["Tiempo entre sucursal (min)"].mean()), 2

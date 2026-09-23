@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -73,6 +73,18 @@ export class NuevaVistaComponent implements OnInit {
       this.filtroMercadista = '';
     }
     this.aplicarFiltros();
+  }
+
+  /**
+   * Al volver a esta pestaña se refrescan las cifras: los puntos asignados y
+   * pendientes cambian al mover visitas en el calendario o en el mapa, y el
+   * dashboard se quedaba con los números de cuando se abrió.
+   */
+  @HostListener('document:visibilitychange')
+  onVolverALaPestana(): void {
+    if (document.visibilityState !== 'visible' || this.recargando) return;
+    this.cargarEstadisticas();
+    if (!this.esComparativa) this.cargarPendientes();
   }
 
   private cargarGrupos(): void {

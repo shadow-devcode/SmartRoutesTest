@@ -43,6 +43,22 @@
       </div>
 
       <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <h3>Puntos de visita asignados</h3>
+          <p class="stat-value">{{ (estadisticas.total_puntos_asignados ?? 0) | number }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card" *ngIf="!esComparativa">
+        <div class="stat-icon">📌</div>
+        <div class="stat-content">
+          <h3>Puntos de visita pendientes</h3>
+          <p class="stat-value">{{ (estadisticas.total_puntos_pendientes ?? 0) | number }}</p>
+        </div>
+      </div>
+
+      <div class="stat-card">
         <div class="stat-icon">⏱️</div>
         <div class="stat-content">
           <h3>Desplazamiento Promedio</h3>

@@ -46,6 +46,10 @@ export interface UbicacionMapa {
 export interface Estadisticas {
   total_mercadistas: number;
   total_ubicaciones: number;
+  /** Puntos de venta distintos con visitas ya colocadas. */
+  total_puntos_asignados?: number;
+  /** Puntos de venta con alguna visita sin asignar. */
+  total_puntos_pendientes?: number;
   total_por_dia: {
     [dia: string]: number;
   };
