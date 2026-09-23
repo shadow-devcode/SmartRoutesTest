@@ -221,8 +221,13 @@
 
           <div class="grupo" *ngFor="let grupo of gruposCadenas; let i = index">
             <div class="grupo__cabecera">
+              <label class="grupo__nombre-campo" [attr.for]="'grupo-nombre-' + i">
+                <span class="grupo__nombre-lapiz" aria-hidden="true">✎</span>
+                <span class="grupo__nombre-etiqueta">Nombre</span>
+              </label>
               <input
                 type="text"
+                [id]="'grupo-nombre-' + i"
                 class="grupo__nombre-input"
                 [ngModel]="gruposNombres[i] || ''"
                 (ngModelChange)="gruposNombres[i] = $event"

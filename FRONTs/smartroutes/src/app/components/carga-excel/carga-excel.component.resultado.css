@@ -107,14 +107,33 @@
   margin-bottom: 0.55rem;
 }
 
+/* El nombre del grupo se escribe: se ve como un campo, no como un título. */
+.grupo__nombre-campo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.grupo__nombre-lapiz {
+  font-size: 0.85rem;
+  color: var(--brand-from);
+}
+
 .grupo__nombre-input {
   flex: 1 1 10rem;
   min-width: 7rem;
   max-width: 16rem;
-  padding: 0.2rem 0.45rem;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 700;
@@ -122,18 +141,18 @@
 }
 
 .grupo__nombre-input::placeholder {
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-weight: 500;
+  font-style: italic;
+  color: #94a3b8;
 }
 
 .grupo__nombre-input:hover {
-  border-color: var(--border);
-  background: #fff;
+  border-color: var(--brand-from);
 }
 
 .grupo__nombre-input:focus {
   border-color: var(--brand-from);
-  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
   outline: none;
 }
 
