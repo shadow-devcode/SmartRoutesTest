@@ -68,17 +68,38 @@
 }
 
 /* Statistics Grid */
+/* Columnas por tramos, no «las que quepan»: con seis tarjetas, auto-fit
+   dejaba filas de cinco más una suelta. Así siempre salen repartos parejos
+   (6, 3+3, 2+2+2) y cada tarjeta tiene ancho de sobra para su texto. */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: clamp(1rem, 2vw, 1.5rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(0.75rem, 1.6vw, 1.25rem);
   margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+@media (max-width: 420px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .stats-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .stat-card {
   background: white;
   border-radius: 16px;
-  padding: clamp(1rem, 4vw, 1.875rem);
+  padding: clamp(0.85rem, 1.8vw, 1.4rem);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
@@ -92,9 +113,9 @@
 }
 
 .stat-icon {
-  font-size: clamp(1.5rem, 4vw, 2.5rem);
-  width: clamp(2.75rem, 6vw, 4.5rem);
-  height: clamp(2.75rem, 6vw, 4.5rem);
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  width: clamp(2.5rem, 4.2vw, 3.5rem);
+  height: clamp(2.5rem, 4.2vw, 3.5rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -117,18 +138,36 @@
   margin: 0 0 8px 0;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  hyphens: auto;
+  line-height: 1.25;
+  /* Sin guiones ni cortes dentro de la palabra: partía «PUNTOS DE VI-SITA» y
+     «DESPLAZA-MIENTO». Las palabras saltan enteras de línea. */
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .stat-value {
-  font-size: clamp(1.25rem, 3vw, 2.25rem);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  font-size: clamp(1.15rem, 2.4vw, 2rem);
   font-weight: 700;
   color: #1d4ed8;
   margin: 0;
   line-height: 1.15;
-  overflow-wrap: break-word;
+}
+
+/* La cifra nunca se parte: «140,544» salía como «140,5 / 44». Si no cabe con
+   su unidad, es «min» quien baja de línea. */
+.stat-value__num {
+  white-space: nowrap;
+}
+
+.stat-value__unidad {
+  font-size: 0.7em;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 /* Navigation Card */

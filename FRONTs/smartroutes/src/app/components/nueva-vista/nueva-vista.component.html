@@ -62,14 +62,20 @@
         <div class="stat-icon">⏱️</div>
         <div class="stat-content">
           <h3>Desplazamiento Promedio</h3>
-          <p class="stat-value">{{ estadisticas.tiempo_promedio_servicio || 0 }} min</p>
+          <p class="stat-value">
+            <span class="stat-value__num">{{ estadisticas.tiempo_promedio_servicio || 0 }}</span>
+            <span class="stat-value__unidad">min</span>
+          </p>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">⏱️</div>
         <div class="stat-content">
           <h3>Tiempo Total de Trabajo</h3>
-          <p class="stat-value">{{ ((estadisticas.total_tiempo_trabajo_min || 0) + (estadisticas.total_tiempo_entre_sucursales_min || 0)) | number:'1.0-0' }} min</p>
+          <p class="stat-value">
+            <span class="stat-value__num">{{ ((estadisticas.total_tiempo_trabajo_min || 0) + (estadisticas.total_tiempo_entre_sucursales_min || 0)) | number:'1.0-0' }}</span>
+            <span class="stat-value__unidad">min</span>
+          </p>
         </div>
       </div>
     </div>
