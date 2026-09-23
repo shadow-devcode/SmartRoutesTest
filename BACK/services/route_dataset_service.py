@@ -264,6 +264,20 @@ class RouteDatasetService:
         self.session.refresh(row)
         return row
 
+    def rename_dataset(self, dataset_id: int, nuevo_nombre: str) -> dict:
+        """Cambia el nombre visible del dataset. No toca archivos ni rutas."""
+        nombre = " ".join(str(nuevo_nombre or "").split())
+        if not nombre:
+            raise BadRequestError("El nombre no puede estar vacío")
+        if len(nombre) > 255:
+            raise BadRequestError("El nombre no puede pasar de 255 caracteres")
+        row = self.repo.get_by_id(dataset_id)
+        if not row:
+            raise NotFoundError("Dataset no encontrado")
+        row.display_name = nombre
+        self.session.commit()
+        return self.to_public_dict(row)
+
     def delete_dataset(self, dataset_id: int) -> None:
         row = self.repo.get_by_id(dataset_id)
         if not row:

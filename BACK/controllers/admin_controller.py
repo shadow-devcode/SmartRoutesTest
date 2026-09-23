@@ -221,6 +221,23 @@ def activate_route_dataset():
         session.close()
 
 
+@admin_bp.route("/route-datasets/<int:dataset_id>/nombre", methods=["PATCH"])
+def rename_route_dataset(dataset_id: int):
+    """Cambia el nombre visible de un rutero."""
+    if dataset_id < 1:
+        raise BadRequestError("ID de dataset inválido")
+
+    from database.connection import SessionLocal
+
+    nombre = ((request.get_json() or {}).get("display_name") or "").strip()
+    session = SessionLocal()
+    try:
+        dataset = RouteDatasetService(session).rename_dataset(dataset_id, nombre)
+        return jsonify(success=True, message="Nombre actualizado", dataset=dataset)
+    finally:
+        session.close()
+
+
 @admin_bp.route("/route-datasets/<int:dataset_id>", methods=["DELETE"])
 def delete_route_dataset(dataset_id: int):
     if dataset_id < 1:

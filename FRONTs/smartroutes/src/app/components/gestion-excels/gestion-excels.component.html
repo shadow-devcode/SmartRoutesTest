@@ -90,6 +90,15 @@
                     </button>
                     <button
                       type="button"
+                      class="btn btn-sm btn-muted"
+                      [disabled]="renamingId !== null"
+                      title="Cambiar el nombre de este rutero"
+                      (click)="abrirRenombrar(d)"
+                    >
+                      {{ renamingId === d.id ? 'Guardando…' : '✎ Renombrar' }}
+                    </button>
+                    <button
+                      type="button"
                       class="btn btn-sm btn-danger"
                       [disabled]="datasets.length <= 1 || deletingId !== null"
                       (click)="confirmarEliminar(d)"
@@ -249,6 +258,42 @@
         <div class="ge-modal-actions">
           <button type="button" class="btn btn-muted" (click)="cancelarEliminar()">Cancelar</button>
           <button type="button" class="btn btn-danger" (click)="confirmarBorrado()">Eliminar</button>
+        </div>
+      </div>
+    }
+
+    @if (aRenombrar) {
+      <div class="ge-modal-backdrop" (click)="cancelarRenombrar()"></div>
+      <div
+        class="ge-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="renombrar-title">
+        <h2 class="ge-modal-title" id="renombrar-title">Cambiar el nombre</h2>
+        <p class="ge-modal-nombre">{{ aRenombrar.display_name }}</p>
+        <div class="ge-modal-field">
+          <span class="ge-label">Nombre nuevo</span>
+          <input
+            type="text"
+            class="ge-input"
+            [(ngModel)]="nombreNuevo"
+            maxlength="255"
+            placeholder="Nombre del rutero"
+            (keyup.enter)="confirmarRenombrar()"
+            autofocus />
+        </div>
+        <p class="ge-modal-aviso">
+          Solo cambia cómo se ve en esta lista: no toca las rutas ni el archivo.
+        </p>
+        <div class="ge-modal-actions">
+          <button type="button" class="btn btn-muted" (click)="cancelarRenombrar()">Cancelar</button>
+          <button
+            type="button"
+            class="btn btn-brand"
+            [disabled]="!nombreNuevo.trim()"
+            (click)="confirmarRenombrar()">
+            Guardar
+          </button>
         </div>
       </div>
     }

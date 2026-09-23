@@ -96,6 +96,16 @@ export class AdminUsersService {
     });
   }
 
+  renameRouteDataset(
+    datasetId: number,
+    displayName: string,
+  ): Observable<{ success: boolean; message?: string; error?: string }> {
+    return this.http.patch<{ success: boolean; message?: string; error?: string }>(
+      `${this.base}/route-datasets/${datasetId}/nombre`,
+      { display_name: displayName },
+    );
+  }
+
   deleteRouteDataset(datasetId: number): Observable<{ success: boolean; message?: string; error?: string }> {
     return this.http.delete<{ success: boolean; message?: string; error?: string }>(
       `${this.base}/route-datasets/${datasetId}`

@@ -60,6 +60,9 @@ export class GestionExcelsComponent implements OnInit {
    * URL del servidor y sin poder destacar que el borrado no tiene vuelta atrás.
    */
   aEliminar: RouteDatasetRow | null = null;
+  aRenombrar: RouteDatasetRow | null = null;
+  nombreNuevo = '';
+  renamingId: number | null = null;
 
   constructor(
     private readonly adminUsers: AdminUsersService,
@@ -214,6 +217,46 @@ export class GestionExcelsComponent implements OnInit {
             return;
           }
           this.errorMsg = cuerpo?.error ?? 'No se pudo descargar el Excel.';
+        },
+      });
+  }
+
+  abrirRenombrar(row: RouteDatasetRow): void {
+    this.aRenombrar = row;
+    this.nombreNuevo = row.display_name;
+  }
+
+  cancelarRenombrar(): void {
+    this.aRenombrar = null;
+    this.nombreNuevo = '';
+  }
+
+  confirmarRenombrar(): void {
+    const row = this.aRenombrar;
+    const nombre = this.nombreNuevo.trim();
+    if (!row || !nombre || nombre === row.display_name) {
+      this.cancelarRenombrar();
+      return;
+    }
+    this.aRenombrar = null;
+    this.successMsg = '';
+    this.errorMsg = '';
+    this.renamingId = row.id;
+    this.adminUsers
+      .renameRouteDataset(row.id, nombre)
+      .pipe(finalize(() => (this.renamingId = null)))
+      .subscribe({
+        next: (res) => {
+          if (res.success === false) {
+            this.errorMsg = res.error ?? 'No se pudo cambiar el nombre.';
+            return;
+          }
+          this.successMsg = `«${row.display_name}» ahora se llama «${nombre}».`;
+          this.nombreNuevo = '';
+          this.load();
+        },
+        error: (err) => {
+          this.errorMsg = err?.error?.error ?? 'No se pudo cambiar el nombre.';
         },
       });
   }
