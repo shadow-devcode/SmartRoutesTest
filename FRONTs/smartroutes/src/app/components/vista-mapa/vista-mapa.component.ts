@@ -5,7 +5,7 @@ import { catchError, map, switchMap, takeUntil } from 'rxjs/operators';
 import { MapaComponent } from '../mapa/mapa.component';
 import { ListaMercadistasComponent } from '../lista-mercadistas/lista-mercadistas.component';
 import { ApiService } from '../../services/api.service';
-import { UbicacionMapa, VisitaPendiente, DIAS_CALENDARIO, DIAS_SEMANA, getColorForDia } from '../../models/mercadista.model';
+import { UbicacionMapa, VisitaPendiente, DIAS_CALENDARIO, getColorForDia } from '../../models/mercadista.model';
 import { ubicacionTieneCoordValida } from '../../utils/coords';
 
 @Component({
@@ -57,11 +57,31 @@ export class VistaMapaComponent implements OnInit, OnDestroy {
   diaSeleccionadoDerecha: string | null = null;
   semanaSeleccionadaDerecha: string = '';
 
-  /** Leyenda de días: lunes a viernes y, si hay cuadrilla de fin de semana,
-   *  también sábado y domingo. */
+  /** Los siete días, siempre: sirven de leyenda y de filtro. */
   get diasLeyenda(): string[] {
-    const conRutas = new Set((this.ubicaciones ?? []).map((u) => u.dia));
-    return DIAS_CALENDARIO.filter((d) => DIAS_SEMANA.includes(d) || conRutas.has(d));
+    return DIAS_CALENDARIO;
+  }
+
+  /** Días que tienen rutas, para atenuar los vacíos sin esconderlos. */
+  private diasConRutas(ubicaciones: UbicacionMapa[]): Set<string> {
+    return new Set((ubicaciones ?? []).map((u) => String(u.dia ?? '').trim()));
+  }
+
+  hayRutasEse(dia: string): boolean {
+    return this.diasConRutas(this.todasUbicaciones).has(dia);
+  }
+
+  hayRutasEseDerecha(dia: string): boolean {
+    return this.diasConRutas(this.todasUbicacionesDerecha).has(dia);
+  }
+
+  /** Un clic filtra por ese día; otro sobre el mismo día quita el filtro. */
+  alternarDia(dia: string): void {
+    this.onDiaSeleccionado(this.diaSeleccionado === dia ? null : dia);
+  }
+
+  alternarDiaDerecha(dia: string): void {
+    this.onDiaSeleccionadoDerecha(this.diaSeleccionadoDerecha === dia ? null : dia);
   }
   getColorDia = getColorForDia;
 

@@ -34,7 +34,17 @@
 
       <div class="leyenda-dias">
         <span class="leyenda-dias-label">Ruta por día:</span>
-        <span *ngFor="let dia of diasLeyenda" class="leyenda-item" [style.background-color]="getColorDia(dia)">{{ dia }}</span>
+        <button
+            type="button"
+            class="leyenda-item"
+            *ngFor="let dia of diasLeyenda"
+            [class.leyenda-item--activo]="diaSeleccionado === dia"
+            [class.leyenda-item--vacio]="!hayRutasEse(dia)"
+            [style.background-color]="getColorDia(dia)"
+            [title]="hayRutasEse(dia)
+              ? (diaSeleccionado === dia ? 'Quitar el filtro de ' + dia : 'Ver solo las rutas del ' + dia)
+              : dia + ': sin rutas en esta selección'"
+            (click)="alternarDia(dia)">{{ dia }}</button>
       </div>
 
       <div class="tabs-menu">
@@ -121,7 +131,17 @@
 
         <div class="leyenda-dias">
           <span class="leyenda-dias-label">Ruta por día:</span>
-          <span *ngFor="let dia of diasLeyenda" class="leyenda-item" [style.background-color]="getColorDia(dia)">{{ dia }}</span>
+          <button
+            type="button"
+            class="leyenda-item"
+            *ngFor="let dia of diasLeyenda"
+            [class.leyenda-item--activo]="diaSeleccionadoDerecha === dia"
+            [class.leyenda-item--vacio]="!hayRutasEseDerecha(dia)"
+            [style.background-color]="getColorDia(dia)"
+            [title]="hayRutasEseDerecha(dia)
+              ? (diaSeleccionadoDerecha === dia ? 'Quitar el filtro de ' + dia : 'Ver solo las rutas del ' + dia)
+              : dia + ': sin rutas en esta selección'"
+            (click)="alternarDiaDerecha(dia)">{{ dia }}</button>
         </div>
 
         <div class="tabs-menu">

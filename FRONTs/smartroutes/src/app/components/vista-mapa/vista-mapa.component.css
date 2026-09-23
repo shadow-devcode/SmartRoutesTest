@@ -125,11 +125,36 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
+  border: 2px solid transparent;
   border-radius: 6px;
   color: white;
+  font: inherit;
   font-weight: 500;
   text-shadow: 0 1px 1px rgba(0,0,0,0.2);
   white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.leyenda-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.22);
+}
+
+.leyenda-item:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
+/* Día elegido: se recorta del resto con un aro y algo de sombra. */
+.leyenda-item--activo {
+  border-color: #0f172a;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.35);
+}
+
+/* Día sin rutas en la selección actual: se ve, pero apagado. */
+.leyenda-item--vacio {
+  opacity: 0.35;
 }
 
 .header-actions {
