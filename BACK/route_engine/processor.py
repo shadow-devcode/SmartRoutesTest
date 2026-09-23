@@ -747,6 +747,7 @@ def procesar_minoristas(
     canal: Optional[str] = None,
     cadenas: Optional[list] = None,
     grupos_cadenas: Optional[list] = None,
+    nombres_grupos: Optional[list] = None,
 ) -> None:
     """Funcion principal de procesamiento de rutas.
 
@@ -798,6 +799,7 @@ def procesar_minoristas(
             canal=canal,
             cadenas=cadenas,
             grupos_cadenas=grupos_cadenas,
+            nombres_grupos=nombres_grupos,
         )
 
 
@@ -810,6 +812,7 @@ def _procesar_minoristas(
     canal: Optional[str] = None,
     cadenas: Optional[list] = None,
     grupos_cadenas: Optional[list] = None,
+    nombres_grupos: Optional[list] = None,
 ) -> None:
     """Cuerpo del procesamiento. Asume el modelo de jornada ya aplicado."""
 
@@ -838,7 +841,7 @@ def _procesar_minoristas(
     # Solo se planifican las cadenas agrupadas; lo que no entró en ningún grupo
     # queda fuera del alcance, igual que las cadenas no marcadas en "por cadena".
     if normalizar_tipo_carga(tipo_carga) == TIPO_MULTICANAL and grupos_cadenas:
-        mapa = set_grupos_multicanal(grupos_cadenas)
+        mapa = set_grupos_multicanal(grupos_cadenas, nombres_grupos)
         cadenas = cadenas_agrupadas()
         print(f"      -> Grupos de cadenas: {mapa}")
 

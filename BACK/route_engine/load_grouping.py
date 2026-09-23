@@ -53,19 +53,21 @@ ETIQUETAS = {
 _grupos_multicanal: dict = {}
 
 
-def set_grupos_multicanal(grupos) -> dict:
+def set_grupos_multicanal(grupos, nombres=None) -> dict:
     """
-    Fija los grupos de cadenas. `grupos` es una lista de listas de cadenas; el
-    primer grupo es "Grupo 1", el segundo "Grupo 2"... Devuelve el mapa
-    resultante {CADENA: grupo}.
+    Fija los grupos de cadenas. `grupos` es una lista de listas de cadenas.
+    Cada grupo se llama como diga `nombres` en su misma posición y, si no trae
+    nombre, "Grupo 1", "Grupo 2"... Devuelve el mapa resultante {CADENA: grupo}.
 
     Una cadena solo puede estar en un grupo: si se repite, manda el primero en
     el que aparece. Dos grupos con la misma cadena no serían dos barreras sino
     una contradicción.
     """
     _grupos_multicanal.clear()
+    lista_nombres = list(nombres or [])
     for indice, cadenas in enumerate(grupos or [], start=1):
-        nombre = f"Grupo {indice}"
+        propio = str(lista_nombres[indice - 1] or "").strip() if indice <= len(lista_nombres) else ""
+        nombre = " ".join(propio.split()) or f"Grupo {indice}"
         for cadena in cadenas or []:
             clave = str(cadena or "").strip().upper()
             if clave and clave not in _grupos_multicanal:

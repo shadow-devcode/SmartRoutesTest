@@ -107,6 +107,36 @@
   margin-bottom: 0.55rem;
 }
 
+.grupo__nombre-input {
+  flex: 1 1 10rem;
+  min-width: 7rem;
+  max-width: 16rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.grupo__nombre-input::placeholder {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.grupo__nombre-input:hover {
+  border-color: var(--border);
+  background: #fff;
+}
+
+.grupo__nombre-input:focus {
+  border-color: var(--brand-from);
+  background: #fff;
+  outline: none;
+}
+
 .grupo__nombre {
   font-size: 0.85rem;
   font-weight: 700;

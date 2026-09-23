@@ -97,6 +97,7 @@ def _process_file_background(
     canal: str | None = None,
     cadenas: list | None = None,
     grupos_cadenas: list | None = None,
+    nombres_grupos: list | None = None,
 ) -> None:
     """Ejecuta el procesamiento completo en un hilo separado."""
     global _worker_thread
@@ -121,6 +122,7 @@ def _process_file_background(
             canal=canal,
             cadenas=cadenas,
             grupos_cadenas=grupos_cadenas,
+            nombres_grupos=nombres_grupos,
         )
 
         processing_status["progress"] = 100
@@ -202,6 +204,7 @@ def launch_worker(
     canal: str | None = None,
     cadenas: list | None = None,
     grupos_cadenas: list | None = None,
+    nombres_grupos: list | None = None,
 ) -> None:
     """Lanza el procesamiento en un hilo daemon. El estado se debe haber reseteado antes."""
     thread = threading.Thread(
@@ -219,6 +222,7 @@ def launch_worker(
             "canal": canal,
             "cadenas": cadenas,
             "grupos_cadenas": grupos_cadenas,
+            "nombres_grupos": nombres_grupos,
         },
         daemon=True,
     )

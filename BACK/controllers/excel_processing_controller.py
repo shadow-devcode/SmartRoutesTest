@@ -97,6 +97,13 @@ def _parse_grupos_cadenas(valor) -> list:
     return grupos
 
 
+def _parse_nombres_grupos(valor) -> list:
+    """Nombres que el usuario puso a cada grupo, en el mismo orden."""
+    if not isinstance(valor, (list, tuple)):
+        return []
+    return [" ".join(str(v or "").split())[:60] for v in valor[:20]]
+
+
 def _parse_minutos_jornada(valor) -> int | None:
     """Preset de jornada diaria del formulario. None = valor por defecto."""
     if valor is None:
@@ -260,6 +267,9 @@ def procesar_excel():
         if tipo_carga == "multicanal"
         else []
     )
+    nombres_grupos = (
+        _parse_nombres_grupos(body.get("nombres_grupos")) if tipo_carga == "multicanal" else []
+    )
 
     output_target, register_ds, uid = _prepare_dataset_output()
 
@@ -278,6 +288,7 @@ def procesar_excel():
         canal=canal,
         cadenas=cadenas,
         grupos_cadenas=grupos_cadenas,
+        nombres_grupos=nombres_grupos,
     )
 
     return jsonify({"success": True, "message": "Procesamiento iniciado correctamente."})

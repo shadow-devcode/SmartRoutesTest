@@ -221,7 +221,15 @@
 
           <div class="grupo" *ngFor="let grupo of gruposCadenas; let i = index">
             <div class="grupo__cabecera">
-              <span class="grupo__nombre">Grupo {{ i + 1 }}</span>
+              <input
+                type="text"
+                class="grupo__nombre-input"
+                [ngModel]="gruposNombres[i] || ''"
+                (ngModelChange)="gruposNombres[i] = $event"
+                [attr.aria-label]="'Nombre del grupo ' + (i + 1)"
+                [placeholder]="'Grupo ' + (i + 1)"
+                maxlength="60"
+                title="Ponle un nombre a este grupo (por ejemplo, Moderna o Tradicional)" />
               <span class="grupo__conteo">
                 {{ grupo.length }} cadena{{ grupo.length === 1 ? '' : 's' }}
               </span>

@@ -73,6 +73,7 @@ export class ExcelProcesamientoService {
     canal = '',
     cadenas: string[] = [],
     gruposCadenas: string[][] = [],
+    nombresGrupos: string[] = [],
   ): Observable<IniciarProcesamientoResponse> {
     const body: Record<string, any> = {
       tipo_ruta: tipoRuta,
@@ -91,8 +92,17 @@ export class ExcelProcesamientoService {
     } else if (tipoCarga === 'multicanal') {
       // Cada grupo es un equipo de mercaderistas; las cadenas que no estén en
       // ningún grupo no se planifican.
-      const grupos = gruposCadenas.filter((g) => g.length);
-      if (grupos.length) body['grupos_cadenas'] = grupos;
+      // Los grupos vacíos no se mandan, y los nombres viajan en el mismo
+      // orden que los grupos que sí van.
+      const conCadenas = gruposCadenas
+        .map((cadenas, i) => ({ cadenas, nombre: (nombresGrupos[i] ?? '').trim() }))
+        .filter((g) => g.cadenas.length);
+      if (conCadenas.length) {
+        body['grupos_cadenas'] = conCadenas.map((g) => g.cadenas);
+        if (conCadenas.some((g) => g.nombre)) {
+          body['nombres_grupos'] = conCadenas.map((g) => g.nombre);
+        }
+      }
     }
     if (displayName && displayName.trim().length > 0) {
       body['display_name'] = displayName.trim();

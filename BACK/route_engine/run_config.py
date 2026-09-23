@@ -34,6 +34,23 @@ _COL_DESCRIPCION = "Descripción"
 _VERDADEROS = frozenset({"1", "true", "yes", "si", "sí", "verdadero"})
 
 
+def _texto_grupos(grupos_cadenas) -> str:
+    """«Nombre: cadena, cadena · Nombre: …», con el nombre que puso el usuario."""
+    from route_engine.load_grouping import grupos_multicanal
+
+    mapa = grupos_multicanal()
+    partes = []
+    for indice, cadenas in enumerate(grupos_cadenas or [], start=1):
+        if not cadenas:
+            continue
+        nombre = next(
+            (mapa[str(c).strip().upper()] for c in cadenas if str(c).strip().upper() in mapa),
+            f"Grupo {indice}",
+        )
+        partes.append(f"{nombre}: {', '.join(cadenas)}")
+    return " · ".join(partes) or "—"
+
+
 def build_config_procesamiento_df(
     *,
     incluye_viaje: bool,
@@ -86,12 +103,7 @@ def build_config_procesamiento_df(
         ),
         (
             CLAVE_GRUPOS,
-            " · ".join(
-                f"Grupo {i}: {', '.join(g)}"
-                for i, g in enumerate(grupos_cadenas or [], start=1)
-                if g
-            )
-            or "—",
+            _texto_grupos(grupos_cadenas),
             "Grupos de cadenas del reparto multicanal; cada grupo tiene su "
             "propio equipo de mercaderistas.",
         ),

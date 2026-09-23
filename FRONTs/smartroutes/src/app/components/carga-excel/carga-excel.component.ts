@@ -81,6 +81,8 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
    * propio equipo de mercaderistas; una cadena pertenece como mucho a un grupo.
    */
   gruposCadenas: string[][] = [[]];
+  /** Nombre de cada grupo, en el mismo orden. Vacío = «Grupo 1», «Grupo 2»… */
+  gruposNombres: string[] = [''];
 
   // ─── Datos del preview ─────────────────────────────────────────────────────
   columnas: string[] = [];
@@ -220,6 +222,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.canal = disponibles.length === 1 ? disponibles[0] : '';
     this.cadenasSeleccionadas = [];
     this.gruposCadenas = [[]];
+    this.gruposNombres = [''];
     this.filas = resp.filas;
     this.totalFilas = resp.total_filas;
     this.nombreArchivo = resp.nombre_archivo;
@@ -260,7 +263,10 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
       this.canal = '';
       this.cadenasSeleccionadas = [];
     }
-    if (tipo !== 'multicanal') this.gruposCadenas = [[]];
+    if (tipo !== 'multicanal') {
+      this.gruposCadenas = [[]];
+      this.gruposNombres = [''];
+    }
     this.cdr.markForCheck();
   }
 
@@ -317,11 +323,16 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
 
   agregarGrupo(): void {
     this.gruposCadenas = [...this.gruposCadenas, []];
+    this.gruposNombres = [...this.gruposNombres, ''];
     this.cdr.markForCheck();
   }
 
   quitarGrupo(indice: number): void {
     // Siempre queda al menos uno: sin grupos no hay nada que repartir.
+    this.gruposNombres =
+      this.gruposCadenas.length > 1
+        ? this.gruposNombres.filter((_, i) => i !== indice)
+        : [''];
     this.gruposCadenas =
       this.gruposCadenas.length > 1
         ? this.gruposCadenas.filter((_, i) => i !== indice)
@@ -422,6 +433,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
         this.canal,
         this.cadenasSeleccionadas,
         this.gruposCadenas,
+        this.gruposNombres,
       )
       .subscribe({
         next: (resp) => {
@@ -519,6 +531,7 @@ export class CargaExcelComponent implements OnInit, OnDestroy {
     this.canal = '';
     this.cadenasSeleccionadas = [];
     this.gruposCadenas = [[]];
+    this.gruposNombres = [''];
     this.filas = [];
     this.totalFilas = 0;
     this.nombreArchivo = '';
