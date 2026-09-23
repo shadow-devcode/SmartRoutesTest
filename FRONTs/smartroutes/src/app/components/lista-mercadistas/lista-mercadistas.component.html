@@ -109,25 +109,7 @@
       </div>
     </article>
 
-    <article class="filter-card">
-      <header class="filter-card__head">
-        <span class="filter-card__eyebrow">Vista</span>
-        <h3 class="filter-card__title">Día de la ruta</h3>
-        <p class="filter-card__desc" *ngIf="mercadistaActual">Mostrar solo las visitas de un día.</p>
-        <p class="filter-card__desc filter-card__desc--muted" *ngIf="!mercadistaActual">Selecciona un mercadista para combinar día y mapa.</p>
-      </header>
-      <div class="chips-row chips-row--wrap" role="group" aria-label="Filtrar por día">
-        <button type="button" class="filter-chip" [class.filter-chip--active]="diaActual === ''" (click)="seleccionarDia('')">Todos los días</button>
-        <button
-          type="button"
-          *ngFor="let dia of diasSemana"
-          class="filter-chip filter-chip--day"
-          [class.filter-chip--active]="diaActual === dia"
-          (click)="seleccionarDia(dia)">
-          {{ dia }}
-        </button>
-      </div>
-    </article>
+    <!-- El día se elige en la leyenda del mapa («Ruta por día»), no aquí. -->
 
     <article class="filter-card filter-card--provincias" *ngIf="provinciasDisponibles.length > 0 && !soloUnaRutaAsignada">
       <header class="filter-card__head">

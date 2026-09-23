@@ -2,6 +2,7 @@
   <!-- ═══════════════ Panel IZQUIERDO (origen) ═══════════════ -->
   <aside class="sidebar-panel">
     <app-lista-mercadistas
+      [diaDesdeMapa]="diaSeleccionado"
       (mercadistaSeleccionado)="onMercadistaSeleccionado($event)"
       (diaSeleccionado)="onDiaSeleccionado($event)"
       (semanaSeleccionada)="onSemanaSeleccionada($event)"

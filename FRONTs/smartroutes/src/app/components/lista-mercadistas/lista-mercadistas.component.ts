@@ -81,6 +81,15 @@ export class ListaMercadistasComponent implements OnInit, OnDestroy {
   provinciasDropdownAbierto = false;
   mercadistaActual: string | null = null;
   /** Día seleccionado: null = sin filtro, '' = Todos los días, 'Lunes'|... = un día */
+  /** Día elegido en la leyenda del mapa. Manda el mapa: aquí ya no hay filtro
+   *  de día, pero el día sigue haciendo falta para reordenar su ruta. */
+  @Input() set diaDesdeMapa(dia: string | null) {
+    const valor = dia || null;
+    if (this.diaActual === valor) return;
+    this.diaActual = valor;
+    this.actualizarTotales();
+  }
+
   diaActual: string | null = null;
   /** Filtro por semana: '' = todas, 'semana 1', 'semana 2', etc. */
   semanaActual: string = '';
